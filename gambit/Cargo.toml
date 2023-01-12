@@ -1,0 +1,15 @@
+[package]
+name = "gambit"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "3.0.7", features = ["derive"] }
+env_logger = { version = "0.10.0", default-features = false }
+gambit_lib = { path = "../gambit_lib" }
+log = "0.4"
+rand = "0.7"
+rand_pcg = "0.2"
+serde = { version = "1", features = ["derive"] }
