@@ -1,65 +1,45 @@
 use std::convert::From;
-use std::io::ErrorKind;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+/// The list of errors that the library can generate.
+#[derive(Error, Debug)] // , PartialEq)]
 pub enum GambitError {
-    #[error("Unable to convert {source_type} type to {destination_type} type")]
-    Conversion {
-        source_type: String,
-        destination_type: String,
-    },
+    #[error("IO error: {0}")]
+    IO(std::io::Error),
 
-    #[error("IO error: {kind}")]
-    IO { kind: ErrorKind },
+    /// An error indicating that JSON parsing failed.
+    #[error("JSON error occurred: {0}")]
+    JSON(serde_json::Error),
 
-    #[error("JSON error occurred at {line}:{column}")]
-    JSON {
-        line: usize,
-        column: usize,
-        io_error: bool,
-        syntax_error: bool,
-        data_error: bool,
-        eof: bool,
-    },
-
-    #[error("AST node {0} not found")]
-    NodeNotFound(String),
-
-    #[error("AST node {0} does not contain a value at index {1}")]
-    NodeAtIndexNotFound(String, usize),
-
-    #[error("Mutation failed: {0}")]
-    MutationFailed(String),
-
+    /// An error indicating that the AST does not have any nodes suitable for
+    /// mutating the AST according to the specified mutation algorithms.
     #[error("AST does not contain any mutable node for requested mutations")]
     NoMutableNode,
 
+    /// An error indicating that an API call attempted to load facilities for
+    /// a language not supported by gambit-lib.
     #[error("Language {0} not supported")]
     LanguageNotSupported(String),
 
+    /// An error indicating a function tried to operate on an AST associated with
+    /// a language that the function does not recognize.
     #[error("Unable to determine language from input file")]
     LanguageNotRecognized,
 
+    /// An error indicating that a function tried to access a low level AST not supported
+    /// by the current language module.
     #[error("Language does not support this AST type")]
     ASTTypeNotSupported,
 }
 
 impl From<std::io::Error> for GambitError {
     fn from(e: std::io::Error) -> Self {
-        GambitError::IO { kind: e.kind() }
+        GambitError::IO(e)
     }
 }
 
 impl From<serde_json::Error> for GambitError {
     fn from(e: serde_json::Error) -> Self {
-        GambitError::JSON {
-            line: e.line(),
-            column: e.column(),
-            io_error: e.is_io(),
-            syntax_error: e.is_syntax(),
-            data_error: e.is_data(),
-            eof: e.is_eof(),
-        }
+        GambitError::JSON(e)
     }
 }
