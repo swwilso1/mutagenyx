@@ -1,5 +1,5 @@
 use crate::ast::AST;
-use crate::json::JSONAPI;
+use crate::json::JSONMutate;
 use crate::visitor::{Visitor, VisitorMut};
 use serde_json::Value;
 

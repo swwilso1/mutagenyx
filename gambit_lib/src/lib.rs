@@ -30,7 +30,6 @@ mod ast;
 /// library errors.
 pub mod error;
 
-/// The `json` module contains various JSON manipulation functions and JSON traversal traits.
 mod json;
 
 /// The `language` module defines the list of languages supported by the library.

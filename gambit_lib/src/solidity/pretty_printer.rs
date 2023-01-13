@@ -1,5 +1,5 @@
 use crate::ast::AST;
-use crate::json::JSONAPI;
+use crate::json::JSONMutate;
 use crate::pretty_printer::{
     write_flowable_text, write_indent, write_newline, write_space, write_string, write_token,
     PrettyPrinter,

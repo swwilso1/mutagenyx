@@ -1,5 +1,5 @@
 use crate::error::GambitError;
-use crate::json::JSONAPI;
+use crate::json::JSONMutate;
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
 use crate::mutator::{Mutator, MutatorFactory};
 use crate::solidity::ast::{SolidityAST, SolidityASTApi};
