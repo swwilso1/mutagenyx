@@ -29,10 +29,7 @@ mod ast;
 /// The `error` module contains `GambitError`, the error enumeration used to communicate
 /// library errors.
 pub mod error;
-
 mod json;
-
-/// The `language` module defines the list of languages supported by the library.
 pub mod language;
 
 /// The `language_interface` module provides abstractions for interacting with a generic form
