@@ -37,9 +37,6 @@ mod mutator;
 pub mod pretty_printer;
 pub mod recognizer;
 mod solidity;
-
-/// The `super_ast` module contains the SuperAST enumeration which allows a more abstract,
-/// `generic` wrapper of a language specific abstract syntax tree.
 pub mod super_ast;
 
 /// The `visitor` module provides the traits that describe the functionality an object must have
