@@ -33,8 +33,6 @@ mod json;
 pub mod language;
 pub mod language_interface;
 pub mod mutation;
-
-/// The `mutator` module provides traits for objects that perform mutation algorithms.
 mod mutator;
 
 /// The `pretty_printer` module contains a low-level stream 'token' emitter to use when
