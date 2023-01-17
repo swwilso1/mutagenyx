@@ -36,8 +36,6 @@ pub mod mutation;
 mod mutator;
 pub mod pretty_printer;
 pub mod recognizer;
-
-/// The `solidity` module contains all the Solidity language specific implementation details.
 mod solidity;
 
 /// The `super_ast` module contains the SuperAST enumeration which allows a more abstract,
