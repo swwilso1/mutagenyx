@@ -11,10 +11,14 @@ pub fn arithmetic_operators() -> Vec<String> {
 }
 
 pub fn logical_operators() -> Vec<String> {
-    str_array_to_string_vector(Box::new(["&&", "||", "&", "|", "^", "<<", ">>"]))
+    str_array_to_string_vector(Box::new(["&&", "||"]))
 }
 
-pub fn predicate_operators() -> Vec<String> {
+pub fn bitwise_operators() -> Vec<String> {
+    str_array_to_string_vector(Box::new(["&", "|", "<<", ">>"]))
+}
+
+pub fn comparison_operators() -> Vec<String> {
     str_array_to_string_vector(Box::new(["==", "!=", ">", "<", ">=", "<="]))
 }
 

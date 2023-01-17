@@ -32,9 +32,6 @@ pub mod error;
 mod json;
 pub mod language;
 pub mod language_interface;
-
-/// The `mutation` module contains the enumeration of the mutation algorithms supported by the
-/// library.
 pub mod mutation;
 
 /// The `mutator` module provides traits for objects that perform mutation algorithms.

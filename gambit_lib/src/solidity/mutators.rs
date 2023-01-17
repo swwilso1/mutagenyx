@@ -457,9 +457,13 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                     logical_operators(),
                     MutationType::Generic(GenericMutation::LogicalBinaryOp),
                 ))),
-                GenericMutation::PredicateBinaryOp => Some(Box::new(BinaryOpMutator::new(
-                    predicate_operators(),
-                    MutationType::Generic(GenericMutation::PredicateBinaryOp),
+                GenericMutation::BitwiseBinaryOp => Some(Box::new(BinaryOpMutator::new(
+                    bitwise_operators(),
+                    MutationType::Generic(GenericMutation::BitwiseBinaryOp),
+                ))),
+                GenericMutation::ComparisonBinaryOp => Some(Box::new(BinaryOpMutator::new(
+                    comparison_operators(),
+                    MutationType::Generic(GenericMutation::ComparisonBinaryOp),
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
