@@ -35,10 +35,6 @@ pub mod language_interface;
 pub mod mutation;
 mod mutator;
 pub mod pretty_printer;
-
-/// The `recognizer` module contains a generic interface to code that will check a file's
-/// contents in order to determine if the file contains support programming language source
-/// code, or the language's AST.
 pub mod recognizer;
 
 /// The `solidity` module contains all the Solidity language specific implementation details.
