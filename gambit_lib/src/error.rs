@@ -30,6 +30,10 @@ pub enum GambitError {
     /// by the current language module.
     #[error("Language does not support this AST type")]
     ASTTypeNotSupported,
+
+    /// An error indicating that a language does not implement a mutation algorithm.
+    #[error("Language does not support mutation algorithm: {0}")]
+    MutationAlgorithmNotSupported(String),
 }
 
 impl From<std::io::Error> for GambitError {

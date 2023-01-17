@@ -1,5 +1,7 @@
+use crate::error::GambitError;
+use std::fmt;
+use std::fmt::Formatter;
 use std::str::FromStr;
-use std::string::ToString;
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum GenericMutation {
@@ -30,7 +32,7 @@ pub enum MutationType {
 }
 
 impl FromStr for MutationType {
-    type Err = ();
+    type Err = GambitError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -54,36 +56,36 @@ impl FromStr for MutationType {
             "Require" => Ok(MutationType::Solidity(SolidityMutation::Require)),
             "UncheckedBlock" => Ok(MutationType::Solidity(SolidityMutation::UncheckedBlock)),
 
-            _ => {
-                // TODO: Return a meaningful error
-                println!("Unrecognized mutation algorithm");
-                Err(())
-            }
+            _last => Err(GambitError::MutationAlgorithmNotSupported(String::from(
+                _last,
+            ))),
         }
     }
 }
 
-impl ToString for MutationType {
-    fn to_string(&self) -> String {
-        match self {
+impl fmt::Display for MutationType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let text = match self {
             MutationType::Generic(g) => match g {
-                GenericMutation::ArithmeticBinaryOp => String::from("ArithmeticBinaryOp"),
-                GenericMutation::LogicalBinaryOp => String::from("LogicalBinaryOp"),
-                GenericMutation::PredicateBinaryOp => String::from("PredicateBinaryOp"),
-                GenericMutation::Assignment => String::from("Assignment"),
-                GenericMutation::DeleteExpression => String::from("DeleteExpression"),
-                GenericMutation::FunctionCall => String::from("FunctionCall"),
-                GenericMutation::IfStatement => String::from("IfStatement"),
-                GenericMutation::Integer => String::from("Integer"),
-                GenericMutation::FunctionSwapArguments => String::from("FunctionSwapArguments"),
-                GenericMutation::OperatorSwapArguments => String::from("OperatorSwapArguments"),
-                GenericMutation::LinesSwap => String::from("LinesSwap"),
-                GenericMutation::UnaryOp => String::from("UnaryOp"),
+                GenericMutation::ArithmeticBinaryOp => "ArithmeticBinaryOp",
+                GenericMutation::LogicalBinaryOp => "LogicalBinaryOp",
+                GenericMutation::PredicateBinaryOp => "PredicateBinaryOp",
+                GenericMutation::Assignment => "Assignment",
+                GenericMutation::DeleteExpression => "DeleteExpression",
+                GenericMutation::FunctionCall => "FunctionCall",
+                GenericMutation::IfStatement => "IfStatement",
+                GenericMutation::Integer => "Integer",
+                GenericMutation::FunctionSwapArguments => "FunctionSwapArguments",
+                GenericMutation::OperatorSwapArguments => "OperatorSwapArguments",
+                GenericMutation::LinesSwap => "LinesSwap",
+                GenericMutation::UnaryOp => "UnaryOp",
             },
             MutationType::Solidity(s) => match s {
-                SolidityMutation::Require => String::from("Require"),
-                SolidityMutation::UncheckedBlock => String::from("UncheckedBlock"),
+                SolidityMutation::Require => "Require",
+                SolidityMutation::UncheckedBlock => "UncheckedBlock",
             },
-        }
+        };
+
+        write!(f, "{}", text)
     }
 }

@@ -31,9 +31,6 @@ mod ast;
 pub mod error;
 mod json;
 pub mod language;
-
-/// The `language_interface` module provides abstractions for interacting with a generic form
-/// of a language AST.
 pub mod language_interface;
 
 /// The `mutation` module contains the enumeration of the mutation algorithms supported by the

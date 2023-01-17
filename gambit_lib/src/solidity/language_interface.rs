@@ -36,8 +36,8 @@ impl SolidityLanguageInterface {
 
 impl MutableLanguage for SolidityLanguageInterface {
     fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, GambitError> {
-        // TODO: Need to update this with a recognizer that dermines if the source is an AST or a source
-        // file.
+        // TODO: Need to update this code with a recognizer that determines if the source is an AST
+        // or a source file.
         let solidity_ast = load_json_from_file_with_name(file_name)?;
         Ok(SuperAST::Solidity(solidity_ast))
     }
@@ -99,7 +99,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         Ok(SuperAST::Solidity(mutated_ast))
     }
 
-    fn write_mutated_ast_to_file(
+    fn pretty_print_mutated_ast_to_file(
         &mut self,
         ast: &SuperAST,
         file_name: &str,
