@@ -34,9 +34,6 @@ pub mod language;
 pub mod language_interface;
 pub mod mutation;
 mod mutator;
-
-/// The `pretty_printer` module contains a low-level stream 'token' emitter to use when
-/// reconstructing source code from an AST.
 pub mod pretty_printer;
 
 /// The `recognizer` module contains a generic interface to code that will check a file's

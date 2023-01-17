@@ -1,14 +1,11 @@
-// use std::cmp::max;
-use std::io::ErrorKind;
+//! The `pretty_printer` module contains a low-level stream 'token' emitter to use when
+//! reconstructing source code from an AST.
+
+use crate::error::GambitError;
 use std::io::Write;
-use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
-pub enum PrinterError {
-    #[error("IO error: {kind}")]
-    IOError { kind: ErrorKind },
-}
-
+/// Object that encapsulates the behavior needed to write structured output to any object that
+/// implements the [`Write`] trait.
 pub struct PrettyPrinter {
     pub row: usize,
     pub column: usize,
@@ -19,6 +16,16 @@ pub struct PrettyPrinter {
 }
 
 impl PrettyPrinter {
+    /// Initialize a new pretty-printer object
+    ///
+    /// # Arguments
+    ///
+    /// * `tab_width` - The number of spaces to use for a tab character.
+    /// * `page_width` - The number of spaces to use for the column width of the document.  If the
+    /// column-width is small, the pretty-printer may overflow the `page_width` in order to prevent
+    /// introducing line breaks inside of tokens that exceed the length of `page_width`.
+    /// * `newline` - The string slice to use for newline characters.  For unix-like platforms, use
+    /// "\n".  For Windows, use "\r\n".
     pub fn new(tab_width: usize, page_width: usize, newline: &str) -> PrettyPrinter {
         PrettyPrinter {
             row: 1,
@@ -30,6 +37,10 @@ impl PrettyPrinter {
         }
     }
 
+    /// Increase the indentation level.
+    ///
+    /// When the printer emits the next newline character and starts a new-line, it will first print
+    /// indentations based on the number of indentations recorded in the indentation level.
     pub fn increase_indent(&mut self) {
         let max_indent = (self.page_width as f64 / self.indent as f64) - 1.0;
         if self.indent >= max_indent as usize {
@@ -39,6 +50,7 @@ impl PrettyPrinter {
         }
     }
 
+    /// Decrease the indentation level.
     pub fn decrease_indent(&mut self) {
         if self.indent == 0 {
             return;
@@ -46,10 +58,13 @@ impl PrettyPrinter {
         self.indent -= 1;
     }
 
+    /// Return the length of the current indentation in spaces.
     fn indent_length(&self) -> usize {
         self.indent * self.tab_width
     }
 
+    /// Return the string slice that represents the space characters that make up the indentation
+    /// prefix for a new line.
     pub fn indent_string(&self) -> String {
         // There is probably a String library method that can do this in one function call.
         let mut s = String::new();
@@ -62,7 +77,12 @@ impl PrettyPrinter {
         s
     }
 
-    pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), PrinterError> {
+    /// Write out the indentation string to the `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The object that implements the [`Write`] trait.
+    pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
         let indention = self.indent_string();
         if indention.len() > 0 {
             if let Err(e) = self.write_basic_string(stream, &indention) {
@@ -72,16 +92,26 @@ impl PrettyPrinter {
         Ok(())
     }
 
-    pub fn write_newline<W: Write>(&mut self, stream: &mut W) -> Result<(), PrinterError> {
+    /// Write newline characters to the `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The object that implements the [`Write`] trait.
+    pub fn write_newline<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
         if let Err(e) = write!(stream, "{}", self.newline) {
-            return Err(PrinterError::IOError { kind: e.kind() });
+            return Err(GambitError::from(e));
         }
         self.row += 1;
         self.column = 1;
         Ok(())
     }
 
-    pub fn write_space<W: Write>(&mut self, stream: &mut W) -> Result<(), PrinterError> {
+    /// Write a space character to the `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The object that implements the [`Write`] trait.
+    pub fn write_space<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
         if self.column == self.page_width {
             self.write_newline(stream)?;
             self.write_indent(stream)?;
@@ -90,11 +120,17 @@ impl PrettyPrinter {
         Ok(())
     }
 
+    /// Write `token` to `stream`
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The [`Write`] object that receives the token.
+    /// * `token` - The string slice to write to `stream`.
     pub fn write_token<W: Write>(
         &mut self,
         stream: &mut W,
         token: &str,
-    ) -> Result<(), PrinterError> {
+    ) -> Result<(), GambitError> {
         if self.column > self.page_width {
             // We have overreached on a previous write. Go to a newline.
             self.write_newline(stream)?;
@@ -121,18 +157,61 @@ impl PrettyPrinter {
         Ok(())
     }
 
-    pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), PrinterError> {
+    /// Write a string value to the stream.  The function will emit the string surrounded by the
+    /// \" delimiters.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - the [`Write`] object that will receive the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// f.write_string("The quick brown dog...");
+    /// ```
+    ///
+    /// will output:
+    ///
+    /// "The quick brown dog..."
+    pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), GambitError> {
         let composed_string = String::from("\"") + s + "\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
     }
 
+    /// Write a string of text to `stream`.  The printer may break the string at any point it deems
+    /// necessary and does not treat the text as an atomic token.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The [`Write`] object that will receive the text.
+    /// * `s` - The text to write.
+    /// * `next_line_text` - Sometimes, when the printer breaks a line of flowablew text and
+    /// writes the remaining text on the next line, the context requires that the next line start
+    /// with a particular set of content.  `next_line_text` contains the text that the printer should
+    /// write in the event that it breaks the flowable text into mutliple lines.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// foo.write_flowable_text(stream,
+    ///                         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras fermentum hendrerit mi, sit amet finibus ante pulvinar eget.",
+    ///                         " * ");
+    /// ```
+    ///
+    /// Might produce the output:
+    ///
+    /// Lorem ipsum dolor sit amet,
+    ///  * consectetur adipiscing elit.
+    ///  * Cras fermentum hendrerit mi,
+    ///  * sit amet finibus ante pulvinar
+    ///  * eget.
     pub fn write_flowable_text<W: Write>(
         &mut self,
         stream: &mut W,
         s: &str,
         next_line_text: &str,
-    ) -> Result<(), PrinterError> {
+    ) -> Result<(), GambitError> {
         // flowable text is a piece of text that can be separated in the output stream without
         // altering the meaning of the program.
         if s.len() > (self.page_width - self.column) {
@@ -163,49 +242,100 @@ impl PrettyPrinter {
         Ok(())
     }
 
-    fn write_basic_string<W: Write>(
-        &mut self,
-        stream: &mut W,
-        s: &str,
-    ) -> Result<(), PrinterError> {
+    /// Low-level function to write a string to the stream.
+    ///
+    /// # Argument
+    ///
+    /// * `stream` - The [`Write`] object that will receive the text.
+    /// * `s` - The string slice referring to the text to write to `stream`.
+    fn write_basic_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), GambitError> {
         if let Err(e) = write!(stream, "{s}") {
-            return Err(PrinterError::IOError { kind: e.kind() });
+            return Err(GambitError::from(e));
         }
         self.column += s.len();
         Ok(())
     }
 }
 
+/// Helper function to write an indent to `stream` while suppressing any errors.  The function sends
+/// errors to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The pretty printer that will write the indent to `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
 pub fn write_indent<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
     if let Err(e) = printer.write_indent(stream) {
         log::info!("Unable to write indentation: {e}");
     }
 }
 
+/// Helper function to write a space to `stream` while suppressing any errors.  The function sends
+/// errors to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that will write the space to `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
 pub fn write_space<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
     if let Err(e) = printer.write_space(stream) {
         log::info!("Unable to write space character: {e}");
     }
 }
 
+/// Helper function to write a newline to `stream` while suppressing any errors.  The function
+/// sends errors to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that will write the newline to the `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
 pub fn write_newline<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
     if let Err(e) = printer.write_newline(stream) {
         log::info!("Unable to write newline: {e}");
     }
 }
 
+/// Helper function to write a token to `stream` while suppressing any errors.  The function
+/// sends errors to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that will write the token to the `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
 pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token: &str) {
     if let Err(e) = printer.write_token(stream, token) {
         log::info!("Unable to write token: {e}");
     }
 }
 
+/// Helper function to write a string to `stream` while suppressing any errors.  The function
+/// sends errors to the log.
+///
+/// The pretty-printer will output the string as "`s`".
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that will write the token to the `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
+/// * `s` - The string slice containing the text to send to `stream`.
 pub fn write_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &str) {
     if let Err(e) = printer.write_string(stream, s) {
         log::info!("Unable to write string: {e}");
     }
 }
 
+/// Helper function to write flowable text to `stream` while suppressing any errors.  The
+/// function sends errors to the log.
+///
+/// The flowable text has the same semantics as [`PrettyPrinter::write_flowable_text`]
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that writes the text to `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
+/// * `s` - The flowable text.
+/// * `next_line_text` - Text to write if the pretty-printer needs to break `s` into multiple lines.
 pub fn write_flowable_text<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
