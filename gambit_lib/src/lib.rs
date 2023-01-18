@@ -22,12 +22,7 @@ pub use self::pretty_printer::PrettyPrinter;
 pub use self::recognizer::Recognizer;
 pub use self::super_ast::SuperAST;
 
-/// The `ast` module contains the AST trait intended for languages to implement in order to
-/// traverse an abstract syntax tree.
 mod ast;
-
-/// The `error` module contains `GambitError`, the error enumeration used to communicate
-/// library errors.
 pub mod error;
 mod json;
 pub mod language;
@@ -39,21 +34,4 @@ pub mod recognizer;
 mod solidity;
 pub mod super_ast;
 mod visitor;
-
-// The `vyper` module contains all the Vyper language specific implementation details.
 mod vyper;
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}

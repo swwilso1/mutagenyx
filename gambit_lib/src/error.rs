@@ -1,3 +1,6 @@
+//! The `error` module contains `GambitError`, the error enumeration used to communicate
+//! library errors.
+
 use std::convert::From;
 use thiserror::Error;
 

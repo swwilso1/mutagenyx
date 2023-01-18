@@ -166,7 +166,7 @@ impl PrettyPrinter {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore
     /// f.write_string("The quick brown dog...");
     /// ```
     ///
@@ -193,7 +193,7 @@ impl PrettyPrinter {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore
     /// foo.write_flowable_text(stream,
     ///                         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras fermentum hendrerit mi, sit amet finibus ante pulvinar eget.",
     ///                         " * ");

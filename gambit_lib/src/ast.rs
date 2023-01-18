@@ -1,3 +1,7 @@
+//! The `ast` module contains the [`SimpleAST`] trait intended for languages to implement in order to
+//! traverse an abstract syntax tree as well as the [`ASTTraverser`] type which provides algorithms
+//! for traversing a syntax tree that conforms to the [`SimpleAST`] trait.
+
 use crate::visitor::*;
 
 /// Trait used to inspect a conforming AST object for information necessary to travers the syntax
