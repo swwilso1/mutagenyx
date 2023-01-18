@@ -1,4 +1,4 @@
-use crate::ast::AST;
+use crate::ast::ASTTraverser;
 use crate::json::JSONMutate;
 use crate::pretty_printer::{
     write_flowable_text, write_indent, write_newline, write_space, write_string, write_token,
@@ -10,7 +10,7 @@ use std::io::Write;
 
 fn traverse_sub_node<W: Write>(node: &SolidityAST, stream: &mut W, printer: &mut PrettyPrinter) {
     let mut visitor = SolidityPrettyPrintVisitor::new(stream, printer);
-    node.traverse(&mut visitor);
+    ASTTraverser::traverse(node, &mut visitor);
 }
 
 fn print_documentation_helper<W: Write>(

@@ -1,4 +1,4 @@
-use crate::ast::AST;
+use crate::ast::ASTTraverser;
 use crate::error::GambitError;
 use crate::json::*;
 use crate::language::Language;
@@ -69,7 +69,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         let mut counter_visitor = SolidityMutationNodeCounter::new(&self.mutators);
         let solidity_ast = SolidityLanguageInterface::recover_solidity_ast(ast)?;
 
-        solidity_ast.traverse(&mut counter_visitor);
+        ASTTraverser::traverse(solidity_ast, &mut counter_visitor);
 
         let mut node_map: HashMap<MutationType, usize> = HashMap::new();
 
@@ -94,7 +94,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         let mut mutation_maker =
             SolidityMutationMaker::new(self.mutators.get(mutation_type).unwrap(), rng, index);
 
-        mutated_ast.traverse_mut(&mut mutation_maker);
+        ASTTraverser::traverse_mut(&mut mutated_ast, &mut mutation_maker);
 
         Ok(SuperAST::Solidity(mutated_ast))
     }
@@ -114,7 +114,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         let mut solidity_pretty_printer_visitor =
             SolidityPrettyPrintVisitor::new(&mut f, pretty_printer);
 
-        solidity_ast.traverse(&mut solidity_pretty_printer_visitor);
+        ASTTraverser::traverse(solidity_ast, &mut solidity_pretty_printer_visitor);
 
         Ok(())
     }
