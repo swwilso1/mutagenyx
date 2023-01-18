@@ -1,3 +1,6 @@
+//! The `solidity::mutators` module provides the objects that implement the mutation algorithms
+//! for the Solidity ASTs.  The module also provides the factory that implements [`MutatorFactory<t>`].
+
 use crate::error::GambitError;
 use crate::json::JSONMutate;
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
@@ -12,6 +15,11 @@ use rustc_serialize::hex::ToHex;
 use serde_json::from_str;
 use std::fmt;
 
+/// Return a SolidityAST node by creating the node from `text`.
+///
+/// # Arguments
+///
+/// * `text` - The string slice referring to the text that contains JSON.
 fn new_ast_node(text: &str) -> Result<SolidityAST, GambitError> {
     match from_str(text) {
         Ok(n) => Ok(n),
@@ -19,6 +27,10 @@ fn new_ast_node(text: &str) -> Result<SolidityAST, GambitError> {
     }
 }
 
+/// Return a new integer literal node represengint an integer literal number.
+///
+/// # Argument
+/// * `value` - The number that the node should contain.
 fn new_integer_constant_node<I: Integer + fmt::Display>(
     value: I,
 ) -> Result<SolidityAST, GambitError> {
@@ -45,6 +57,11 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(
     new_ast_node(&node_string)
 }
 
+/// Return a new boolean literal node.
+///
+/// # Argument
+///
+/// * `value` - The boolean value to store in the node.
 fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, GambitError> {
     let value_str = value.to_string();
     let hex_value_str = value_str.as_bytes().to_hex();
@@ -68,12 +85,27 @@ fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, GambitError> {
     new_ast_node(&node_string)
 }
 
+/// The object that implements mutations for binary expressions.
+///
+/// Multiple mutation algorithms operate on binary expressions.  Each of those
+/// mutation algorithms uses a subset of the available binary operators.  This
+/// one structure/class provides the functionality to implement these different
+/// binary expression mutations.
 struct BinaryOpMutator {
+    /// A list of operators valid for the binary expression
     operators: Vec<String>,
+
+    /// The mutation algorithm implemented by the mutator.
     mutation_type: MutationType,
 }
 
 impl BinaryOpMutator {
+    /// Return a new instance of the mutator.
+    ///
+    /// # Arguments
+    ///
+    /// * `operators` - the list of operators for the mutator
+    /// * `mutation_type` - the mutation algorithm implemented by the mutator
     pub fn new(operators: Vec<String>, mutation_type: MutationType) -> BinaryOpMutator {
         BinaryOpMutator {
             operators,
@@ -84,8 +116,12 @@ impl BinaryOpMutator {
 
 impl Mutator<SolidityAST> for BinaryOpMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // First check to see if the node in the AST is a "BinaryOperation" node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "BinaryOperation" {
+                // Get the operator from the node and see if the operator is in the mutator's
+                // list of supported operators. The mutator can mutate the node if it supports
+                // the node's operator.
                 if let Some(op) = node.get_str_for_key("operator") {
                     let op_str = String::from(op);
                     return self.operators.contains(&op_str);
@@ -96,11 +132,26 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
-        let chosen_operator = match self.operators.choose(rand) {
-            Some(o) => o,
-            None => return,
-        };
-        node.set_str_for_key("operator", &chosen_operator);
+        if let Some(original_operator) = node.get_str_for_key("operator") {
+            // Get the original operator so that we can use it to compare for the
+            // randomly chosen new operator. We do not want to replace the original operator
+            // with itself, just by randomly selecting the same operator from the operator list.
+            let mut chosen_operator = match self.operators.choose(rand) {
+                Some(o) => o,
+                None => return,
+            };
+
+            // If we chose the original operator, keep choosing until we get a different operator.
+            while original_operator == chosen_operator {
+                chosen_operator = match self.operators.choose(rand) {
+                    Some(o) => o,
+                    None => return,
+                };
+            }
+
+            // Insert the new operator into the node.
+            node.set_str_for_key("operator", &chosen_operator);
+        }
     }
 
     fn implements(&self) -> MutationType {
@@ -108,12 +159,17 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
     }
 }
 
+/// The structure/class that implements mutations for unary expressions.
 struct UnaryOpMutator {
+    /// A list of operators usable as prefix operators.
     prefix_operators: Vec<String>,
+
+    /// A list of operators usable as postfix operators.
     postfix_operators: Vec<String>,
 }
 
 impl UnaryOpMutator {
+    /// Create a new unary expression mutator.
     pub fn new() -> UnaryOpMutator {
         UnaryOpMutator {
             prefix_operators: prefix_operators(),
@@ -124,8 +180,11 @@ impl UnaryOpMutator {
 
 impl Mutator<SolidityAST> for UnaryOpMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // First check to see if the node is a 'UnaryOperation' node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "UnaryOperation" {
+                // Now check the 'prefix' member of the node and if the node is a prefix operation
+                // use the prefix operator list and otherwise use the postifix operator list.
                 let operator_list = match node.get_bool_for_key("prefix") {
                     Some(p) => {
                         if p {
@@ -142,6 +201,9 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
                         return false;
                     }
                 };
+
+                // Check to see if the operator in the node is in the operator list for the
+                // mutator
                 if let Some(op) = node.get_str_for_key("operator") {
                     let op_str = String::from(op);
                     return operator_list.contains(&op_str);
@@ -152,6 +214,8 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        // Determine if the node is a prefix/postfix operation and then use the prefix or
+        // postfix operator list.
         let operator_list = match node.get_bool_for_key("prefix") {
             Some(p) => {
                 if p {
@@ -168,10 +232,29 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
                 return;
             }
         };
-        let chosen_operator = match operator_list.choose(rand) {
+
+        // Get the original operator that we can use to compare to the new operator that we select.
+        // If the operator choice selects the same operator as the original, then we want to keep
+        // selecting operators until we have a different operator.
+        let original_operator = match node.get_str_for_key("operator") {
+            Some(o) => o,
+            None => "",
+        };
+
+        // Choose a new operator.
+        let mut chosen_operator = match operator_list.choose(rand) {
             Some(o) => o,
             None => return,
         };
+
+        // If the operators match, choose another operator until they no longer match.
+        while original_operator == chosen_operator {
+            chosen_operator = match operator_list.choose(rand) {
+                Some(o) => o,
+                None => return,
+            };
+        }
+
         node.set_str_for_key("operator", &chosen_operator);
     }
 
@@ -180,9 +263,18 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
     }
 }
 
+/// Implements the assignment mutation algorithm.
+///
+/// For a given Assigment expression, the algorithm replaces the right-hand side of the expression
+/// with a type correct random value.  Specifically the algorithm operates on assignments to
+/// integer, unsigned integer, and boolean variables.  For signed and unsigned integers, the
+/// algorithm will recognize the range of the type and generate random numbers that lie in the
+/// range.  Since rust only supports a maximum of 128-bit signed and unsigned integers, Solidity
+/// types larger than that will only receive a random number in the 128-bit range.
 struct AssignmentMutator {}
 
 impl AssignmentMutator {
+    /// Create the new mutator.
     pub fn new() -> AssignmentMutator {
         AssignmentMutator {}
     }
@@ -190,8 +282,10 @@ impl AssignmentMutator {
 
 impl Mutator<SolidityAST> for AssignmentMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // First check to see if the node is an `Assignment` node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "Assignment" {
+                // Now recover the type information from the node.
                 let type_description_node = match node.borrow_value_for_key("typeDescriptions") {
                     Some(n) => n,
                     _ => {
@@ -226,6 +320,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        // Recover the type descriptions for the node.
         let type_description_node = match node.borrow_value_for_key("typeDescriptions") {
             Some(n) => n,
             _ => {
@@ -315,9 +410,14 @@ impl Mutator<SolidityAST> for AssignmentMutator {
     }
 }
 
+/// Implements the function call mutation algorithm.
+///
+/// The mutator should identify function call expressions where the function call contains
+/// at least two arguments of the same type.  The mutator will swap the two arguments.
 struct FunctionCallMutator {}
 
 impl FunctionCallMutator {
+    /// Create the mutator object.
     pub fn new() -> FunctionCallMutator {
         FunctionCallMutator {}
     }
@@ -325,10 +425,12 @@ impl FunctionCallMutator {
 
 impl Mutator<SolidityAST> for FunctionCallMutator {
     fn is_mutable_node(&self, _node: &SolidityAST) -> bool {
+        // TODO: Finish the implementation.
         false
     }
 
     fn mutate(&self, _node: &mut SolidityAST, _rand: &mut Pcg64) {
+        // TODO: Finish the implementation.
         return;
     }
 
@@ -337,9 +439,26 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
     }
 }
 
+/// Implements the Solidity require function mutation algorithm.
+///
+/// This mutator will replace the expression in the argument to the Solidity `require` function
+/// with the logical negation of the expression.
+///
+/// # Example
+///
+/// ```solidity
+/// require(a > b);
+/// ```
+///
+/// would become
+///
+/// ```solidity
+/// require(!(a > b))
+/// ```
 struct SolidityRequireMutator {}
 
 impl SolidityRequireMutator {
+    /// Create the new require mutator.
     pub fn new() -> SolidityRequireMutator {
         SolidityRequireMutator {}
     }
@@ -347,6 +466,8 @@ impl SolidityRequireMutator {
 
 impl Mutator<SolidityAST> for SolidityRequireMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // Check that the node is a 'FunctionCall' node, that the function call is the
+        // `require` function, and that the function has an argument.
         return node.get_str_for_key("nodeType").map_or_else(
             || false,
             |n| {
@@ -366,6 +487,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, _: &mut Pcg64) {
+        // First create a Unary ! operation node.
         let new_node_str = "{\
             \"id\": 99999,
             \"isConstant\": false,
@@ -385,6 +507,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
             Err(_) => return,
         };
 
+        // Create a Tuple node to hold the function argument
         let tuple_expression_str = "{\
              \"id\": 99996,
              \"isConstant\": false,
@@ -437,6 +560,8 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
     }
 }
 
+/// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
+/// mutation algorithms.
 pub struct SolidityMutatorFactory {}
 
 impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
