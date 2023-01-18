@@ -439,14 +439,8 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
 
 pub struct SolidityMutatorFactory {}
 
-impl SolidityMutatorFactory {
-    pub fn new() -> SolidityMutatorFactory {
-        SolidityMutatorFactory {}
-    }
-}
-
 impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
-    fn mutator_for(&self, mutation_type: &MutationType) -> Option<Box<dyn Mutator<SolidityAST>>> {
+    fn mutator_for(mutation_type: &MutationType) -> Option<Box<dyn Mutator<SolidityAST>>> {
         match mutation_type {
             MutationType::Generic(t) => match t {
                 GenericMutation::ArithmeticBinaryOp => Some(Box::new(BinaryOpMutator::new(

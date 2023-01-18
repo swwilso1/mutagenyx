@@ -59,13 +59,12 @@ impl MutableLanguage for SolidityLanguageInterface {
         &mut self,
         mutation_types: &Vec<MutationType>,
     ) -> Result<(), GambitError> {
-        let mutator_factory = SolidityMutatorFactory::new();
         // Walk through the list of mutation types and convert the list into
         // a list of mutators that implement the mutation type.
         let mutators: Vec<Box<dyn Mutator<SolidityAST>>> = mutation_types
             .iter()
             // Try to convert the mutation type to a mutator
-            .map(|t| mutator_factory.mutator_for(t))
+            .map(|t| SolidityMutatorFactory::mutator_for(t))
             // Only use the results that have an actual mutator
             .filter(|m| match m {
                 Some(_) => true,

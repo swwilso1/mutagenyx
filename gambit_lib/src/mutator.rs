@@ -27,11 +27,11 @@ pub trait Mutator<N> {
 /// Trait that describes the functionality need from the object that will create mutators on
 /// behalf of a specific language.
 pub trait MutatorFactory<N> {
-    /// If possible return a mutator object that implements mutations for the requested mutation
+    /// If possible, return a mutator object that implements mutations for the requested mutation
     /// algorithm.
     ///
     /// # Arguments
     ///
     /// * `mutation_type` - The mutation algorithm
-    fn mutator_for(&self, mutation_type: &MutationType) -> Option<Box<dyn Mutator<N>>>;
+    fn mutator_for(mutation_type: &MutationType) -> Option<Box<dyn Mutator<N>>>;
 }
