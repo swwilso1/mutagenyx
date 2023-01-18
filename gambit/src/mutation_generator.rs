@@ -1,3 +1,6 @@
+//! The `mutation_generator` module provides the `generate_mutations` function that implements
+//! the mutation generation algorithm.
+
 use crate::generator_parameters::GeneratorParameters;
 use gambit_lib::error::GambitError;
 use gambit_lib::language_interface::*;
@@ -10,8 +13,14 @@ use rand::RngCore;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 
+/// An upper bound on the number times to try to generate a particular mutant for an input file.
 static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 
+/// Generate mutations according the parameters.
+///
+/// # Arguments
+///
+/// * `params` - The parameters that control the mutation generation algorithm.
 pub fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
@@ -74,13 +83,17 @@ pub fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), Gambit
                 0
             };
 
+            // Generate the mutated AST.
             let mutated_ast = language_object.mutate_ast(&ast, mutation_type, index, params.rng)?;
 
+            // See if we have already generated this AST before.  We only want to output unique
+            // mutations.
             if observed_asts.contains(&mutated_ast) {
                 attempts += 1;
                 continue;
             }
 
+            // Calculate the name of the output file.
             let input_file_path = PathBuf::from(&params.file_name);
             let base_file_name = input_file_path.file_name().unwrap();
             let outfile_name = params.output_directory.join(
@@ -98,6 +111,7 @@ pub fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), Gambit
                 return Err(GambitError::from(e));
             }
 
+            // Create a pretty printer for printing this mutated AST.
             let mut pretty_printer = PrettyPrinter::new(4, 150, "\n");
             let _write_result = language_object.pretty_print_ast_to_file(
                 &mutated_ast,
