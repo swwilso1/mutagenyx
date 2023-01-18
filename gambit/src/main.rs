@@ -1,3 +1,6 @@
+//! The main module contains the code to process the command line for the gambit program and
+//! run the mutation generator.
+
 mod generator_parameters;
 mod mutation_generator;
 
@@ -10,7 +13,13 @@ use rand_pcg::Pcg64;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr};
 
+/// Run the mutation generator algorithm.
+///
+/// # Arguments
+///
+/// * `args` - The command line arguments that control the mutation algorithm.
 fn generate_mutants(args: MutateCLArgs) {
+    // Change the algorithm strings from the command line into actual MutationType values.
     let mutations = args
         .mutations
         .iter()
@@ -19,6 +28,7 @@ fn generate_mutants(args: MutateCLArgs) {
 
     let mut rng = Pcg64::seed_from_u64(args.rng_seed);
 
+    // Now, for each input file, generate the requested number and type of mutations.
     for file_name in args.file_names {
         let mut generator_params = GeneratorParameters::new_from_parameters(
             &file_name,
