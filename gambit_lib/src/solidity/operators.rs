@@ -1,3 +1,6 @@
+//! The `solidity::operators` module provides helper functions to get vectors of various kinds of
+//! binary and unary expression operators.
+
 /// Convert an array of string slices into a vector of strings
 ///
 /// # Argument
