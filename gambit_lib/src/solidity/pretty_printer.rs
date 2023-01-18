@@ -1,3 +1,6 @@
+//! The `solidity::pretty_printer` module provides the code to traverse a SolidityAST and print out
+//! the source code represented in the AST.
+
 use crate::ast::ASTTraverser;
 use crate::json::JSONMutate;
 use crate::pretty_printer::{
@@ -8,11 +11,25 @@ use crate::solidity::ast::SolidityAST;
 use crate::visitor::Visitor;
 use std::io::Write;
 
+/// Helper function to traverse a child node
+///
+/// # Arguments
+///
+/// * `node` - The node in the Solidity AST to traverse.
+/// * `stream` - The [`Write`] object that will receive formatted output
+/// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 fn traverse_sub_node<W: Write>(node: &SolidityAST, stream: &mut W, printer: &mut PrettyPrinter) {
     let mut visitor = SolidityPrettyPrintVisitor::new(stream, printer);
     ASTTraverser::traverse(node, &mut visitor);
 }
 
+/// Helper function for printing out documentation sub-nodes from a node.
+///
+/// # Arguments
+///
+/// * `stream` - The [`Write`] object that will receive formatted output.
+/// * `node` - The Solidity AST node to check for a documentation sub-node.
+/// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 fn print_documentation_helper<W: Write>(
     stream: &mut W,
     node: &SolidityAST,
@@ -25,24 +42,58 @@ fn print_documentation_helper<W: Write>(
     }
 }
 
+/// Trait that provides the functionality needed by objects that will print different nodes in the
+/// Solidity AST.
+///
+/// The semantics of this trait shadow the [`Visitor`] trait where the node traversal algorithm
+/// will call `on_entry` to indicate the object can start emitting the output for the first part
+/// of the node, next `print_node` to write out the majority of the node, and finally `on_exit`
+/// when the finishing the node.
 trait NodePrinter<W: Write> {
+    /// Called when the node traversal first encounters the node in the AST.
+    ///
+    /// # Arguments
+    ///
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_node` - The AST node.
+    /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`
+    ///
+    /// The default version of this function do not use any of the arguments.
     fn on_entry(&mut self, _stream: &mut W, _node: &SolidityAST, _printer: &mut PrettyPrinter) {
         return;
     }
 
+    /// Called when the node printing object should write out the bulk of the node.
+    ///
+    /// # Arguments
+    ///
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_node` - The AST node.
+    /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`.
+    ///
+    /// The default version of this function do not use any of the arguments.
     fn print_node(&mut self, _stream: &mut W, _node: &SolidityAST, _printer: &mut PrettyPrinter) {
         return;
     }
 
+    /// Called when the node traversal algorithm leaves the node.
+    ///
+    /// # Arguments
+    ///
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_node` - The AST node.
+    /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`.
     fn on_exit(&mut self, _stream: &mut W, _node: &SolidityAST, _printer: &mut PrettyPrinter) {
         return;
     }
 
+    /// Return true if the traversal should traverse and print children nodes.
     fn visit_children(&mut self) -> bool {
         false
     }
 }
 
+/// Default node printer for unsupported nodes.
 struct DummyNodePrinter {}
 
 impl<W: Write> NodePrinter<W> for DummyNodePrinter {
@@ -117,6 +168,12 @@ impl<W: Write> NodePrinter<W> for PragmaDirectivePrinter {
     }
 }
 
+/// Helper function to write out the end text for a block of statements.
+///
+/// # Arguments
+///
+/// * `stream` - The [`Write`] object that will receive the formatted output.
+/// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 fn close_block_exit_helper<W: Write>(stream: &mut W, printer: &mut PrettyPrinter) {
     printer.decrease_indent();
     write_newline(printer, stream);
@@ -412,6 +469,13 @@ impl<W: Write> NodePrinter<W> for FunctionDefinitionPrinter {
     }
 }
 
+/// Helper function to output the contents of an array of nodes
+///
+/// # Arguments
+///
+/// * `stream` - The [`Write`] object that will receive the formatted output.
+/// * `array` - The [`Vec`] of nodes
+/// * `printer` - The [`PrettyPrinter`] that will send formatted output to `stream`.
 fn print_array_helper<W: Write>(
     stream: &mut W,
     array: &Vec<SolidityAST>,
@@ -521,6 +585,13 @@ impl<W: Write> NodePrinter<W> for VariableDeclarationStatementPrinter {
     }
 }
 
+/// Helper function to print an operator if a node has a value for the 'operator' key.
+///
+/// # Abstract
+///
+/// * `stream` - The [`Write`] object that will receive formatted output.
+/// * `node` - The node from the syntax tree.
+/// * `printer` - The [`PrettyPrinter`] that will write formatted output to `stream`.
 fn print_operator_helper<W: Write>(
     stream: &mut W,
     node: &SolidityAST,
@@ -971,14 +1042,17 @@ impl<W: Write> NodePrinter<W> for TupleExpressionPrinter {
     }
 }
 
+/// Factory object that provides the functionality to get a [`NodePrinter`] object to print
+/// a node from the AST.
 struct PrinterFactory {}
 
 impl PrinterFactory {
-    fn new() -> PrinterFactory {
-        PrinterFactory {}
-    }
-
-    fn printer_for<W: Write>(&self, node: &SolidityAST) -> Box<dyn NodePrinter<W>> {
+    /// Return a [`NodePrinter`] object suitable for printing the node from the AST.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The node from the AST.
+    fn printer_for<W: Write>(node: &SolidityAST) -> Box<dyn NodePrinter<W>> {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             match node_type {
                 "SourceUnit" => Box::new(SourceUnitPrinter {}),
@@ -1024,13 +1098,23 @@ impl PrinterFactory {
     }
 }
 
+/// [`Visitor<T>`] conforming object that will emit the source code version of a Solidity program.
 pub struct SolidityPrettyPrintVisitor<'a, W: Write> {
+    /// Stack of [`NodePrinter`] objects.
     stack: Vec<Box<dyn NodePrinter<W>>>,
+    /// A reference to [`PrettyPrinter`] object that will write formatted output to a [`Write`] object.
     pretty_printer: &'a mut PrettyPrinter,
+    /// A reference to a [`Write`] object that will receive formatted output.
     out_stream: &'a mut W,
 }
 
 impl<'a, W: Write> SolidityPrettyPrintVisitor<'a, W> {
+    /// Create a new visitor.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - A reference to the [`Write`] object that will receive formatted output.
+    /// * `printer` - A reference to the [`PrettyPrinter`] object that will generate formated output.
     pub fn new(
         stream: &'a mut W,
         printer: &'a mut PrettyPrinter,
@@ -1045,9 +1129,7 @@ impl<'a, W: Write> SolidityPrettyPrintVisitor<'a, W> {
 
 impl<'a, W: Write> Visitor<SolidityAST> for SolidityPrettyPrintVisitor<'a, W> {
     fn on_enter(&mut self, node: &SolidityAST) {
-        let printer_factory = PrinterFactory::new();
-
-        let printer = printer_factory.printer_for(node);
+        let printer = PrinterFactory::printer_for(node);
         self.stack.push(printer);
 
         if let Some(p) = self.stack.last_mut() {
