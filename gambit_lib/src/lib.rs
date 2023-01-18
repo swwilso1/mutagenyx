@@ -38,9 +38,6 @@ pub mod pretty_printer;
 pub mod recognizer;
 mod solidity;
 pub mod super_ast;
-
-/// The `visitor` module provides the traits that describe the functionality an object must have
-/// to traverse an abstract syntax tree.
 mod visitor;
 
 // The `vyper` module contains all the Vyper language specific implementation details.
