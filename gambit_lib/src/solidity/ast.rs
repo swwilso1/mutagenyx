@@ -5,7 +5,7 @@ use crate::ast::SimpleAST;
 use crate::json::JSONMutate;
 use serde_json::Value;
 
-/// Use the [`Value`] type directory to represent nodes
+/// Use the [`Value`] type directly to represent nodes
 /// of the Solidity AST in JSON.
 pub type SolidityAST = Value;
 
