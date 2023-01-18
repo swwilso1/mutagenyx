@@ -99,7 +99,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         Ok(SuperAST::Solidity(mutated_ast))
     }
 
-    fn pretty_print_mutated_ast_to_file(
+    fn pretty_print_ast_to_file(
         &mut self,
         ast: &SuperAST,
         file_name: &str,

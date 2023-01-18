@@ -81,7 +81,7 @@ pub trait MutableLanguage {
     /// * `file_name` - The string slice referencing the text containing the file name.
     /// * `pretty_printer` - the [`PrettyPrinter`] object used to help write structured
     /// output to the file.
-    fn pretty_print_mutated_ast_to_file(
+    fn pretty_print_ast_to_file(
         &mut self,
         ast: &SuperAST,
         file_name: &str,

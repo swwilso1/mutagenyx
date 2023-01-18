@@ -99,7 +99,7 @@ pub fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), Gambit
             }
 
             let mut pretty_printer = PrettyPrinter::new(4, 150, "\n");
-            let _write_result = language_object.pretty_print_mutated_ast_to_file(
+            let _write_result = language_object.pretty_print_ast_to_file(
                 &mutated_ast,
                 &outfile,
                 &mut pretty_printer,
