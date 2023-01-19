@@ -3,11 +3,13 @@
 //! common APIs that a programming language module can implement and thereby plug-in to the library.
 
 use crate::error::GambitError;
+use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
 use crate::pretty_printer::PrettyPrinter;
-use crate::solidity::language_interface::SolidityLanguageInterface;
+use crate::solidity::language_interface::get_solidity_sub_language_interface;
 use crate::super_ast::SuperAST;
+use crate::vyper::language_interface::get_vyper_sub_language_interface;
 use rand_pcg::*;
 use std::collections::HashMap;
 
@@ -126,8 +128,12 @@ impl LanguageInterface {
         language: &Language,
     ) -> Result<Box<dyn MutableLanguage>, GambitError> {
         match language {
-            Language::Solidity => Ok(Box::new(SolidityLanguageInterface::new())),
-            Language::Vyper => Err(GambitError::LanguageNotSupported(String::from("Vyper"))),
+            Language::Solidity => Ok(Box::new(JSONLanguageInterface::new(
+                get_solidity_sub_language_interface(),
+            ))),
+            Language::Vyper => Ok(Box::new(JSONLanguageInterface::new(
+                get_vyper_sub_language_interface(),
+            ))),
         }
     }
 
@@ -136,7 +142,12 @@ impl LanguageInterface {
     pub fn get_list_of_all_language_objects() -> Result<Vec<Box<dyn MutableLanguage>>, GambitError>
     {
         let mut language_list: Vec<Box<dyn MutableLanguage>> = vec![];
-        language_list.push(Box::new(SolidityLanguageInterface::new()));
+        language_list.push(Box::new(JSONLanguageInterface::new(
+            get_solidity_sub_language_interface(),
+        )));
+        language_list.push(Box::new(JSONLanguageInterface::new(
+            get_vyper_sub_language_interface(),
+        )));
         Ok(language_list)
     }
 }

@@ -33,5 +33,5 @@ pub trait MutatorFactory<N> {
     /// # Arguments
     ///
     /// * `mutation_type` - The mutation algorithm
-    fn mutator_for(mutation_type: &MutationType) -> Option<Box<dyn Mutator<N>>>;
+    fn mutator_for(&self, mutation_type: &MutationType) -> Option<Box<dyn Mutator<N>>>;
 }

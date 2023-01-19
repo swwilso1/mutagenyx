@@ -2,5 +2,5 @@
 
 pub mod ast;
 pub mod language_interface;
-pub mod mutators;
+mod mutators;
 mod pretty_printer;
