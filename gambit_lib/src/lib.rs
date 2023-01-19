@@ -30,6 +30,7 @@ pub mod language_interface;
 pub mod mutation;
 mod mutation_visitor;
 mod mutator;
+pub mod operators;
 pub mod pretty_printer;
 pub mod recognizer;
 mod solidity;
