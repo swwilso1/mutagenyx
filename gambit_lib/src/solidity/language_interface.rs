@@ -7,12 +7,12 @@ use crate::json::*;
 use crate::language::Language;
 use crate::language_interface::MutableLanguage;
 use crate::mutation::MutationType;
+use crate::mutation_visitor::*;
 use crate::mutator::*;
 use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::ast::*;
 use crate::solidity::mutators::SolidityMutatorFactory;
 use crate::solidity::pretty_printer::SolidityPrettyPrintVisitor;
-use crate::solidity::visitor::*;
 use crate::super_ast::SuperAST;
 use rand_pcg::Pcg64;
 use std::collections::HashMap;
@@ -84,7 +84,7 @@ impl MutableLanguage for SolidityLanguageInterface {
         &mut self,
         ast: &SuperAST,
     ) -> Result<HashMap<MutationType, usize>, GambitError> {
-        let mut counter_visitor = SolidityMutationNodeCounter::new(&self.mutators);
+        let mut counter_visitor = MutableNodesCounter::<SolidityAST>::new(&self.mutators);
         let solidity_ast = SolidityLanguageInterface::recover_solidity_ast(ast)?;
 
         // Traverse the AST and count the number of nodes that a mutator can mutate for each
@@ -112,8 +112,11 @@ impl MutableLanguage for SolidityLanguageInterface {
 
         let mut mutated_ast = solidity_ast.clone();
 
-        let mut mutation_maker =
-            SolidityMutationMaker::new(self.mutators.get(mutation_type).unwrap(), rng, index);
+        let mut mutation_maker = MutationMaker::<SolidityAST>::new(
+            self.mutators.get(mutation_type).unwrap(),
+            rng,
+            index,
+        );
 
         // Traverse the cloned AST, only mutating the index (th) node in the tree that the mutation
         // maker can mutate for `mutation_type`.

@@ -28,6 +28,7 @@ mod json;
 pub mod language;
 pub mod language_interface;
 pub mod mutation;
+mod mutation_visitor;
 mod mutator;
 pub mod pretty_printer;
 pub mod recognizer;
