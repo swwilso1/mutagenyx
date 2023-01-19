@@ -25,6 +25,7 @@ pub use self::super_ast::SuperAST;
 mod ast;
 pub mod error;
 mod json;
+mod json_ast;
 pub mod language;
 pub mod language_interface;
 pub mod mutation;
