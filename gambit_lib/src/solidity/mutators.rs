@@ -27,7 +27,7 @@ fn new_ast_node(text: &str) -> Result<SolidityAST, GambitError> {
     }
 }
 
-/// Return a new integer literal node represengint an integer literal number.
+/// Return a new integer literal node representing an integer literal number.
 ///
 /// # Argument
 /// * `value` - The number that the node should contain.
@@ -184,7 +184,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "UnaryOperation" {
                 // Now check the 'prefix' member of the node and if the node is a prefix operation
-                // use the prefix operator list and otherwise use the postifix operator list.
+                // use the prefix operator list and otherwise use the postfix operator list.
                 let operator_list = match node.get_bool_for_key("prefix") {
                     Some(p) => {
                         if p {
