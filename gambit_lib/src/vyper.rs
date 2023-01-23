@@ -3,4 +3,5 @@
 pub mod ast;
 pub mod language_interface;
 mod mutators;
+mod operators;
 mod pretty_printer;

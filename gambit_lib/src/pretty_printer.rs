@@ -167,7 +167,7 @@ impl PrettyPrinter {
     /// # Examples
     ///
     /// ```rust,ignore
-    /// f.write_string("The quick brown dog...");
+    /// f.write_string(stream, "The quick brown dog...");
     /// ```
     ///
     /// will output:
@@ -175,6 +175,32 @@ impl PrettyPrinter {
     /// "The quick brown dog..."
     pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), GambitError> {
         let composed_string = String::from("\"") + s + "\"";
+        self.write_token(stream, &composed_string)?;
+        Ok(())
+    }
+
+    /// Write a string value to the stream.  The function will emit the string surrounded by three
+    /// \" delimiters.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The [`Write`] object that will receive the string.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// f.write_triple_string(stream, "The quick brown dog...");
+    /// ```
+    ///
+    /// will output:
+    ///
+    /// """The quick brown dog..."""
+    pub fn write_triple_string<W: Write>(
+        &mut self,
+        stream: &mut W,
+        s: &str,
+    ) -> Result<(), GambitError> {
+        let composed_string = String::from("\"\"\"") + s + "\"\"\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
     }
@@ -214,15 +240,38 @@ impl PrettyPrinter {
     ) -> Result<(), GambitError> {
         // flowable text is a piece of text that can be separated in the output stream without
         // altering the meaning of the program.
-        if s.len() > (self.page_width - self.column) {
+
+        // First remove newlines. Existing newlines break the flow of the text in an arbitrary
+        // way and breaks the column accounting algorithms.  This is a naive implementation of
+        // character removal.
+        let mut text = String::from(s);
+        let mut index = text.find("\n");
+        while index != None {
+            let actual_index = index.unwrap();
+            text.remove(actual_index);
+            index = text.find("\n");
+        }
+
+        // Extra spaces may also break the flow.  So we replace two or more spaces with one space
+        // until we have no more double spaces.
+        index = text.find("  ");
+        while index != None {
+            let actual_index = index.unwrap();
+            text.remove(actual_index + 1);
+            index = text.find("  ");
+        }
+
+        let t = text.as_str();
+
+        if t.len() > (self.page_width - self.column) {
             let space_left = self.page_width - self.column;
             if space_left == 0 {
                 self.write_newline(stream)?;
                 self.write_indent(stream)?;
                 self.write_token(stream, next_line_text)?;
-                self.write_flowable_text(stream, s, next_line_text)?;
+                self.write_flowable_text(stream, t, next_line_text)?;
             } else {
-                let first_part = &s[..space_left];
+                let first_part = &t[..space_left];
                 if first_part.len() > 0 {
                     self.write_basic_string(stream, first_part)?;
                 }
@@ -230,13 +279,13 @@ impl PrettyPrinter {
                 self.write_indent(stream)?;
                 self.write_token(stream, next_line_text)?;
 
-                let rest = &s[space_left..];
+                let rest = &t[space_left..];
                 if rest.len() > 0 {
                     self.write_flowable_text(stream, rest, next_line_text)?;
                 }
             }
         } else {
-            self.write_basic_string(stream, s)?;
+            self.write_basic_string(stream, t)?;
         }
 
         Ok(())
@@ -321,6 +370,22 @@ pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token:
 /// * `s` - The string slice containing the text to send to `stream`.
 pub fn write_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &str) {
     if let Err(e) = printer.write_string(stream, s) {
+        log::info!("Unable to write string: {e}");
+    }
+}
+
+/// Helper function to write a string to `stream` while suppressing any errors. The function
+/// sends errors to the log.
+///
+/// The pretty-printer will output the string as """`s`""".
+///
+/// # Arguments
+///
+/// * `printer` - The pretty-printer that will write the string to `stream`.
+/// * `stream` - The [`Write`] object that will receive the text.
+/// * `s` - The string slice containing the text to send to `stream`.
+pub fn write_triple_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &str) {
+    if let Err(e) = printer.write_triple_string(stream, s) {
         log::info!("Unable to write string: {e}");
     }
 }

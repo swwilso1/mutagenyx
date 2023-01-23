@@ -1,8 +1,8 @@
 //! The module contains various functions and traits that simplify working with
-//! [`serde_json::Value`] objects for the purpose of traversing and mutating abstract syntax trees
+//! [`Value`] objects for the purpose of traversing and mutating abstract syntax trees
 //! encoded in JSON.
 use crate::error::GambitError;
-use serde_json::{json, Value};
+use serde_json::{from_str, json, Value};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -40,7 +40,7 @@ pub fn load_json_from_file_with_name(file_name: &str) -> Result<Value, GambitErr
 ///
 /// The function exists to allow an `json` module function to take a [`String`] or
 /// [`&str`], and convert the string into a JSON path format for use with
-/// the [`serde_json::Value::pointer`] and [`serde_json::Value::pointer_mut`] functions.
+/// the [`Value::pointer`] and [`Value::pointer_mut`] functions.
 ///
 /// # Arguments
 ///
@@ -51,14 +51,24 @@ fn json_path(path: &str) -> String {
     jp
 }
 
-/// Trait for use with [`serde_json::Value`] type that adds functionality for accessing and
+/// Return a JSON node by creating the node from `text`.
+///
+/// # Arguments
+///
+/// * `text` - The string slice referring to the text that contains JSON.
+pub fn new_json_node(text: &str) -> Result<Value, GambitError> {
+    match from_str(text) {
+        Ok(n) => Ok(n),
+        Err(e) => Err(GambitError::from(e)),
+    }
+}
+
+/// Trait for use with [`Value`] type that adds functionality for accessing and
 /// modifying the contents of the JSON node contained in the objects of the type.
 pub trait JSONMutate {
-    /// Test docs
-    ///
-    /// Some more test text.
     fn as_str(&self) -> Option<&str>;
     fn set_string(&mut self, value: &str);
+    fn has_value_for_key(&self, key: &str) -> bool;
     fn take_value_for_key(&mut self, key: &str) -> Option<Value>;
     fn borrow_value_for_key(&self, key: &str) -> Option<&Value>;
     fn set_node_for_key(&mut self, key: &str, node: Value);
@@ -67,31 +77,46 @@ pub trait JSONMutate {
     fn get_str_for_key(&self, path: &str) -> Option<&str>;
     fn set_str_for_key(&mut self, path: &str, value: &str);
     fn get_bool_for_key(&self, key: &str) -> Option<bool>;
+    fn get_int_for_key(&self, key: &str) -> Option<i64>;
 }
 
 impl JSONMutate for Value {
-    /// If the [`serde_json::Value`] object contains a string, return a slice referring to the
+    /// If the [`Value`] object contains a string, return a slice referring to the
     /// string.  If the object does not contain a string, the function returns `None`.
     fn as_str(&self) -> Option<&str> {
         self.as_str()
     }
 
-    /// Change the current [`serde_json::Value`] object so that it now contains a [`String`] copy
+    /// Change the current [`Value`] object so that it now contains a [`String`] copy
     /// of the argument `value`.
     ///
     /// # Arguments
     ///
-    /// * `value` - A string slice to insert into the [`serde_json::Value`] object.
+    /// * `value` - A string slice to insert into the [`Value`] object.
     fn set_string(&mut self, value: &str) {
         *self = json![value];
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, then
-    /// the function will return the [`serde_json::Value`] object stored in the dictionary for
-    /// `key`. If the dictionary does not contain a value for `key`, the function will
-    /// return `None`.  This function returns ownership of the [`serde_json::Value`] object.
+    /// Return true if the [`Value`] object has key/value pair indexed
+    /// by `key`
     ///
-    /// The caller should use [`serde_json::Value::is_object`] to check for a JSON dictionary/map
+    /// # Arguments
+    ///
+    /// * `key` - A string slice referring to the text of the key.
+    fn has_value_for_key(&self, key: &str) -> bool {
+        let json_key = json_path(key);
+        match self.pointer(&json_key) {
+            Some(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
+    /// the function will return the [`Value`] object stored in the dictionary for
+    /// `key`. If the dictionary does not contain a value for `key`, the function will
+    /// return `None`.  This function returns ownership of the [`Value`] object.
+    ///
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map
     /// prior to calling this function.
     ///
     /// # Arguments
@@ -105,12 +130,12 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, then
-    /// the function will return a reference to the [`serde_json::Value`] object stored in the
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
+    /// the function will return a reference to the [`Value`] object stored in the
     /// dictionary for `key`.  If the dictionary does not contain a value for `key`, the function
     /// will return `None`.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] to check for a JSON dictionary/map
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map
     /// prior to calling this function.
     ///
     /// # Arguments
@@ -124,16 +149,16 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, then
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
     /// the function will store the value in `node` for `key` in the dictionary/map object.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] to check for a JSON dictionary/map
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map
     /// prior to calling this function.
     ///
     /// # Arguments
     ///
     /// * `key` - The string slice referencing the text comprising the key.
-    /// * `node` - The [`serde_json::Value`] object to use as the new value for `key` in the JSON
+    /// * `node` - The [`Value`] object to use as the new value for `key` in the JSON
     /// dictionary.
     fn set_node_for_key(&mut self, key: &str, node: Value) {
         let json_path = json_path(key);
@@ -142,18 +167,18 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, and that
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains a JSON array stored for `key`, then insert `node` into the array
     /// at `index`.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] and [`serde_json::Value::is_array`]
+    /// The caller should use [`Value::is_object`] and [`Value::is_array`]
     /// to check for a JSON dicationary/map that contains a JSON array.
     ///
     /// # Arguments
     ///
     /// * `key` - The string slice referencing the text comprising the key.
     /// * `index` - The index in the JSON array that will contain `node`.
-    /// * `node` - The [`serde_json::Value`] object to insert into the array.
+    /// * `node` - The [`Value`] object to insert into the array.
     fn set_node_for_key_at_index(&mut self, key: &str, index: usize, node: Value) {
         let json_path = json_path(key);
         if let Some(v) = self.pointer_mut(&json_path) {
@@ -163,11 +188,11 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, and that
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains an entry for `key` that holds a JSON array, return a reference to
     /// that array.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] and [`serde_json::Value::is_array`]
+    /// The caller should use [`Value::is_object`] and [`Value::is_array`]
     /// to check for a JSON dicationary/map that contains a JSON array.
     ///
     /// # Arguments
@@ -181,11 +206,11 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, and that
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains an entry for `key` that holds a String object, return a string slice
     /// referencing the text for that string.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] and [`serde_json::Value::is_string`]
+    /// The caller should use [`Value::is_object`] and [`Value::is_string`]
     /// to check for a JSON dictionary/map and for a string object.
     ///
     /// # Arguments
@@ -199,11 +224,11 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, the
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, the
     /// function will add/update the string content from `value` for the `key` member of the
     /// dictionary.
     ///
-    /// The caller should use [`serde_json::Value::is_object`] to check for a JSON dictionary/map.
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map.
     ///
     /// # Arguments
     ///
@@ -217,10 +242,10 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assuming the [`serde_json::Value`] object represents a JSON dictionary/map object, the
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, the
     /// function will return the boolean value stored in the object for `key`.
     ///
-    /// The caller should [`serde_json::Value::is_object`] and [`serde_json::Value::is_boolean`] to
+    /// The caller should use [`Value::is_object`] and [`Value::is_boolean`] to
     /// check for a JSON dictionary/map and for a boolean value.
     ///
     /// # Arguments
@@ -230,6 +255,23 @@ impl JSONMutate for Value {
         let json_path = json_path(key);
         match self.pointer(&json_path) {
             Some(v) => v.as_bool(),
+            _ => None,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object,
+    /// the function will return the i64 value stored in the object for `key`.
+    ///
+    /// The caller should use [`Value::is_object`] and [`Value::is_i64`] to
+    /// check for a JSON dictionary/map and for an i64 value.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` = The string slice referencing the text comprising the key.
+    fn get_int_for_key(&self, key: &str) -> Option<i64> {
+        let json_path = json_path(key);
+        match self.pointer(&json_path) {
+            Some(v) => v.as_i64(),
             _ => None,
         }
     }

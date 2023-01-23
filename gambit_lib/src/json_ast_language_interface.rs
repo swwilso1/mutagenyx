@@ -132,7 +132,8 @@ impl MutableLanguage for JSONLanguageInterface {
         // maker can mutate for `mutation_type`.
         ASTTraverser::traverse_mut(&mut mutated_ast, &mut mutation_maker);
 
-        Ok(SuperAST::Solidity(mutated_ast))
+        self.sub_language_interface
+            .get_value_as_super_ast(mutated_ast)
     }
 
     fn pretty_print_ast_to_file(
@@ -158,7 +159,7 @@ impl MutableLanguage for JSONLanguageInterface {
     }
 
     fn get_extension_for_output_file(&self) -> &str {
-        return "sol";
+        return self.sub_language_interface.get_file_extension();
     }
 
     fn file_is_language_source_file(&self, _file_name: &str) -> bool {

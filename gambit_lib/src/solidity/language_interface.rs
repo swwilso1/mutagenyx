@@ -5,9 +5,10 @@ use crate::error::GambitError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::mutator::*;
+use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::mutators::SolidityMutatorFactory;
-use crate::solidity::pretty_printer::SolidityPrettyPrintVisitor;
+use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
 use crate::super_ast::SuperAST;
 use crate::visitor::Visitor;
 use crate::Language;
@@ -49,7 +50,11 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubInterface {
         w: &'a mut W,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a> {
-        return Box::new(SolidityPrettyPrintVisitor::new(w, printer));
+        return Box::new(PrettyPrintVisitor::new(
+            w,
+            printer,
+            Box::new(SolidityNodePrinterFactory {}),
+        ));
     }
 
     fn json_is_language_ast_json(&self, value: &Value) -> bool {
@@ -63,5 +68,9 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubInterface {
 
     fn implements(&self) -> Language {
         Language::Solidity
+    }
+
+    fn get_file_extension(&self) -> &str {
+        return "sol";
     }
 }

@@ -2,7 +2,7 @@
 //! for the Solidity ASTs.  The module also provides the factory that implements [`MutatorFactory<t>`].
 
 use crate::error::GambitError;
-use crate::json::JSONMutate;
+use crate::json::{new_json_node, JSONMutate};
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
 use crate::mutator::{Mutator, MutatorFactory};
 use crate::operators::*;
@@ -12,20 +12,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use rand_pcg::*;
 use rustc_serialize::hex::ToHex;
-use serde_json::from_str;
 use std::fmt;
-
-/// Return a SolidityAST node by creating the node from `text`.
-///
-/// # Arguments
-///
-/// * `text` - The string slice referring to the text that contains JSON.
-fn new_ast_node(text: &str) -> Result<SolidityAST, GambitError> {
-    match from_str(text) {
-        Ok(n) => Ok(n),
-        Err(e) => Err(GambitError::from(e)),
-    }
-}
 
 /// Return a new integer literal node representing an integer literal number.
 ///
@@ -54,7 +41,7 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(
         }}
     "
     );
-    new_ast_node(&node_string)
+    new_json_node(&node_string)
 }
 
 /// Return a new boolean literal node.
@@ -82,7 +69,7 @@ fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, GambitError> {
         \"value\": \"{value}\"
     }}"
     );
-    new_ast_node(&node_string)
+    new_json_node(&node_string)
 }
 
 /// The object that implements mutations for binary expressions.
@@ -502,7 +489,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
                 \"typeString\": \"bool\"
             }
         }";
-        let mut new_node = match new_ast_node(new_node_str) {
+        let mut new_node = match new_json_node(new_node_str) {
             Ok(v) => v,
             Err(_) => return,
         };
@@ -522,13 +509,13 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
              }
         }";
 
-        let mut tuple_expression_node = match new_ast_node(tuple_expression_str) {
+        let mut tuple_expression_node = match new_json_node(tuple_expression_str) {
             Ok(v) => v,
             Err(_) => return,
         };
 
         let components_str = "[]";
-        let mut components_node = match new_ast_node(components_str) {
+        let mut components_node = match new_json_node(components_str) {
             Ok(v) => v,
             Err(_) => return,
         };
@@ -579,6 +566,10 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::BitwiseBinaryOp => Some(Box::new(BinaryOpMutator::new(
                     bitwise_operators(),
                     MutationType::Generic(GenericMutation::BitwiseBinaryOp),
+                ))),
+                GenericMutation::BitshiftBinaryOp => Some(Box::new(BinaryOpMutator::new(
+                    bitshift_operators(),
+                    MutationType::Generic(GenericMutation::BitshiftBinaryOp),
                 ))),
                 GenericMutation::ComparisonBinaryOp => Some(Box::new(BinaryOpMutator::new(
                     comparison_operators(),

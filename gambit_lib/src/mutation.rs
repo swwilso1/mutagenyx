@@ -48,9 +48,21 @@ pub enum GenericMutation {
     ///
     /// # Operators
     ///
-    /// This algorithm will replace the operators in the list (&, |, ^, <<, >>) with another operator
+    /// This algorithm will replace the operators in the list (&, |, ^) with another operator
     /// from the same list.
     BitwiseBinaryOp,
+
+    /// Randomly replaces a bitshift operator in a binary expression.
+    ///
+    /// # Examples
+    ///
+    /// `a << b` might become `a >> b`
+    ///
+    /// # Operators
+    ///
+    /// This algorithm will replace the operators in the list (<<, >>) with another operator
+    /// from the same list.
+    BitshiftBinaryOp,
 
     /// Randomly replace the comparison operator in a binary expression.
     ///
@@ -215,6 +227,7 @@ impl FromStr for MutationType {
             "ArithmeticBinaryOp" => Ok(MutationType::Generic(GenericMutation::ArithmeticBinaryOp)),
             "LogicalBinaryOp" => Ok(MutationType::Generic(GenericMutation::LogicalBinaryOp)),
             "BitwiseBinaryOp" => Ok(MutationType::Generic(GenericMutation::BitwiseBinaryOp)),
+            "BitshiftBinaryOp" => Ok(MutationType::Generic(GenericMutation::BitshiftBinaryOp)),
             "ComparisonBinaryOp" => Ok(MutationType::Generic(GenericMutation::ComparisonBinaryOp)),
             "Assignment" => Ok(MutationType::Generic(GenericMutation::Assignment)),
             "DeleteStatement" => Ok(MutationType::Generic(GenericMutation::DeleteStatement)),
@@ -247,6 +260,7 @@ impl fmt::Display for MutationType {
                 GenericMutation::ArithmeticBinaryOp => "ArithmeticBinaryOp",
                 GenericMutation::LogicalBinaryOp => "LogicalBinaryOp",
                 GenericMutation::BitwiseBinaryOp => "BitwiseBinaryOp",
+                GenericMutation::BitshiftBinaryOp => "BitshiftBinaryOp",
                 GenericMutation::ComparisonBinaryOp => "ComparisonBinaryOp",
                 GenericMutation::Assignment => "Assignment",
                 GenericMutation::DeleteStatement => "DeleteStatement",

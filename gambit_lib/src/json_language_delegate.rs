@@ -57,4 +57,7 @@ pub trait JSONLanguageDelegate<W: Write> {
 
     /// Return the Language value implemented by the trait object.
     fn implements(&self) -> Language;
+
+    /// Return the file extension to use with the generated source file name.
+    fn get_file_extension(&self) -> &str;
 }

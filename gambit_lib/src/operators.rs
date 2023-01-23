@@ -26,7 +26,11 @@ pub fn logical_operators() -> Vec<String> {
 
 /// Return the [`Vec<String>`] object containing the bitwise operators.
 pub fn bitwise_operators() -> Vec<String> {
-    str_array_to_string_vector(Box::new(["&", "|", "<<", ">>"]))
+    str_array_to_string_vector(Box::new(["&", "|", "^"]))
+}
+
+pub fn bitshift_operators() -> Vec<String> {
+    str_array_to_string_vector(Box::new(["<<", ">>"]))
 }
 
 /// Return the [`Vec<String>`] object containing the comparison operators.

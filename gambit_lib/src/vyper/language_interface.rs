@@ -2,14 +2,16 @@
 //! trait and the function `get_vyper_sub_language_interface`.
 
 use crate::error::GambitError;
+use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
 use crate::mutator::*;
+use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
 use crate::visitor::Visitor;
 use crate::vyper::mutators::VyperMutatorFactory;
-use crate::vyper::pretty_printer::VyperPrettyPrintVisitor;
+use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use serde_json::Value;
 use std::io::Write;
 
@@ -48,14 +50,25 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
         w: &'a mut W,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a> {
-        return Box::new(VyperPrettyPrintVisitor::new(w, printer));
+        return Box::new(PrettyPrintVisitor::new(
+            w,
+            printer,
+            Box::new(VyperNodePrinterFactory {}),
+        ));
     }
 
-    fn json_is_language_ast_json(&self, _value: &Value) -> bool {
+    fn json_is_language_ast_json(&self, value: &Value) -> bool {
+        if value.has_value_for_key("contract_name") && value.has_value_for_key("ast") {
+            return true;
+        }
         false
     }
 
     fn implements(&self) -> Language {
         Language::Vyper
+    }
+
+    fn get_file_extension(&self) -> &str {
+        return "vy";
     }
 }
