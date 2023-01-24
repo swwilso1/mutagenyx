@@ -40,6 +40,7 @@ mod pretty_print_visitor;
 pub mod pretty_printer;
 pub mod recognizer;
 mod solidity;
+mod string;
 pub mod super_ast;
 mod visitor;
 mod vyper;

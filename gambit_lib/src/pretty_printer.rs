@@ -2,6 +2,7 @@
 //! reconstructing source code from an AST.
 
 use crate::error::GambitError;
+use crate::string::*;
 use std::io::Write;
 
 /// Object that encapsulates the behavior needed to write structured output to any object that
@@ -245,21 +246,11 @@ impl PrettyPrinter {
         // way and breaks the column accounting algorithms.  This is a naive implementation of
         // character removal.
         let mut text = String::from(s);
-        let mut index = text.find("\n");
-        while index != None {
-            let actual_index = index.unwrap();
-            text.remove(actual_index);
-            index = text.find("\n");
-        }
+        text.remove_all("\n");
 
         // Extra spaces may also break the flow.  So we replace two or more spaces with one space
         // until we have no more double spaces.
-        index = text.find("  ");
-        while index != None {
-            let actual_index = index.unwrap();
-            text.remove(actual_index + 1);
-            index = text.find("  ");
-        }
+        text.remove_all("  ");
 
         let t = text.as_str();
 
@@ -289,6 +280,13 @@ impl PrettyPrinter {
         }
 
         Ok(())
+    }
+
+    /// Reset the printer output counters
+    pub fn reset(&mut self) {
+        self.row = 0;
+        self.column = 0;
+        self.indent = 0;
     }
 
     /// Low-level function to write a string to the stream.

@@ -572,8 +572,10 @@ impl<W: Write> NodePrinter<W, VyperAST> for NameConstantPrinter {
                 if value_bool {
                     write_token(printer, stream, "True");
                 } else {
-                    write_token(printer, stream, "False")
+                    write_token(printer, stream, "False");
                 }
+            } else if value_node.is_null() {
+                write_token(printer, stream, "None");
             }
         }
     }
@@ -844,6 +846,25 @@ impl<W: Write> NodePrinter<W, VyperAST> for LogPrinter {
     }
 }
 
+/// Structure for handling a Comment node.
+///
+/// **Important**: Note that Comment nodes are not part of the Vyper AST.  We add them in a mutation
+/// algorithm.  They are artificial and any AST that has a Comment node no longer conforms to the
+/// Vyper AST standard (good luck finding that thought).
+struct CommentPrinter {}
+
+impl<W: Write> NodePrinter<W, VyperAST> for CommentPrinter {
+    fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
+        if let Some(value_str) = node.get_str_for_key("value") {
+            if value_str.len() > 0 {
+                write_token(printer, stream, "#");
+                write_space(printer, stream);
+                write_flowable_text(printer, stream, value_str, "# ");
+            }
+        }
+    }
+}
+
 /// Type that implements [`NodePrinterFactory<W,AST>`] for Vyper AST nodes.
 ///
 /// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<W,AST>`] object.
@@ -892,6 +913,7 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "ImportFrom" => Box::new(ImportFromPrinter {}),
                 "EventDef" => Box::new(EventDefPrinter {}),
                 "Log" => Box::new(LogPrinter {}),
+                "Comment" => Box::new(CommentPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }
         } else {

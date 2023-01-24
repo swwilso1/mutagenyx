@@ -5,16 +5,21 @@ use crate::error::GambitError;
 use crate::json::*;
 use crate::mutation::*;
 use crate::mutator::*;
+use crate::node_printer_helpers::traverse_sub_node;
 use crate::operators::*;
+use crate::pretty_printer::PrettyPrinter;
 use crate::vyper::ast::VyperAST;
 use crate::vyper::operators::get_python_operator_map;
+use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use num::{Float, Integer};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::RngCore;
 use rand_pcg::*;
+use serde_json::json;
 use std::collections::HashMap;
 use std::fmt;
+use std::fmt::Formatter;
 
 /// Return a new integer literal node representing an integer literal number.
 ///
@@ -66,6 +71,127 @@ fn new_boolean_constant_node(value: bool) -> Result<VyperAST, GambitError> {
         }}"
     );
     new_json_node(&node_str)
+}
+
+/// Return a new comment node that contains `text`.
+///
+/// **Important**: The comment node is not a part of the official Vyper AST.
+/// We introduce it here in order to have a way to delete nodes from the tree, but
+/// still have the node text.  Only the GambitAST Vyper pretty-printing code supports
+/// comment nodes.
+///
+/// # Arguments
+///
+/// * `text` - The string slice referring to the text to put in the comment.
+fn new_comment_node(text: &str) -> Result<VyperAST, GambitError> {
+    let text_node = json![text];
+
+    let node_str = format!(
+        "{{\
+            \"node_id\": 9999996,
+            \"ast_type\": \"Comment\",
+            \"value\": null
+        }}"
+    );
+    let mut node = new_json_node(&node_str)?;
+    node.set_node_for_key("value", text_node);
+    Ok(node)
+}
+
+/// Return a new Pass node.
+fn new_pass_node() -> Result<VyperAST, GambitError> {
+    let node_str = format!(
+        "{{\
+            \"node_id\": 9999995,
+            \"ast_type\": \"Pass\"
+        }}"
+    );
+    new_json_node(&node_str)
+}
+
+/// Return a new Str node.
+///
+/// # Arguments
+///
+/// * `text` - The reference to the string slice containing the text for the node.
+fn new_string_node(text: &str) -> Result<VyperAST, GambitError> {
+    let node_str = format! {
+        "{{\
+            \"node_id\": 9999994,
+            \"ast_type\": \"Str\",
+            \"value\": \"{text}\"
+        }}"
+    };
+    new_json_node(&node_str)
+}
+
+/// Return an new `Return` node
+///
+/// # Arguments
+///
+/// * `node` - The node to use in the return.
+fn new_return_node(node: VyperAST) -> Result<VyperAST, GambitError> {
+    let node_str = format! {
+        "{{\
+            \"node_id\": 9999993,
+            \"ast_type\": \"Return\",
+            \"value\": null
+        }}"
+    };
+
+    let mut return_node = new_json_node(&node_str)?;
+    return_node.set_node_for_key("value", node);
+    Ok(return_node)
+}
+
+enum ListLikeThing {
+    Tuple,
+    List,
+}
+
+impl fmt::Display for ListLikeThing {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let text = match self {
+            ListLikeThing::Tuple => "Tuple",
+            ListLikeThing::List => "List",
+        };
+        write!(f, "{}", text)
+    }
+}
+
+/// Return a `kind` node with `size` members whose value is all None
+///
+/// # Arguments
+///
+/// * `size` - The number of None elements in the tuple.
+/// * `kind` - The kind of list like thing to make.
+fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, GambitError> {
+    let mut none_array: Vec<VyperAST> = vec![];
+    for _i in 0..size {
+        let node_str = format!(
+            "{{\
+                \"node_id\": 9999992,
+                \"ast_type\": \"NameConstant\",
+                \"value\": null
+            }}"
+        );
+
+        let node = new_json_node(&node_str)?;
+        none_array.push(node);
+    }
+
+    let node_str = format!(
+        "{{\
+            \"node_id\": 9999991,
+            \"ast_type\": \"{kind}\",
+            \"elements\": []
+        }}"
+    );
+
+    let mut tuple_node = new_json_node(&node_str)?;
+    let none_array_node = json![none_array];
+    tuple_node.set_node_for_key("elements", none_array_node);
+    Ok(tuple_node)
 }
 
 /// The object that implements mutations for binary expressions.
@@ -259,6 +385,186 @@ impl Mutator<VyperAST> for AssignmentMutator {
     }
 }
 
+struct DeleteStatementMutator {}
+
+impl Mutator<VyperAST> for DeleteStatementMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        if let Some(ast_type_str) = node.get_str_for_key("ast_type") {
+            if ast_type_str == "FunctionDef" {
+                if let Some(body_node) = node.borrow_value_for_key("body") {
+                    if let Some(body_array) = body_node.as_array() {
+                        if body_array.len() > 0 {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+        // We have a FunctionDef node.  We want to randomly delete a node in the body
+        // array (assuming a body array is present).
+        if let Some(mut body_node) = node.take_value_for_key("body") {
+            if let Some(body_array) = body_node.as_array_mut() {
+                // Choose an index to replace with a comment.
+                let index = (rand.next_u64() % body_array.len() as u64) as usize;
+                let value = body_array.remove(index);
+
+                // Pretty-print the node so we can then wrap the string version in a comment
+                // node.
+                let mut contents = Vec::new();
+                let mut printer = PrettyPrinter::new(4, 150, "\n");
+                traverse_sub_node(
+                    &mut printer,
+                    &mut contents,
+                    VyperNodePrinterFactory {},
+                    &value,
+                );
+                let s = core::str::from_utf8(contents.as_slice()).unwrap();
+
+                let new_node = match new_comment_node(s) {
+                    Ok(node) => node,
+                    Err(_e) => return,
+                };
+
+                body_array.insert(index, new_node);
+                if body_array.len() == 1 {
+                    // We just commented out the only node in the body array.  In this case
+                    // We need to check the return type if it exists.  If a return value is needed
+                    // We will try and provide a return value.  Otherwise, we need to add a Pass
+                    // node so that the function will still compile.
+                    if let Some(returns_node) = node.borrow_value_for_key("returns") {
+                        if let Some(ast_type_str) = returns_node.get_str_for_key("ast_type") {
+                            if ast_type_str == "Name" {
+                                if let Some(id_str) = returns_node.get_str_for_key("id") {
+                                    match &id_str[..3] {
+                                        "boo" => {
+                                            let random_boolean = rand.next_u64() % 2 as u64;
+                                            let actual_boolean = match random_boolean {
+                                                1 => true,
+                                                _ => false,
+                                            };
+
+                                            let new_node =
+                                                match new_boolean_constant_node(actual_boolean) {
+                                                    Ok(n) => n,
+                                                    _ => return,
+                                                };
+
+                                            let return_node = match new_return_node(new_node) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+
+                                            body_array.push(return_node);
+                                        }
+                                        "uin" => {
+                                            // We could figure out the numeric range, but instead
+                                            // we just return a random value between 0-10.
+                                            let number = rand.next_u64() % 10 as u64;
+                                            let new_node = match new_integer_constant_node(number) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+                                            let return_node = match new_return_node(new_node) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+
+                                            body_array.push(return_node);
+                                        }
+                                        "int" => {
+                                            // We just pick a number between -10 and 10.  Nothing
+                                            // complicated.
+                                            let mut number = (rand.next_u64() & 20 as u64) as i64;
+                                            number -= 10;
+                                            let new_node = match new_integer_constant_node(number) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+                                            let return_node = match new_return_node(new_node) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+
+                                            body_array.push(return_node);
+                                        }
+                                        "str" => {
+                                            // Use our friend lorem ipsum.
+                                            let new_node = match new_string_node(
+                                                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+                                            ) {
+                                                Ok(node) => node,
+                                                Err(_e) => return
+                                            };
+                                            let return_node = match new_return_node(new_node) {
+                                                Ok(node) => node,
+                                                Err(_e) => return,
+                                            };
+
+                                            body_array.push(return_node);
+                                        }
+                                        _ => return,
+                                    }
+                                }
+                            } else if ast_type_str == "Pass" {
+                                // We already have a pass node, just skip out.
+                                ();
+                            } else if ast_type_str == "Tuple" || ast_type_str == "List" {
+                                if let Some(elements_node) =
+                                    returns_node.borrow_value_for_key("elements")
+                                {
+                                    if let Some(elements_array) = elements_node.as_array() {
+                                        let node_type = match ast_type_str {
+                                            "Tuple" => ListLikeThing::Tuple,
+                                            "List" => ListLikeThing::List,
+                                            _ => return,
+                                        };
+
+                                        let list_like_node = match new_list_like_thing_node(
+                                            elements_array.len() as u32,
+                                            node_type,
+                                        ) {
+                                            Ok(node) => node,
+                                            Err(_e) => return,
+                                        };
+
+                                        let return_node = match new_return_node(list_like_node) {
+                                            Ok(node) => node,
+                                            Err(_e) => return,
+                                        };
+                                        body_array.push(return_node);
+                                    }
+                                }
+                            }
+                        } else {
+                            let new_node = match new_pass_node() {
+                                Ok(node) => node,
+                                Err(_e) => return,
+                            };
+                            body_array.push(new_node);
+                        }
+                    } else {
+                        let new_node = match new_pass_node() {
+                            Ok(node) => node,
+                            Err(_e) => return,
+                        };
+                        body_array.push(new_node);
+                    }
+                }
+
+                node.set_node_for_key("body", body_node);
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::DeleteStatement)
+    }
+}
+
 struct FunctionCallMutator {}
 
 impl Mutator<VyperAST> for FunctionCallMutator {
@@ -348,6 +654,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                     MutationType::Generic(GenericMutation::ComparisonBinaryOp),
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator {})),
+                GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
                 _ => None,
             },
