@@ -2,6 +2,7 @@
 //! the mutation generation algorithm.
 
 use crate::generator_parameters::GeneratorParameters;
+use crate::MutateCLArgs;
 use gambit_lib::error::GambitError;
 use gambit_lib::language_interface::*;
 use gambit_lib::mutation::MutationType;
@@ -10,8 +11,42 @@ use gambit_lib::recognizer::Recognizer;
 use gambit_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
 use rand::RngCore;
+use rand::SeedableRng;
+use rand_pcg::*;
 use std::collections::VecDeque;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
+
+/// Run the mutation generator algorithm.
+///
+/// # Arguments
+///
+/// * `args` - The command line arguments that control the mutation algorithm.
+pub fn generate_mutants(args: MutateCLArgs) {
+    // Change the algorithm strings from the command line into actual MutationType values.
+    let mutations = args
+        .mutations
+        .iter()
+        .map(|m| MutationType::from_str(m).unwrap())
+        .collect();
+
+    let mut rng = Pcg64::seed_from_u64(args.rng_seed);
+
+    // Now, for each input file, generate the requested number and type of mutations.
+    for file_name in args.file_names {
+        let mut generator_params = GeneratorParameters::new_from_parameters(
+            &file_name,
+            args.num_mutants,
+            &mut rng,
+            PathBuf::from_str(&args.output_directory).unwrap(),
+            &mutations,
+            false,
+        );
+
+        if let Err(e) = generate_mutations(&mut generator_params) {
+            println!("Unable to generate mutations: {}", e);
+        }
+    }
+}
 
 /// An upper bound on the number times to try to generate a particular mutant for an input file.
 static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
@@ -21,21 +56,14 @@ static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 /// # Arguments
 ///
 /// * `params` - The parameters that control the mutation generation algorithm.
-pub fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitError> {
+fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
-    let mut recognized_language = Recognizer::recognize_source_file(&params.file_name);
-    if recognized_language == None {
-        recognized_language = Recognizer::recognize_ast_file(&params.file_name);
-        if recognized_language == None {
-            return Err(GambitError::LanguageNotRecognized);
-        }
-    }
-
-    let language = recognized_language.unwrap();
+    let language = Recognizer::recognize_file(&params.file_name)?;
 
     let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
 
+    // TODO: We need to have the module that loads either source or AST.
     let ast = language_object.load_ast_from_file(&params.file_name)?;
 
     let _select_result = language_object.select_mutators_for_mutation_types(&params.mutations)?;

@@ -3,49 +3,14 @@
 
 mod generator_parameters;
 mod mutation_generator;
+mod pretty_printing;
 
-use crate::generator_parameters::GeneratorParameters;
-use crate::mutation_generator::generate_mutations;
+use crate::mutation_generator::generate_mutants;
+use crate::pretty_printing::pretty_print_files;
 use clap::Parser;
-use gambit_lib::mutation::MutationType;
-use rand::SeedableRng;
-use rand_pcg::Pcg64;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, str::FromStr};
 
-/// Run the mutation generator algorithm.
-///
-/// # Arguments
-///
-/// * `args` - The command line arguments that control the mutation algorithm.
-fn generate_mutants(args: MutateCLArgs) {
-    // Change the algorithm strings from the command line into actual MutationType values.
-    let mutations = args
-        .mutations
-        .iter()
-        .map(|m| MutationType::from_str(m).unwrap())
-        .collect();
-
-    let mut rng = Pcg64::seed_from_u64(args.rng_seed);
-
-    // Now, for each input file, generate the requested number and type of mutations.
-    for file_name in args.file_names {
-        let mut generator_params = GeneratorParameters::new_from_parameters(
-            &file_name,
-            args.num_mutants,
-            &mut rng,
-            PathBuf::from_str(&args.output_directory).unwrap(),
-            &mutations,
-            false,
-        );
-
-        if let Err(e) = generate_mutations(&mut generator_params) {
-            println!("Unable to generate mutations: {}", e);
-        }
-    }
-}
-
-/// Command line arguments
+/// Mutate sub-command command line arguments.
 #[derive(Debug, Clone, Parser, Deserialize, Serialize)]
 #[clap(rename_all = "kebab-case")]
 pub struct MutateCLArgs {
@@ -53,7 +18,7 @@ pub struct MutateCLArgs {
     #[clap(long, default_value = "out")]
     pub output_directory: String,
 
-    /// JSON file(s) to mutate
+    /// Input file(s) to mutate
     // TODO: Build input file recognition system.
     #[clap(short, long, required = true, multiple = true)]
     pub file_names: Vec<String>,
@@ -71,10 +36,24 @@ pub struct MutateCLArgs {
     pub mutations: Vec<String>,
 }
 
+/// Pretty-print sub-command command line arguments.
+#[derive(Debug, Clone, Parser, Deserialize, Serialize)]
+#[clap(rename_all = "kebab-case")]
+pub struct PrettyPrintCLArgs {
+    /// Directory to store pretty-printed copy of source
+    #[clap(short, long, default_value = "out")]
+    pub output_directory: String,
+
+    /// Input file(s) to pretty-print
+    #[clap(short, long, required = true, multiple = true)]
+    pub file_names: Vec<String>,
+}
+
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
 pub enum GambitCommand {
     Mutate(MutateCLArgs),
+    PrettyPrint(PrettyPrintCLArgs),
 }
 
 fn main() {
@@ -82,6 +61,9 @@ fn main() {
     match GambitCommand::parse() {
         GambitCommand::Mutate(params) => {
             generate_mutants(params);
+        }
+        GambitCommand::PrettyPrint(params) => {
+            pretty_print_files(params);
         }
     }
 }

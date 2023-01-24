@@ -1,8 +1,8 @@
 //! The `language` module defines the list of languages supported by the library.
 
 use crate::error::GambitError;
+use std::fmt;
 use std::str::FromStr;
-use std::string::ToString;
 
 /// The enumerated list of supported languages
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
@@ -31,11 +31,13 @@ impl FromStr for Language {
     }
 }
 
-impl ToString for Language {
-    fn to_string(&self) -> String {
-        match self {
-            Language::Solidity => String::from("Solidity"),
-            Language::Vyper => String::from("Vyper"),
-        }
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let text = match self {
+            Language::Solidity => "Solidity",
+            Language::Vyper => "Vyper",
+        };
+
+        writeln!(f, "{}", text)
     }
 }

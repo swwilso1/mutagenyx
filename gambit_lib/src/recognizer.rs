@@ -4,6 +4,7 @@
 
 use crate::language::Language;
 use crate::language_interface::*;
+use crate::GambitError;
 
 /// Provides facilities for identifying the programming language used by a source file or an
 /// abstract syntax tree of a program.
@@ -48,5 +49,25 @@ impl Recognizer {
         }
 
         None
+    }
+
+    /// Wrapper function that checks for either a source file or an AST file and returns the language
+    /// in the file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_name` - The path to the file in the file system.
+    pub fn recognize_file(file_name: &String) -> Result<Language, GambitError> {
+        // Try to recognize the language of the source file.  The file might be a source code file
+        // or perhaps an AST file.
+        let mut recognized_language = Recognizer::recognize_source_file(file_name);
+        if recognized_language == None {
+            recognized_language = Recognizer::recognize_ast_file(file_name);
+            if recognized_language == None {
+                return Err(GambitError::LanguageNotRecognized);
+            }
+        }
+
+        Ok(recognized_language.unwrap())
     }
 }
