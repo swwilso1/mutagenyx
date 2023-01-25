@@ -464,6 +464,33 @@ impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
     }
 }
 
+struct BoolOpPrinter{}
+
+impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
+    fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
+        if let Some(values_node) = node.borrow_value_for_key("values") {
+            if let Some(values_array) = values_node.as_array() {
+                if values_array.len() < 2 {
+                    return;
+                }
+
+                let left = &values_array[0];
+                let right = &values_array[1];
+
+                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, left);
+                write_space(printer, stream);
+
+                if let Some(op_node) = node.borrow_value_for_key("op") {
+                    traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, op_node);
+                }
+
+                write_space(printer, stream);
+                traverse_sub_node(printer, stream, VyperNodePrinterFactory{}, right);
+            }
+        }
+    }
+}
+
 struct AssertPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for AssertPrinter {
@@ -865,6 +892,20 @@ impl<W: Write> NodePrinter<W, VyperAST> for CommentPrinter {
     }
 }
 
+struct AndPrinter {}
+
+impl<W: Write> NodePrinter<W, VyperAST> for AndPrinter {
+    fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "And" {
+                write_token(printer, stream, "and");
+            } else if ast_type == "Or" {
+                write_token(printer, stream, "or");
+            }
+        }
+    }
+}
+
 /// Type that implements [`NodePrinterFactory<W,AST>`] for Vyper AST nodes.
 ///
 /// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<W,AST>`] object.
@@ -889,7 +930,7 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "Int" => Box::new(IntPrinter {}),
                 "Decimal" => Box::new(DecimalPrinter {}),
                 "BinOp" => Box::new(BinOpPrinter::new()),
-                "BoolOp" => Box::new(BinOpPrinter::new()),
+                "BoolOp" => Box::new(BoolOpPrinter {}),
                 "Compare" => Box::new(BinOpPrinter::new()),
                 "Assert" => Box::new(AssertPrinter {}),
                 "Str" => Box::new(StrPrinter {}),
@@ -914,6 +955,7 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "EventDef" => Box::new(EventDefPrinter {}),
                 "Log" => Box::new(LogPrinter {}),
                 "Comment" => Box::new(CommentPrinter {}),
+                "And" => Box::new(AndPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }
         } else {
