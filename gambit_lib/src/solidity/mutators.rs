@@ -594,20 +594,20 @@ impl IndexedNode {
     }
 }
 
-/// Implements the function call mutation algorithm.
+/// Implements the function call argument swap mutation algorithm.
 ///
 /// The mutator should identify function call expressions where the function call contains
 /// at least two arguments of the same type.  The mutator will swap the two arguments.
-struct FunctionCallMutator {}
+struct SwapFunctionArgumentsMutator {}
 
-impl FunctionCallMutator {
+impl SwapFunctionArgumentsMutator {
     /// Create the mutator object.
-    pub fn new() -> FunctionCallMutator {
-        FunctionCallMutator {}
+    pub fn new() -> SwapFunctionArgumentsMutator {
+        SwapFunctionArgumentsMutator {}
     }
 }
 
-impl Mutator<SolidityAST> for FunctionCallMutator {
+impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "FunctionCall" {
@@ -990,7 +990,7 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
+                GenericMutation::FunctionSwapArguments => Some(Box::new(SwapFunctionArgumentsMutator::new())),
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),

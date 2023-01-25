@@ -624,16 +624,16 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
     }
 }
 
-/// Implements the function call mutation algorithm.
+/// Implements the function call argument swap mutation algorithm.
 ///
 /// The mutator should identify function call expressions where the function call contains
 /// at least two arguments of the same type.  The mutator will swap two of the arguments.  Since
 /// the Vyper AST does not contain type annotations for the arguments to function calls, it is
 /// outside the scope of this algorithm to ensure that algorithm only swaps arguments of the same
 /// type.
-struct FunctionCallMutator {}
+struct SwapFunctionArgumentsMutator {}
 
-impl Mutator<VyperAST> for FunctionCallMutator {
+impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
     fn is_mutable_node(&self, node: &VyperAST) -> bool {
         // First check to see if the node is an `Call` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
@@ -839,7 +839,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator {})),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::FunctionSwapArguments => Some(Box::new(SwapFunctionArgumentsMutator {})),
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 _ => None,
