@@ -58,16 +58,11 @@ fn new_float_constant_node<F: Float + fmt::Display>(value: F) -> Result<VyperAST
 ///
 /// * `value` - The boolean value that the node should contain.
 fn new_boolean_constant_node(value: bool) -> Result<VyperAST, GambitError> {
-    let value_str = match value {
-        true => "True",
-        false => "False",
-    };
-
     let node_str = format!(
         "{{\
             \"node_id\": 9999997,
             \"ast_type\": \"NameConstant\",
-            \"value\": {value_str}
+            \"value\": {value}
         }}"
     );
     new_json_node(&node_str)
@@ -142,6 +137,30 @@ fn new_return_node(node: VyperAST) -> Result<VyperAST, GambitError> {
     let mut return_node = new_json_node(&node_str)?;
     return_node.set_node_for_key("value", node);
     Ok(return_node)
+}
+
+/// Return a new 'UnaryOp' node.
+///
+/// # Arguments
+/// * `operator` - String ref referring to the operator name.  Usually 'Not'.
+/// * `operand` - The node that lives inside the UnaryOp (the node to which the node apples the
+/// operator).
+fn new_unary_op_node(operator: &str, operand: VyperAST) -> Result<VyperAST, GambitError> {
+    let node_str = format!(
+        "{{\
+            \"node_id\": 9999992,
+            \"operand\": null,
+            \"op\": {{\
+                \"node_id\": 9999991,
+                \"ast_type\": \"{operator}\"
+            }},
+            \"ast_type\": \"UnaryOp\"
+        }}"
+    );
+
+    let mut new_node = new_json_node(&node_str)?;
+    new_node.set_node_for_key("operand", operand);
+    Ok(new_node)
 }
 
 enum ListLikeThing {
@@ -296,6 +315,12 @@ impl Mutator<VyperAST> for BinaryOpMutator {
     }
 }
 
+/// Implements the assignment mutation algorithm.
+///
+/// For a given Assigment expression, the algorithm replaces the right-hand side of the expression
+/// with a random value.  The algorithm operates on assignments to integer, unsigned integer,
+/// and boolean variables.  For number types, the algorithm will try to generate values in the
+/// valid value ranges for each type.
 struct AssignmentMutator {}
 
 impl Mutator<VyperAST> for AssignmentMutator {
@@ -385,6 +410,40 @@ impl Mutator<VyperAST> for AssignmentMutator {
     }
 }
 
+/// The type that implements the DeleteStatement mutation algorithm.
+///
+/// The algorithm finds FunctionDef nodes and attempts to correctly remove
+/// a statement in the function definition while retaining correct compilation of the function.
+///
+/// # Example
+///
+/// ```python
+/// def foo():
+///     return 10
+/// ```
+///
+/// might become
+///
+/// ```python
+/// def foo():
+///     # return 10
+///     pass
+/// ```
+///
+/// Or
+///
+/// ```python
+/// def foo() -> (int128, int128):
+///     return 2, 3
+/// ```
+///
+/// might become
+///
+/// ```python
+/// def foo() -> (int128, int128):
+///     # return 2, 3
+///     return (None, None)
+/// ```
 struct DeleteStatementMutator {}
 
 impl Mutator<VyperAST> for DeleteStatementMutator {
@@ -565,6 +624,13 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
     }
 }
 
+/// Implements the function call mutation algorithm.
+///
+/// The mutator should identify function call expressions where the function call contains
+/// at least two arguments of the same type.  The mutator will swap two of the arguments.  Since
+/// the Vyper AST does not contain type annotations for the arguments to function calls, it is
+/// outside the scope of this algorithm to ensure that algorithm only swaps arguments of the same
+/// type.
 struct FunctionCallMutator {}
 
 impl Mutator<VyperAST> for FunctionCallMutator {
@@ -625,6 +691,69 @@ impl Mutator<VyperAST> for FunctionCallMutator {
     }
 }
 
+/// Implement the IfStatement mutation algorithm.
+///
+/// The algorithm will randomly choose between three possible mutations:
+/// * The algorithm replaces the condition of the if statement with `true`.
+/// * The algorithm replaces the condition of the if statement with `false`.
+/// * The algorithm replaces the condition (called c) of the if statement with `!(c)`.
+struct IfStatementMutator {}
+
+impl Mutator<VyperAST> for IfStatementMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "If" {
+                if let Some(_test_node) = node.borrow_value_for_key("test") {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+        // Randomly choose between three possible mutations:
+        // * Replace condition with true.
+        // * Replace condition with false.
+        // * Replace condition (called c) with !(c) (ie the negation).
+        match rand.next_u64() % 3 as u64 {
+            0 => {
+                // Replace the condition with 'True'
+                let new_node = match new_boolean_constant_node(true) {
+                    Ok(n) => n,
+                    Err(_e) => return,
+                };
+
+                node.set_node_for_key("test", new_node);
+            }
+            1 => {
+                // Replace the condition with `False`.
+                let new_node = match new_boolean_constant_node(false) {
+                    Ok(n) => n,
+                    Err(_e) => return,
+                };
+                node.set_node_for_key("test", new_node);
+            }
+            2 => {
+                // Replace the condition (called c) with !(c).
+                if let Some(test_node) = node.take_value_for_key("test") {
+                    let new_node = match new_unary_op_node("Not", test_node) {
+                        Ok(n) => n,
+                        Err(_e) => return,
+                    };
+
+                    node.set_node_for_key("test", new_node);
+                }
+            }
+            _ => return,
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::IfStatement)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct VyperMutatorFactory {}
@@ -656,6 +785,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator {})),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 _ => None,
             },
             _ => None,
