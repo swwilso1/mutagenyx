@@ -488,6 +488,10 @@ impl Mutator<SolidityAST> for AssignmentMutator {
     }
 }
 
+/// Type that implements the DeleteStatement algorithm.
+///
+/// The algorithm chooses a random ExpressionStatement node in any Block and replaces that statement
+/// with a comment node.
 struct DeleteStatementMutator {}
 
 impl Mutator<SolidityAST> for DeleteStatementMutator {
