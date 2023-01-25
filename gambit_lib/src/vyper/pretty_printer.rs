@@ -464,7 +464,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
     }
 }
 
-struct BoolOpPrinter{}
+struct BoolOpPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
@@ -485,7 +485,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
                 }
 
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory{}, right);
+                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, right);
             }
         }
     }
