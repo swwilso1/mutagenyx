@@ -106,6 +106,63 @@ fn new_comment_node(text: &str) -> Result<SolidityAST, GambitError> {
     Ok(node)
 }
 
+/// Helper function to generate a new unary operator node.
+///
+/// # Arguments
+///
+/// * `operator` - The text of the operator (!, --, ++, ~, etc...).
+/// * `prefix` - True if the unary operator is a prefix operator and false for postfix.
+/// * `sub_expression` - The node to which the operator applies.
+fn new_unary_op_node(
+    operator: &str,
+    prefix: bool,
+    sub_expression: SolidityAST,
+) -> Result<SolidityAST, GambitError> {
+    let node_string = format!(
+        "{{\
+            \"id\": 9999996,
+            \"isConstant\": false,
+            \"isLValue\": false,
+            \"isPure\": false,
+            \"lValueRequested\": false,
+            \"nodeType\": \"UnaryOperation\",
+            \"operator\": \"{operator}\",
+            \"prefix\": {prefix},
+            \"subExpression\": null
+        }}"
+    );
+
+    let mut node = new_json_node(&node_string)?;
+    node.set_node_for_key("subExpression", sub_expression);
+    Ok(node)
+}
+
+/// Helper function for generating a new TupleExpression.
+///
+/// # Arguments
+///
+/// * `array` - An array of SolidityAST nodes to place in the TupleExpression components array.
+fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, GambitError> {
+    let node_array = json![array];
+
+    let node_str = format!(
+        "{{\
+            \"id\": 9999995,
+            \"isConstant\": false,
+            \"IsInlineArray\": false,
+            \"isLValue\": false,
+            \"isPure\": false,
+            \"lValueRequested\": false,
+            \"nodeType\": \"TupleExpression\",
+            \"components\": null
+        }}"
+    );
+
+    let mut tuple_node = new_json_node(&node_str)?;
+    tuple_node.set_node_for_key("components", node_array);
+    Ok(tuple_node)
+}
+
 /// The object that implements mutations for binary expressions.
 ///
 /// Multiple mutation algorithms operate on binary expressions.  Each of those
@@ -640,6 +697,80 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
     }
 }
 
+/// Implement the IfStatement mutation algorithm.
+///
+/// The algorithm will randomly choose between three possible mutations:
+/// * The algorithm replaces the condition of the if statement with `true`.
+/// * The algorithm replaces the condition of the if statement with `false`.
+/// * The algorithm replaces the condition (called c) of the if statement with `!(c)`.
+struct IfStatementMutator {}
+
+impl Mutator<SolidityAST> for IfStatementMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "IfStatement" {
+                if let Some(condition_node) = node.borrow_value_for_key("condition") {
+                    if !condition_node.is_null() {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        // Randomly choose between three possible mutations:
+        // * Replace condition with true.
+        // * Replace condition with false.
+        // * Replace condition (called c) with !(c) (ie the negation).
+        match rand.next_u64() % 3 as u64 {
+            0 => {
+                // Replace the condition with `true`.
+                let bool_node = match new_boolean_literal_node(true) {
+                    Ok(n) => n,
+                    Err(_e) => return,
+                };
+                node.set_node_for_key("condition", bool_node);
+            }
+            1 => {
+                // Replace the condition with `false`.
+                let bool_node = match new_boolean_literal_node(false) {
+                    Ok(n) => n,
+                    Err(_e) => return,
+                };
+                node.set_node_for_key("condition", bool_node);
+            }
+            2 => {
+                // Replace the condition (called c) with !(c).
+                if let Some(condition_node) = node.take_value_for_key("condition") {
+                    // Put the existing condition into an array.
+                    let components_array: Vec<SolidityAST> = vec![condition_node];
+
+                    // Put the array into a TupleExpression node.
+                    let tuple_node = match new_tuple_expression_node(components_array) {
+                        Ok(n) => n,
+                        Err(_e) => return,
+                    };
+
+                    // Wrap the TupleExpression node in a UnaryOp (! TupleExpression).
+                    let not_node = match new_unary_op_node("!", true, tuple_node) {
+                        Ok(n) => n,
+                        Err(_e) => return,
+                    };
+
+                    node.set_node_for_key("condition", not_node);
+                }
+            }
+            _ => return,
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::IfStatement)
+    }
+}
+
 /// Implements the Solidity require function mutation algorithm.
 ///
 /// This mutator will replace the expression in the argument to the Solidity `require` function
@@ -792,6 +923,7 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
+                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
                 _ => None,
             },
