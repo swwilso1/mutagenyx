@@ -775,6 +775,70 @@ impl Mutator<SolidityAST> for IfStatementMutator {
     }
 }
 
+/// Implement the Integer mutation algorithm:
+///
+/// Randomly selects one from the following:
+/// * Adds one to integer constant.
+/// * Subtracts one from integer constant.
+/// * Generates a random value.
+struct IntegerMutator {}
+
+impl Mutator<SolidityAST> for IntegerMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // We look for a Literal node with an integer literal, not a floating point number.
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "Literal" {
+                if let Some(kind) = node.get_str_for_key("kind") {
+                    if kind == "number" {
+                        if let Some(value) = node.get_str_for_key("value") {
+                            let text = String::from(value);
+                            // Search for a . in the string which indicates a floating point number.
+                            let find_result = text.find(".");
+                            if find_result == None {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        match rand.next_u64() % 3 as u64 {
+            0 => {
+                // Add one to the integer constant.
+                if let Some(value) = node.get_str_for_key("value") {
+                    let value_string = value.to_string();
+                    let mut my_integer = value_string.parse::<i64>().unwrap();
+                    my_integer += 1;
+                    node.set_str_for_key("value", my_integer.to_string().as_str());
+                }
+            }
+            1 => {
+                // Subtract one from the integer constant.
+                if let Some(value) = node.get_str_for_key("value") {
+                    let value_string = value.to_string();
+                    let mut my_integer = value_string.parse::<i64>().unwrap();
+                    my_integer -= 1;
+                    node.set_str_for_key("value", my_integer.to_string().as_str());
+                }
+            }
+            2 => {
+                // Generate a random number.
+                let value = rand.next_u64();
+                node.set_str_for_key("value", value.to_string().as_str());
+            }
+            _ => return,
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::Integer)
+    }
+}
+
 /// Implements the Solidity require function mutation algorithm.
 ///
 /// This mutator will replace the expression in the argument to the Solidity `require` function
@@ -928,6 +992,7 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
+                GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
                 _ => None,
             },

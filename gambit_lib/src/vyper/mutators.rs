@@ -754,6 +754,61 @@ impl Mutator<VyperAST> for IfStatementMutator {
     }
 }
 
+/// Implement the Integer mutation algorithm:
+///
+/// Randomly selects one from the following:
+/// * Adds one to integer constant.
+/// * Subtracts one from integer constant.
+/// * Generates a random value.
+struct IntegerMutator {}
+
+impl Mutator<VyperAST> for IntegerMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "Int" {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+        match rand.next_u64() % 3 as u64 {
+            0 => {
+                // Add one to the integer constant.
+                if let Some(value_node) = node.borrow_value_for_key("value") {
+                    if let Some(mut value) = value_node.as_i64() {
+                        value += 1;
+                        let json_value = json![value];
+                        node.set_node_for_key("value", json_value);
+                    }
+                }
+            }
+            1 => {
+                // Subtract one from the integer contant.
+                if let Some(value_node) = node.borrow_value_for_key("value") {
+                    if let Some(mut value) = value_node.as_i64() {
+                        value -= 1;
+                        let json_value = json![value];
+                        node.set_node_for_key("value", json_value);
+                    }
+                }
+            }
+            2 => {
+                // Generate a random number.
+                let value = rand.next_u64();
+                let json_value = json![value as i64];
+                node.set_node_for_key("value", json_value);
+            }
+            _ => return,
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::Integer)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct VyperMutatorFactory {}
@@ -786,6 +841,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
+                GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 _ => None,
             },
             _ => None,
