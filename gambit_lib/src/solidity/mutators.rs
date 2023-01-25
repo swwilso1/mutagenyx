@@ -594,6 +594,55 @@ impl IndexedNode {
     }
 }
 
+/// Implements the FunctionCall mutation algorithm.
+///
+/// The algorithm selects a random function call and replaces the function call with one of the
+/// arguments from the function call.  The algorithm does not check the return type of the function
+/// from the function's definition to select an argument that matches the return type.
+struct FunctionCallMutator {}
+
+impl Mutator<SolidityAST> for FunctionCallMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // We only want function call nodes with at least 1 argument.
+        // We may want to ignore require() functions.
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "FunctionCall" {
+                if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+                    if let Some(arguments_array) = arguments_node.as_array() {
+                        if arguments_array.len() > 0 {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+            if let Some(arguments_array) = arguments_node.as_array() {
+                loop {
+                    // Randomly pick an array member, but avoid Literal nodes.
+                    let index = (rand.next_u64() % arguments_array.len() as u64) as usize;
+                    let value = &arguments_array[index];
+                    if let Some(node_type) = value.get_str_for_key("nodeType") {
+                        if node_type == "Literal" {
+                            continue;
+                        }
+                    }
+                    *node = value.clone();
+                    break;
+                }
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::FunctionCall)
+    }
+}
+
 /// Implements the function call argument swap mutation algorithm.
 ///
 /// The mutator should identify function call expressions where the function call contains
@@ -990,7 +1039,10 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionSwapArguments => Some(Box::new(SwapFunctionArgumentsMutator::new())),
+                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::FunctionSwapArguments => {
+                    Some(Box::new(SwapFunctionArgumentsMutator::new()))
+                }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),

@@ -624,6 +624,50 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
     }
 }
 
+struct FunctionCallMutator {}
+
+impl Mutator<VyperAST> for FunctionCallMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        // First check to see if the node is an `Call` node.
+        if let Some(n) = node.get_str_for_key("ast_type") {
+            if n == "Call" {
+                if let Some(args) = node.borrow_value_for_key("args") {
+                    if let Some(args_array) = args.as_array() {
+                        if args_array.len() > 0 {
+                            // We have to have a function call with arguments.
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+        if let Some(args_node) = node.borrow_value_for_key("args") {
+            if let Some(args_array) = args_node.as_array() {
+                loop {
+                    // Randomly pick an array member, but avoid Int/Str nodes.
+                    let index = (rand.next_u64() % args_array.len() as u64) as usize;
+                    let value = &args_array[index];
+                    if let Some(node_type) = value.get_str_for_key("nodeType") {
+                        if node_type == "Int" || node_type == "Str" {
+                            continue;
+                        }
+                    }
+                    *node = value.clone();
+                    break;
+                }
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::FunctionCall)
+    }
+}
+
 /// Implements the function call argument swap mutation algorithm.
 ///
 /// The mutator should identify function call expressions where the function call contains
@@ -839,7 +883,10 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator {})),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionSwapArguments => Some(Box::new(SwapFunctionArgumentsMutator {})),
+                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::FunctionSwapArguments => {
+                    Some(Box::new(SwapFunctionArgumentsMutator {}))
+                }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
                 _ => None,
