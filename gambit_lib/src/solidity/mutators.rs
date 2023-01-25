@@ -697,7 +697,7 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::FunctionCall)
+        MutationType::Generic(GenericMutation::FunctionSwapArguments)
     }
 }
 
