@@ -16,6 +16,7 @@ use rand::{Rng, RngCore};
 use rand_pcg::*;
 use rustc_serialize::hex::ToHex;
 use serde_json::json;
+use std::collections::HashMap;
 use std::fmt;
 
 /// Return a new integer literal node representing an integer literal number.
@@ -508,6 +509,30 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
     }
 }
 
+/// Helper struct for FunctionCall mutation algorithm.
+///
+/// The mutation algorithm keeps track of argument indexes and values with IndexedNode
+/// objects.
+struct IndexedNode {
+    /// The index of the node in the function call arguments array.
+    pub index: usize,
+
+    /// A copy of the argument found at `index`.
+    pub node: SolidityAST,
+}
+
+impl IndexedNode {
+    /// Create a new IndexedNode object.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the node from the arguments array.
+    /// * `node` - A copy of the node from the arguments array.
+    fn new(index: usize, node: SolidityAST) -> IndexedNode {
+        IndexedNode { index, node }
+    }
+}
+
 /// Implements the function call mutation algorithm.
 ///
 /// The mutator should identify function call expressions where the function call contains
@@ -522,14 +547,92 @@ impl FunctionCallMutator {
 }
 
 impl Mutator<SolidityAST> for FunctionCallMutator {
-    fn is_mutable_node(&self, _node: &SolidityAST) -> bool {
-        // TODO: Finish the implementation.
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "FunctionCall" {
+                if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+                    if let Some(arguments_array) = arguments_node.as_array() {
+                        if arguments_array.len() > 1 {
+                            // Now check to see if we have two nodes of the same type.  If we have
+                            // two nodes of the same type then we can swap the arguments.
+                            let mut type_map: HashMap<&str, i32> = HashMap::new();
+                            for value in arguments_array {
+                                if let Some(type_descriptions_node) =
+                                    value.borrow_value_for_key("typeDescriptions")
+                                {
+                                    if let Some(type_string) =
+                                        type_descriptions_node.get_str_for_key("typeString")
+                                    {
+                                        if type_map.contains_key(type_string) {
+                                            let counter = type_map.get_mut(type_string).unwrap();
+                                            *counter += 1;
+                                        } else {
+                                            type_map.insert(type_string, 1);
+                                        }
+                                    }
+                                }
+                            }
+
+                            for (_key, value) in type_map {
+                                if value >= 2 {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         false
     }
 
-    fn mutate(&self, _node: &mut SolidityAST, _rand: &mut Pcg64) {
-        // TODO: Finish the implementation.
-        return;
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        // We have the FunctionCall node with arguments of the same type. Iterate and find
+        // nodes of the same type so that we can swap them.
+        if let Some(mut arguments_node) = node.take_value_for_key("arguments") {
+            if let Some(arguments_array) = arguments_node.as_array_mut() {
+                let mut arg_map: HashMap<&str, Vec<IndexedNode>> = HashMap::new();
+                for (index, value) in arguments_array.iter().enumerate() {
+                    if let Some(type_descriptions_node) =
+                        value.borrow_value_for_key("typeDescriptions")
+                    {
+                        if let Some(type_string) =
+                            type_descriptions_node.get_str_for_key("typeString")
+                        {
+                            if arg_map.contains_key(type_string) {
+                                let list = arg_map.get_mut(type_string).unwrap();
+                                list.push(IndexedNode::new(index, value.clone()));
+                            } else {
+                                arg_map.insert(
+                                    type_string,
+                                    vec![IndexedNode::new(index, value.clone())],
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // Attempt to randomly select a pair of args from the arg_map.  We do this by
+                // putting the keys in the map that have a list with two or more arguments into
+                // a list and then randomly indexing into the list to select a key.
+                let mut list_list: Vec<Vec<IndexedNode>> = vec![];
+                for (_key, value) in arg_map {
+                    if value.len() >= 2 {
+                        list_list.push(value);
+                    }
+                }
+
+                let list_index = (rand.next_u64() % list_list.len() as u64) as usize;
+                let node_list = &list_list[list_index];
+                let in1 = &node_list[0];
+                let in2 = &node_list[1];
+                arguments_array.remove(in1.index);
+                arguments_array.insert(in1.index, in2.node.clone());
+                arguments_array.remove(in2.index);
+                arguments_array.insert(in2.index, in1.node.clone());
+                node.set_node_for_key("arguments", arguments_node);
+            }
+        }
     }
 
     fn implements(&self) -> MutationType {
