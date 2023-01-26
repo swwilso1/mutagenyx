@@ -96,6 +96,49 @@ fn print_space_and_array_helper<W: Write>(
     }
 }
 
+/// For Block and UncheckedBlock nodes, print out the statements array.
+///
+/// # Arguments
+///
+/// * `printer` - The [`PrettyPrinter`] object that writes formatted text to `stream`.
+/// * `stream` - The [`Write`] object that receives the formatted text.
+/// * `node` - The [`SolidityAST`] node containing statements.
+fn print_statements_helper<W: Write>(
+    printer: &mut PrettyPrinter,
+    stream: &mut W,
+    node: &SolidityAST,
+) {
+    if let Some(statements) = node.borrow_value_for_key("statements") {
+        if let Some(statements_array) = statements.as_array() {
+            if statements_array.len() > 0 {
+                printer.increase_indent();
+                write_newline(printer, stream);
+
+                let mut i = 0;
+                while i < statements_array.len() {
+                    if let Some(statement) = statements_array.get(i) {
+                        write_indent(printer, stream);
+                        traverse_sub_node(
+                            printer,
+                            stream,
+                            SolidityNodePrinterFactory {},
+                            statement,
+                        );
+                        if i < (statements_array.len() - 1) {
+                            write_newline(printer, stream);
+                        }
+                    }
+                    i += 1;
+                }
+
+                printer.decrease_indent();
+                write_newline(printer, stream);
+                write_indent(printer, stream);
+            }
+        }
+    }
+}
+
 /// Default node printer for unsupported nodes.
 struct DummyNodePrinter {}
 
@@ -506,35 +549,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BlockPrinter {
     }
 
     fn print_node(&mut self, stream: &mut W, node: &SolidityAST, printer: &mut PrettyPrinter) {
-        if let Some(statements) = node.borrow_value_for_key("statements") {
-            if let Some(statements_array) = statements.as_array() {
-                if statements_array.len() > 0 {
-                    printer.increase_indent();
-                    write_newline(printer, stream);
-
-                    let mut i = 0;
-                    while i < statements_array.len() {
-                        if let Some(statement) = statements_array.get(i) {
-                            write_indent(printer, stream);
-                            traverse_sub_node(
-                                printer,
-                                stream,
-                                SolidityNodePrinterFactory {},
-                                statement,
-                            );
-                            if i < (statements_array.len() - 1) {
-                                write_newline(printer, stream);
-                            }
-                        }
-                        i += 1;
-                    }
-
-                    printer.decrease_indent();
-                    write_newline(printer, stream);
-                    write_indent(printer, stream);
-                }
-            }
-        }
+        print_statements_helper(printer, stream, node);
     }
 
     fn on_exit(&mut self, stream: &mut W, _node: &SolidityAST, printer: &mut PrettyPrinter) {
@@ -1076,6 +1091,23 @@ impl<W: Write> NodePrinter<W, SolidityAST> for CommentPrinter {
     }
 }
 
+struct UncheckedBlockPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for UncheckedBlockPrinter {
+    fn on_entry(&mut self, stream: &mut W, _node: &SolidityAST, printer: &mut PrettyPrinter) {
+        write_token(printer, stream, "unchecked");
+        write_token(printer, stream, "{");
+    }
+
+    fn print_node(&mut self, stream: &mut W, node: &SolidityAST, printer: &mut PrettyPrinter) {
+        print_statements_helper(printer, stream, node);
+    }
+
+    fn on_exit(&mut self, stream: &mut W, _node: &SolidityAST, printer: &mut PrettyPrinter) {
+        write_token(printer, stream, "}");
+    }
+}
+
 /// Type that implements [`NodePrinterFactory<W,AST>`] for Solidity nodes.
 ///
 /// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<W,AST>`] object.
@@ -1122,6 +1154,7 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "ElementaryTypeNameExpression" => Box::new(ElementaryTypeNameExpressionPrinter {}),
                 "TupleExpression" => Box::new(TupleExpressionPrinter {}),
                 "Comment" => Box::new(CommentPrinter {}),
+                "UncheckedBlock" => Box::new(UncheckedBlockPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }
         } else {
