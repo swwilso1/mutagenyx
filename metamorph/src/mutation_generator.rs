@@ -32,6 +32,13 @@ pub fn generate_mutants(args: MutateCLArgs) {
         mutations = args
             .mutations
             .iter()
+            .filter(|m| match MutationType::from_str(m) {
+                Ok(_) => true,
+                _ => {
+                    println!("Mutation algorithm {} not supported", m);
+                    false
+                }
+            })
             .map(|m| MutationType::from_str(m).unwrap())
             .collect();
     }
