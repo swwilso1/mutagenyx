@@ -2,6 +2,7 @@
 //! the mutation generation algorithm.
 
 use crate::generator_parameters::GeneratorParameters;
+use crate::pretty_printing::pretty_print_ast;
 use crate::MutateCLArgs;
 use gambit_lib::error::GambitError;
 use gambit_lib::language_interface::*;
@@ -47,6 +48,7 @@ pub fn generate_mutants(args: MutateCLArgs) {
             PathBuf::from_str(&args.output_directory).unwrap(),
             &mutations,
             false,
+            args.print_original,
         );
 
         if let Err(e) = generate_mutations(&mut generator_params) {
@@ -79,6 +81,12 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitErro
 
     if mutable_nodes_table.is_empty() {
         return Err(GambitError::NoMutableNode);
+    }
+
+    // Only pretty-print the original file after verifying that we can load the AST, and that
+    // we have valid mutators for the AST.
+    if params.print_original {
+        pretty_print_ast(&ast, &params.file_name, &params.output_directory)?;
     }
 
     // This list now holds the mutation types for which the AST has nodes to mutate.

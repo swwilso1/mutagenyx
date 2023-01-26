@@ -38,6 +38,10 @@ pub struct MutateCLArgs {
     /// Enable all mutation algorithms, takes precedence over --mutations
     #[clap(short, long)]
     pub all_mutations: bool,
+
+    /// Pretty-print the original source or AST in the output directory.
+    #[clap(long)]
+    pub print_original: bool,
 }
 
 /// Pretty-print sub-command command line arguments.

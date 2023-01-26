@@ -3,6 +3,7 @@
 
 use crate::solidity::ast::SolidityAST;
 use crate::vyper::ast::VyperAST;
+use crate::Language;
 use std::cmp::PartialEq;
 
 /// The SuperAST enumeration that encapsulates all the known types of language AST objects.
@@ -23,5 +24,17 @@ impl PartialEq for SuperAST {
                 _ => false,
             },
         }
+    }
+}
+
+/// Return the Language for a given AST.
+///
+/// # Arguments
+///
+/// * `ast` - A reference to an AST.
+pub fn language_for_ast(ast: &SuperAST) -> Language {
+    match ast {
+        SuperAST::Solidity(_) => Language::Solidity,
+        SuperAST::Vyper(_) => Language::Vyper,
     }
 }

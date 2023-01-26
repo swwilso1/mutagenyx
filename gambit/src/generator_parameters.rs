@@ -26,6 +26,9 @@ pub struct GeneratorParameters<'a> {
     /// True if the mutation generator should verify with the language compiler that the generated
     /// mutants compile correctly.
     pub verify_mutant_viability: bool,
+
+    /// If true, then pretty-print a copy of the original AST in the output directory.
+    pub print_original: bool,
 }
 
 impl<'a> GeneratorParameters<'a> {
@@ -39,6 +42,7 @@ impl<'a> GeneratorParameters<'a> {
     /// *` out_dir` - The location in the file system to place the generated mutants.
     /// * `mutations` - The list of mutation algorithms to use when generating the mutants.
     /// * `verify_viability` - True if the generator should check that a mutant compiles correctly.
+    /// * `print_original` - True if the generator should pretty-print a copy of the original AST.
     pub fn new_from_parameters(
         name: &str,
         mutants: usize,
@@ -46,6 +50,7 @@ impl<'a> GeneratorParameters<'a> {
         out_dir: PathBuf,
         mutations: &Vec<MutationType>,
         verify_viability: bool,
+        print_original: bool,
     ) -> GeneratorParameters<'a> {
         GeneratorParameters {
             file_name: String::from(name),
@@ -54,6 +59,7 @@ impl<'a> GeneratorParameters<'a> {
             output_directory: out_dir,
             mutations: mutations.clone(),
             verify_mutant_viability: verify_viability,
+            print_original,
         }
     }
 }
