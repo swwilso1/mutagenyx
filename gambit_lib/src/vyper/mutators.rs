@@ -918,6 +918,104 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
     }
 }
 
+/// Implement line swap mutation algorithm.
+///
+/// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
+/// the lines.  Since function return statements affect how a program compiles, the algorithm
+/// will explicitly not swap lines with return statements.
+struct LinesSwapMutator {}
+
+impl Mutator<VyperAST> for LinesSwapMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        // We need a function definition with at least two body statements.
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "FunctionDef" || ast_type == "For" || ast_type == "If" {
+                if let Some(body_node) = node.borrow_value_for_key("body") {
+                    if let Some(body_array) = body_node.as_array() {
+                        if body_array.len() >= 2 {
+                            let mut found_return_statement = false;
+                            for value in body_array {
+                                if let Some(value_ast_type) = value.get_str_for_key("ast_type") {
+                                    if value_ast_type == "Return" {
+                                        found_return_statement = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If the body of the function def has a return statement, then there
+                            // must be at least 3 statements in the body in order to swap (but not
+                            // swap a return statement) statements.  If there are no return statements
+                            // then we can just go ahead and swap.
+                            if (found_return_statement && body_array.len() >= 3)
+                                || (!found_return_statement)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+        if let Some(mut body_node) = node.take_value_for_key("body") {
+            if let Some(body_array) = body_node.as_array_mut() {
+                // Randomly pick a first node.
+                let mut first_index: usize;
+                loop {
+                    first_index = (rand.next_u64() % body_array.len() as u64) as usize;
+                    if let Some(ast_type) = body_array[first_index].get_str_for_key("ast_type") {
+                        if ast_type == "Return" {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                // Try to randomly pick a second node.
+                let mut second_index: usize;
+                loop {
+                    second_index = (rand.next_u64() % body_array.len() as u64) as usize;
+                    if second_index == first_index {
+                        continue;
+                    }
+                    if let Some(ast_type) = body_array[second_index].get_str_for_key("ast_type") {
+                        if ast_type == "Return" {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                let larger_index = if first_index >= second_index {
+                    first_index
+                } else {
+                    second_index
+                };
+
+                let smaller_index = if first_index >= second_index {
+                    second_index
+                } else {
+                    first_index
+                };
+
+                let larger_node = body_array.remove(larger_index);
+                let smaller_node = body_array.remove(smaller_index);
+                body_array.insert(smaller_index, larger_node);
+                body_array.insert(larger_index, smaller_node);
+                node.set_node_for_key("body", body_node);
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::LinesSwap)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct VyperMutatorFactory {}
@@ -957,6 +1055,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 GenericMutation::OperatorSwapArguments => {
                     Some(Box::new(OperatorSwapArgumentsMutator::new()))
                 }
+                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator {})),
                 _ => None,
             },
             _ => None,

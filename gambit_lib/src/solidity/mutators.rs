@@ -934,6 +934,108 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
     }
 }
 
+/// Implement line swap mutation algorithm.
+///
+/// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
+/// the lines.  Since function return statements affect how a program compiles, the algorithm
+/// will explicitly not swap lines with return statements.
+struct LinesSwapMutator {}
+
+impl Mutator<SolidityAST> for LinesSwapMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        // We need a function definition with at least two body statements.
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "Block" {
+                if let Some(statements_node) = node.borrow_value_for_key("statements") {
+                    if let Some(statements_array) = statements_node.as_array() {
+                        if statements_array.len() >= 2 {
+                            let mut found_return_statement = false;
+                            for value in statements_array {
+                                if let Some(value_node_type) = value.get_str_for_key("nodeType") {
+                                    if value_node_type == "Return" {
+                                        found_return_statement = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If the body of the function def has a return statement, then there
+                            // must be at least 3 statements in the body in order to swap (but not
+                            // swap a return statement) statements.  If there are no return statements
+                            // then we can just go ahead and swap.
+                            if (found_return_statement && statements_array.len() >= 3)
+                                || (!found_return_statement)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        if let Some(mut statements_node) = node.take_value_for_key("statements") {
+            if let Some(statements_array) = statements_node.as_array_mut() {
+                // Randomly pick a first node.
+                let mut first_index: usize;
+                loop {
+                    first_index = (rand.next_u64() % statements_array.len() as u64) as usize;
+                    if let Some(node_type) =
+                        statements_array[first_index].get_str_for_key("nodeType")
+                    {
+                        if node_type == "Return" {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                // Try to randomly pick a second node.
+                let mut second_index: usize;
+                loop {
+                    second_index = (rand.next_u64() % statements_array.len() as u64) as usize;
+                    if second_index == first_index {
+                        continue;
+                    }
+                    if let Some(node_type) =
+                        statements_array[second_index].get_str_for_key("nodeType")
+                    {
+                        if node_type == "Return" {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                let larger_index = if first_index >= second_index {
+                    first_index
+                } else {
+                    second_index
+                };
+
+                let smaller_index = if first_index >= second_index {
+                    second_index
+                } else {
+                    first_index
+                };
+
+                let larger_node = statements_array.remove(larger_index);
+                let smaller_node = statements_array.remove(smaller_index);
+                statements_array.insert(smaller_index, larger_node);
+                statements_array.insert(larger_index, smaller_node);
+                node.set_node_for_key("statements", statements_node);
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::LinesSwap)
+    }
+}
+
 /// Implements the Solidity require function mutation algorithm.
 ///
 /// This mutator will replace the expression in the argument to the Solidity `require` function
@@ -1094,8 +1196,8 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::OperatorSwapArguments => {
                     Some(Box::new(OperatorSwapArgumentsMutator::new()))
                 }
+                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator {})),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
-                _ => None,
             },
             MutationType::Solidity(t) => match t {
                 SolidityMutation::Require => Some(Box::new(SolidityRequireMutator::new())),
