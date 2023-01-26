@@ -38,12 +38,12 @@ pub fn comparison_operators() -> Vec<String> {
     str_array_to_string_vector(Box::new(["==", "!=", ">", "<", ">=", "<="]))
 }
 
-// Uncomment the lines below here when implementing swap arguments operator mutation algorithm.
-///// Return the [`Vec<String`] object containing the non-commutative operators.
-// pub fn non_commutative_operators() -> Vec<String> {
-//     str_array_to_string_vector(Box::new(["-", "/", "%", "**", ">", "<", "<=", ">=",
-//         "<<", ">>"]))
-// }
+// Return the [`Vec<String`] object containing the non-commutative operators.
+pub fn non_commutative_operators() -> Vec<String> {
+    str_array_to_string_vector(Box::new([
+        "-", "/", "%", "**", ">", "<", "<=", ">=", "<<", ">>",
+    ]))
+}
 
 /// Return the [`Vec<String>`] object containing the prefix operators.
 pub fn prefix_operators() -> Vec<String> {

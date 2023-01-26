@@ -894,14 +894,14 @@ impl Mutator<SolidityAST> for IntegerMutator {
 /// to a BinaryOperation.  The operator of the BinaryOperation must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
 struct OperatorSwapArgumentsMutator {
-    valid_operators: Vec<&'static str>,
+    valid_operators: Vec<String>,
 }
 
 impl OperatorSwapArgumentsMutator {
     /// Create a new mutator.
     fn new() -> OperatorSwapArgumentsMutator {
         OperatorSwapArgumentsMutator {
-            valid_operators: vec!["-", "/", "%", "**", "<", ">", "<=", ">=", "<<", ">>"],
+            valid_operators: non_commutative_operators(),
         }
     }
 }
@@ -911,7 +911,8 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "BinaryOperation" {
                 if let Some(operator_string) = node.get_str_for_key("operator") {
-                    if self.valid_operators.contains(&operator_string) {
+                    let operator = String::from(operator_string);
+                    if self.valid_operators.contains(&operator) {
                         return true;
                     }
                 }

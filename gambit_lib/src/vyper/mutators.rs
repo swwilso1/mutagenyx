@@ -859,7 +859,7 @@ impl Mutator<VyperAST> for IntegerMutator {
 /// to a BinOp/BoolOp/Compare.  The operator of the BinOp/BoolOp/Compare must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
 struct OperatorSwapArgumentsMutator {
-    valid_operators: Vec<&'static str>,
+    valid_operators: Vec<String>,
     operator_map: HashMap<String, String>,
 }
 
@@ -867,7 +867,7 @@ impl OperatorSwapArgumentsMutator {
     /// Create a new mutator
     fn new() -> OperatorSwapArgumentsMutator {
         OperatorSwapArgumentsMutator {
-            valid_operators: vec!["-", "/", "%", "**", ">", "<", "<=", ">=", "<<", ">>"],
+            valid_operators: non_commutative_operators(),
             operator_map: get_python_operator_map(),
         }
     }
@@ -881,7 +881,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
                     if let Some(op_string) = op_node.get_str_for_key("ast_type") {
                         let operator = String::from(op_string);
                         let converted_operator = &self.operator_map[&operator];
-                        if self.valid_operators.contains(&converted_operator.as_str()) {
+                        if self.valid_operators.contains(converted_operator) {
                             return true;
                         }
                     }
