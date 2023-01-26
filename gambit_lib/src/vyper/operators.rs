@@ -21,6 +21,7 @@ pub fn get_python_operator_map() -> HashMap<String, String> {
     operator_map.insert(String::from("Lt"), String::from("<"));
     operator_map.insert(String::from("LtE"), String::from("<="));
     operator_map.insert(String::from("Not"), String::from("!"));
+    operator_map.insert(String::from("Invert"), String::from("~"));
 
     operator_map
 }

@@ -881,7 +881,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
                     if let Some(op_string) = op_node.get_str_for_key("ast_type") {
                         let operator = String::from(op_string);
                         let converted_operator = &self.operator_map[&operator];
-                        if self.valid_operators.contains(converted_operator) {
+                        if self.valid_operators.contains(&converted_operator) {
                             return true;
                         }
                     }
@@ -1016,6 +1016,38 @@ impl Mutator<VyperAST> for LinesSwapMutator {
     }
 }
 
+/// Implement a form of the unary operator mutation algorithm.
+///
+/// As of this writing, Vyper has only two valid unary operations:
+/// * `not a`
+/// * `~a`
+///
+/// Since these unary operations occur in expressions with different semantic meaning,
+/// (ie one a logical operation and one a bitwise negation) the algorithm will not
+/// interchange `not` for `~`, but instead, drop the prefix operator leaving just the operand.
+struct UnaryOpMutator {}
+
+impl Mutator<VyperAST> for UnaryOpMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "UnaryOp" {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, _rand: &mut Pcg64) {
+        if let Some(operand_node) = node.take_value_for_key("operand") {
+            *node = operand_node;
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::UnaryOp)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct VyperMutatorFactory {}
@@ -1056,7 +1088,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                     Some(Box::new(OperatorSwapArgumentsMutator::new()))
                 }
                 GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator {})),
-                _ => None,
+                GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator {})),
             },
             _ => None,
         }

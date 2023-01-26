@@ -612,15 +612,21 @@ struct UnaryOpPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for UnaryOpPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
+        let mut needs_space = false;
         if let Some(op_node) = node.borrow_value_for_key("op") {
             if let Some(op_str) = op_node.get_str_for_key("ast_type") {
                 if op_str == "Not" {
                     write_token(printer, stream, "not");
+                    needs_space = true;
+                } else if op_str == "Invert" {
+                    write_token(printer, stream, "~");
                 }
             }
         }
         if let Some(operand_node) = node.borrow_value_for_key("operand") {
-            write_space(printer, stream);
+            if needs_space {
+                write_space(printer, stream);
+            }
             traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, operand_node);
         }
     }
