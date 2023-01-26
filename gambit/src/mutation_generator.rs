@@ -7,7 +7,6 @@ use crate::MutateCLArgs;
 use gambit_lib::error::GambitError;
 use gambit_lib::language_interface::*;
 use gambit_lib::mutation::{all_mutation_algorithms, MutationType};
-use gambit_lib::pretty_printer::PrettyPrinter;
 use gambit_lib::recognizer::Recognizer;
 use gambit_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
@@ -143,24 +142,11 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitErro
                 String::from(base_file_name.to_str().unwrap())
                     + "_"
                     + &files_written.to_string()
-                    + "."
-                    + language_object.get_extension_for_output_file(),
             );
 
             let outfile = String::from(outfile_name.to_str().unwrap());
 
-            // Try to create the output directory:
-            if let Err(e) = std::fs::create_dir_all(outfile_name.parent().unwrap()) {
-                return Err(GambitError::from(e));
-            }
-
-            // Create a pretty printer for printing this mutated AST.
-            let mut pretty_printer = PrettyPrinter::new(4, 150, "\n");
-            let _write_result = language_object.pretty_print_ast_to_file(
-                &mutated_ast,
-                &outfile,
-                &mut pretty_printer,
-            )?;
+            pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
 
             // Remove the item from the top of the VecDeque.
             mutation_kinds_todo.remove(0);
