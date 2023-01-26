@@ -853,6 +853,71 @@ impl Mutator<VyperAST> for IntegerMutator {
     }
 }
 
+/// Implement the operator swap mutation algorithm
+///
+/// The algorithm swaps the left and right hand sides of the arguments
+/// to a BinOp/BoolOp/Compare.  The operator of the BinOp/BoolOp/Compare must
+/// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
+struct OperatorSwapArgumentsMutator {
+    valid_operators: Vec<&'static str>,
+    operator_map: HashMap<String, String>,
+}
+
+impl OperatorSwapArgumentsMutator {
+    /// Create a new mutator
+    fn new() -> OperatorSwapArgumentsMutator {
+        OperatorSwapArgumentsMutator {
+            valid_operators: vec!["-", "/", "%", "**", ">", "<", "<=", ">=", "<<", ">>"],
+            operator_map: get_python_operator_map(),
+        }
+    }
+}
+
+impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
+    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "BinOp" || ast_type == "BoolOp" || ast_type == "Compare" {
+                if let Some(op_node) = node.borrow_value_for_key("op") {
+                    if let Some(op_string) = op_node.get_str_for_key("ast_type") {
+                        let operator = String::from(op_string);
+                        let converted_operator = &self.operator_map[&operator];
+                        if self.valid_operators.contains(&converted_operator.as_str()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut VyperAST, _rand: &mut Pcg64) {
+        if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            if ast_type == "BinOp" || ast_type == "Compare" {
+                if let Some(left_node) = node.take_value_for_key("left") {
+                    if let Some(right_node) = node.take_value_for_key("right") {
+                        node.set_node_for_key("left", right_node);
+                        node.set_node_for_key("right", left_node);
+                    }
+                }
+            } else if ast_type == "BoolOp" {
+                if let Some(mut values_node) = node.take_value_for_key("values") {
+                    if let Some(values_array) = values_node.as_array_mut() {
+                        let right = values_array.remove(1);
+                        let left = values_array.remove(0);
+                        values_array.push(right);
+                        values_array.push(left);
+                    }
+                }
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::OperatorSwapArguments)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct VyperMutatorFactory {}
@@ -889,6 +954,9 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
+                GenericMutation::OperatorSwapArguments => {
+                    Some(Box::new(OperatorSwapArgumentsMutator::new()))
+                }
                 _ => None,
             },
             _ => None,

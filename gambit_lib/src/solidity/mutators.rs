@@ -888,6 +888,52 @@ impl Mutator<SolidityAST> for IntegerMutator {
     }
 }
 
+/// Implement the operator swap mutation algorithm
+///
+/// The algorithm swaps the left and right hand sides of the arguments
+/// to a BinaryOperation.  The operator of the BinaryOperation must
+/// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
+struct OperatorSwapArgumentsMutator {
+    valid_operators: Vec<&'static str>,
+}
+
+impl OperatorSwapArgumentsMutator {
+    /// Create a new mutator.
+    fn new() -> OperatorSwapArgumentsMutator {
+        OperatorSwapArgumentsMutator {
+            valid_operators: vec!["-", "/", "%", "**", "<", ">", "<=", ">=", "<<", ">>"],
+        }
+    }
+}
+
+impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "BinaryOperation" {
+                if let Some(operator_string) = node.get_str_for_key("operator") {
+                    if self.valid_operators.contains(&operator_string) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, _rand: &mut Pcg64) {
+        if let Some(left_expr) = node.take_value_for_key("leftExpression") {
+            if let Some(right_expr) = node.take_value_for_key("rightExpression") {
+                node.set_node_for_key("leftExpression", right_expr);
+                node.set_node_for_key("rightExpression", left_expr);
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Generic(GenericMutation::OperatorSwapArguments)
+    }
+}
+
 /// Implements the Solidity require function mutation algorithm.
 ///
 /// This mutator will replace the expression in the argument to the Solidity `require` function
@@ -1045,6 +1091,9 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
+                GenericMutation::OperatorSwapArguments => {
+                    Some(Box::new(OperatorSwapArgumentsMutator::new()))
+                }
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
                 _ => None,
             },
