@@ -1,7 +1,7 @@
 //! The `pretty_printer` module contains a low-level stream 'token' emitter to use when
 //! reconstructing source code from an AST.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::string::*;
 use std::io::Write;
 
@@ -83,7 +83,7 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
+    pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
         let indention = self.indent_string();
         if indention.len() > 0 {
             if let Err(e) = self.write_basic_string(stream, &indention) {
@@ -98,9 +98,9 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_newline<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
+    pub fn write_newline<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
         if let Err(e) = write!(stream, "{}", self.newline) {
-            return Err(GambitError::from(e));
+            return Err(MetamorphError::from(e));
         }
         self.row += 1;
         self.column = 1;
@@ -112,7 +112,7 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_space<W: Write>(&mut self, stream: &mut W) -> Result<(), GambitError> {
+    pub fn write_space<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
         if self.column == self.page_width {
             self.write_newline(stream)?;
             self.write_indent(stream)?;
@@ -131,7 +131,7 @@ impl PrettyPrinter {
         &mut self,
         stream: &mut W,
         token: &str,
-    ) -> Result<(), GambitError> {
+    ) -> Result<(), MetamorphError> {
         if self.column > self.page_width {
             // We have overreached on a previous write. Go to a newline.
             self.write_newline(stream)?;
@@ -174,7 +174,7 @@ impl PrettyPrinter {
     /// will output:
     ///
     /// "The quick brown dog..."
-    pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), GambitError> {
+    pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), MetamorphError> {
         let composed_string = String::from("\"") + s + "\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
@@ -200,7 +200,7 @@ impl PrettyPrinter {
         &mut self,
         stream: &mut W,
         s: &str,
-    ) -> Result<(), GambitError> {
+    ) -> Result<(), MetamorphError> {
         let composed_string = String::from("\"\"\"") + s + "\"\"\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
@@ -238,7 +238,7 @@ impl PrettyPrinter {
         stream: &mut W,
         s: &str,
         next_line_text: &str,
-    ) -> Result<(), GambitError> {
+    ) -> Result<(), MetamorphError> {
         // flowable text is a piece of text that can be separated in the output stream without
         // altering the meaning of the program.
 
@@ -295,9 +295,9 @@ impl PrettyPrinter {
     ///
     /// * `stream` - The [`Write`] object that will receive the text.
     /// * `s` - The string slice referring to the text to write to `stream`.
-    fn write_basic_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), GambitError> {
+    fn write_basic_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), MetamorphError> {
         if let Err(e) = write!(stream, "{s}") {
-            return Err(GambitError::from(e));
+            return Err(MetamorphError::from(e));
         }
         self.column += s.len();
         Ok(())

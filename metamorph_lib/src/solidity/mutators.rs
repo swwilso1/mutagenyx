@@ -1,7 +1,7 @@
 //! The `solidity::mutators` module provides the objects that implement the mutation algorithms
 //! for the Solidity ASTs.  The module also provides the factory that implements [`MutatorFactory<t>`].
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json::{new_json_node, JSONMutate};
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
 use crate::mutator::{Mutator, MutatorFactory};
@@ -25,7 +25,7 @@ use std::fmt;
 /// * `value` - The number that the node should contain.
 fn new_integer_constant_node<I: Integer + fmt::Display>(
     value: I,
-) -> Result<SolidityAST, GambitError> {
+) -> Result<SolidityAST, MetamorphError> {
     let value_str = value.to_string();
     let hex_value_str = value_str.as_bytes().to_hex();
     let node_string = format!(
@@ -54,7 +54,7 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(
 /// # Argument
 ///
 /// * `value` - The boolean value to store in the node.
-fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, GambitError> {
+fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, MetamorphError> {
     let value_str = value.to_string();
     let hex_value_str = value_str.as_bytes().to_hex();
     let node_string = format!(
@@ -86,7 +86,7 @@ fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, GambitError> {
 /// # Arguments
 ///
 /// * `text` - The reference to the string content that contains the text to add to the comment.
-fn new_comment_node(text: &str) -> Result<SolidityAST, GambitError> {
+fn new_comment_node(text: &str) -> Result<SolidityAST, MetamorphError> {
     let text_node = json![text];
 
     let node_string = format!(
@@ -117,7 +117,7 @@ fn new_unary_op_node(
     operator: &str,
     prefix: bool,
     sub_expression: SolidityAST,
-) -> Result<SolidityAST, GambitError> {
+) -> Result<SolidityAST, MetamorphError> {
     let node_string = format!(
         "{{\
             \"id\": 9999996,
@@ -142,7 +142,7 @@ fn new_unary_op_node(
 /// # Arguments
 ///
 /// * `array` - An array of SolidityAST nodes to place in the TupleExpression components array.
-fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, GambitError> {
+fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, MetamorphError> {
     let node_array = json![array];
 
     let node_str = format!(
@@ -168,7 +168,7 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Gam
 /// # Arguments
 ///
 /// * `array` - The vector of [`SolidityAST`] nodes to place in the UncheckedBlock
-fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, GambitError> {
+fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, MetamorphError> {
     let node_array = json![array];
 
     let node_str = format!(

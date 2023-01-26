@@ -1,6 +1,6 @@
 //! The `language` module defines the list of languages supported by the library.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use std::fmt;
 use std::str::FromStr;
 
@@ -20,13 +20,13 @@ pub enum Language {
 }
 
 impl FromStr for Language {
-    type Err = GambitError;
+    type Err = MetamorphError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Solidity" => Ok(Language::Solidity),
             "Vyper" => Ok(Language::Vyper),
-            _ => Err(GambitError::LanguageNotSupported(String::from(s))),
+            _ => Err(MetamorphError::LanguageNotSupported(String::from(s))),
         }
     }
 }

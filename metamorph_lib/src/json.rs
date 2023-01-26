@@ -1,7 +1,7 @@
 //! The module contains various functions and traits that simplify working with
 //! [`Value`] objects for the purpose of traversing and mutating abstract syntax trees
 //! encoded in JSON.
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use serde_json::{from_str, json, Value};
 use std::fs::File;
 use std::io::BufReader;
@@ -15,22 +15,22 @@ use std::io::BufReader;
 /// # Errors
 ///
 /// This function interacts with lower-level code to read JSON data from a file. As a result,
-/// the function may return [`GambitError::IO`] that contains a [`std::io::Error`].
+/// the function may return [`MetamorphError::IO`] that contains a [`std::io::Error`].
 ///
 /// Also, the function invokes the `serde_json` JSON parser.  The JSON parser may return a
-/// [`serde_json::Error`] which the function will return as a [`GambitError::JSON`] enum that
+/// [`serde_json::Error`] which the function will return as a [`MetamorphError::JSON`] enum that
 /// wraps the error from `serde_json`.
-pub fn load_json_from_file_with_name(file_name: &str) -> Result<Value, GambitError> {
+pub fn load_json_from_file_with_name(file_name: &str) -> Result<Value, MetamorphError> {
     let file = match File::open(file_name) {
         Ok(f) => f,
-        Err(e) => return Err(GambitError::from(e)),
+        Err(e) => return Err(MetamorphError::from(e)),
     };
 
     let reader = BufReader::new(file);
 
     let v = match serde_json::from_reader(reader) {
         Ok(val) => val,
-        Err(e) => return Err(GambitError::from(e)),
+        Err(e) => return Err(MetamorphError::from(e)),
     };
 
     Ok(v)
@@ -56,10 +56,10 @@ fn json_path(path: &str) -> String {
 /// # Arguments
 ///
 /// * `text` - The string slice referring to the text that contains JSON.
-pub fn new_json_node(text: &str) -> Result<Value, GambitError> {
+pub fn new_json_node(text: &str) -> Result<Value, MetamorphError> {
     match from_str(text) {
         Ok(n) => Ok(n),
-        Err(e) => Err(GambitError::from(e)),
+        Err(e) => Err(MetamorphError::from(e)),
     }
 }
 

@@ -1,7 +1,7 @@
 //! The `vyper::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_vyper_sub_language_interface`.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
@@ -24,21 +24,21 @@ pub fn get_vyper_sub_language_interface<W: Write>() -> Box<dyn JSONLanguageDeleg
 pub struct VyperLanguageSubInterface {}
 
 impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
-    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, GambitError> {
+    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         let vyper_ast = match super_ast {
             SuperAST::Vyper(sast) => sast,
-            _ => return Err(GambitError::ASTTypeNotSupported),
+            _ => return Err(MetamorphError::ASTTypeNotSupported),
         };
         Ok(vyper_ast)
     }
 
-    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, GambitError> {
+    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, MetamorphError> {
         if <VyperLanguageSubInterface as JSONLanguageDelegate<W>>::json_is_language_ast_json(
             self, &value,
         ) {
             return Ok(SuperAST::Vyper(value));
         }
-        Err(GambitError::LanguageNotRecognized)
+        Err(MetamorphError::LanguageNotRecognized)
     }
 
     fn get_mutator_factory(&self) -> Box<dyn MutatorFactory<Value>> {

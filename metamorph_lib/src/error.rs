@@ -1,4 +1,4 @@
-//! The `error` module contains `GambitError`, the error enumeration used to communicate
+//! The `error` module contains `MetamorphError`, the error enumeration used to communicate
 //! library errors.
 
 use std::convert::From;
@@ -6,7 +6,7 @@ use thiserror::Error;
 
 /// The list of errors that the library can generate.
 #[derive(Error, Debug)] // , PartialEq)]
-pub enum GambitError {
+pub enum MetamorphError {
     #[error("IO error: {0}")]
     IO(std::io::Error),
 
@@ -20,7 +20,7 @@ pub enum GambitError {
     NoMutableNode,
 
     /// An error indicating that an API call attempted to load facilities for
-    /// a language not supported by gambit-lib.
+    /// a language not supported by metamorph_lib.
     #[error("Language {0} not supported")]
     LanguageNotSupported(String),
 
@@ -39,14 +39,14 @@ pub enum GambitError {
     MutationAlgorithmNotSupported(String),
 }
 
-impl From<std::io::Error> for GambitError {
+impl From<std::io::Error> for MetamorphError {
     fn from(e: std::io::Error) -> Self {
-        GambitError::IO(e)
+        MetamorphError::IO(e)
     }
 }
 
-impl From<serde_json::Error> for GambitError {
+impl From<serde_json::Error> for MetamorphError {
     fn from(e: serde_json::Error) -> Self {
-        GambitError::JSON(e)
+        MetamorphError::JSON(e)
     }
 }

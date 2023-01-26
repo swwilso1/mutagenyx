@@ -1,4 +1,4 @@
-//! The main module contains the code to process the command line for the gambit program and
+//! The main module contains the code to process the command line for the metamorph program and
 //! run the mutation generator.
 
 mod generator_parameters;
@@ -59,18 +59,18 @@ pub struct PrettyPrintCLArgs {
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
-pub enum GambitCommand {
+pub enum MetamorphCommand {
     Mutate(MutateCLArgs),
     PrettyPrint(PrettyPrintCLArgs),
 }
 
 fn main() {
     let _ = env_logger::builder().try_init();
-    match GambitCommand::parse() {
-        GambitCommand::Mutate(params) => {
+    match MetamorphCommand::parse() {
+        MetamorphCommand::Mutate(params) => {
             generate_mutants(params);
         }
-        GambitCommand::PrettyPrint(params) => {
+        MetamorphCommand::PrettyPrint(params) => {
             pretty_print_files(params);
         }
     }

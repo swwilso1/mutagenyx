@@ -4,11 +4,11 @@
 use crate::generator_parameters::GeneratorParameters;
 use crate::pretty_printing::pretty_print_ast;
 use crate::MutateCLArgs;
-use gambit_lib::error::GambitError;
-use gambit_lib::language_interface::*;
-use gambit_lib::mutation::{all_mutation_algorithms, MutationType};
-use gambit_lib::recognizer::Recognizer;
-use gambit_lib::super_ast::SuperAST;
+use metamorph_lib::error::MetamorphError;
+use metamorph_lib::language_interface::*;
+use metamorph_lib::mutation::{all_mutation_algorithms, MutationType};
+use metamorph_lib::recognizer::Recognizer;
+use metamorph_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
 use rand::RngCore;
 use rand::SeedableRng;
@@ -64,7 +64,7 @@ static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 /// # Arguments
 ///
 /// * `params` - The parameters that control the mutation generation algorithm.
-fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitError> {
+fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
     let language = Recognizer::recognize_file(&params.file_name)?;
@@ -79,7 +79,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), GambitErro
     let mutable_nodes_table = language_object.count_mutable_nodes(&ast)?;
 
     if mutable_nodes_table.is_empty() {
-        return Err(GambitError::NoMutableNode);
+        return Err(MetamorphError::NoMutableNode);
     }
 
     // Only pretty-print the original file after verifying that we can load the AST, and that

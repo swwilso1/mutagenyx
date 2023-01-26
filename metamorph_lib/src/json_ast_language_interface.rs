@@ -4,7 +4,7 @@
 //! language to language.
 
 use crate::ast::ASTTraverser;
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
@@ -49,14 +49,14 @@ impl JSONLanguageInterface {
     /// # Arguments
     ///
     /// * `ast` - A reference to the SuperAST object that might contain a JSON base AST.
-    fn recover_json_ast<'a>(&self, ast: &'a SuperAST) -> Result<&'a Value, GambitError> {
+    fn recover_json_ast<'a>(&self, ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         // Defer the recovery of the AST to the language-specific delegate.
         return self.sub_language_interface.recover_ast(ast);
     }
 }
 
 impl MutableLanguage for JSONLanguageInterface {
-    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, GambitError> {
+    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, MetamorphError> {
         // TODO: Need to update this code with a recognizer that determines if the source is an AST
         // or a source file.
         let ast = load_json_from_file_with_name(file_name)?;
@@ -68,7 +68,7 @@ impl MutableLanguage for JSONLanguageInterface {
     fn select_mutators_for_mutation_types(
         &mut self,
         mutation_types: &Vec<MutationType>,
-    ) -> Result<(), GambitError> {
+    ) -> Result<(), MetamorphError> {
         // Get the mutator factory
         let mutator_factory = self.sub_language_interface.get_mutator_factory();
 
@@ -96,7 +96,7 @@ impl MutableLanguage for JSONLanguageInterface {
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
-    ) -> Result<HashMap<MutationType, usize>, GambitError> {
+    ) -> Result<HashMap<MutationType, usize>, MetamorphError> {
         let mut counter_visitor = MutableNodesCounter::<Value>::new(&self.mutators);
         let actual_ast = self.recover_json_ast(ast)?;
 
@@ -120,7 +120,7 @@ impl MutableLanguage for JSONLanguageInterface {
         mutation_type: &MutationType,
         index: usize,
         rng: &mut Pcg64,
-    ) -> Result<SuperAST, GambitError> {
+    ) -> Result<SuperAST, MetamorphError> {
         let actual_ast = self.recover_json_ast(ast)?;
 
         let mut mutated_ast = actual_ast.clone();
@@ -141,11 +141,11 @@ impl MutableLanguage for JSONLanguageInterface {
         ast: &SuperAST,
         file_name: &str,
         pretty_printer: &mut PrettyPrinter,
-    ) -> Result<(), GambitError> {
+    ) -> Result<(), MetamorphError> {
         let actual_ast = self.recover_json_ast(ast)?;
         let mut f = match std::fs::File::create(file_name) {
             Ok(file) => file,
-            Err(e) => return Err(GambitError::from(e)),
+            Err(e) => return Err(MetamorphError::from(e)),
         };
 
         let mut pretty_print_visitor = self

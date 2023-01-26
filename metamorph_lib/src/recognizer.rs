@@ -4,7 +4,7 @@
 
 use crate::language::Language;
 use crate::language_interface::*;
-use crate::GambitError;
+use crate::MetamorphError;
 
 /// Provides facilities for identifying the programming language used by a source file or an
 /// abstract syntax tree of a program.
@@ -57,14 +57,14 @@ impl Recognizer {
     /// # Arguments
     ///
     /// * `file_name` - The path to the file in the file system.
-    pub fn recognize_file(file_name: &String) -> Result<Language, GambitError> {
+    pub fn recognize_file(file_name: &String) -> Result<Language, MetamorphError> {
         // Try to recognize the language of the source file.  The file might be a source code file
         // or perhaps an AST file.
         let mut recognized_language = Recognizer::recognize_source_file(file_name);
         if recognized_language == None {
             recognized_language = Recognizer::recognize_ast_file(file_name);
             if recognized_language == None {
-                return Err(GambitError::LanguageNotRecognized);
+                return Err(MetamorphError::LanguageNotRecognized);
             }
         }
 

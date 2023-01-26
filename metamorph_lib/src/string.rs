@@ -1,7 +1,7 @@
 //! The `string` module provides extra functionality for [`String`] objects.
 
 /// Trait that adds the ability to remove all the occurrences of a substring.
-pub trait GambitString {
+pub trait MetamorphString {
     /// Remove all instances of `s` in `self`
     ///
     /// # Arguments
@@ -10,7 +10,7 @@ pub trait GambitString {
     fn remove_all(&mut self, s: &str);
 }
 
-impl GambitString for String {
+impl MetamorphString for String {
     fn remove_all(&mut self, s: &str) {
         let mut find_result = self.find(s);
         while find_result != None {

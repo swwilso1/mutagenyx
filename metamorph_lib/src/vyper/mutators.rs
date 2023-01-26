@@ -1,7 +1,7 @@
 //! The `vyper::mutators` module provides the objects that implement the mutation algorithms
 //! for the Vyper ASTs.  The module also provides the factory that implements [`MutatorFactory<t>`].
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json::*;
 use crate::mutation::*;
 use crate::mutator::*;
@@ -25,7 +25,7 @@ use std::fmt::Formatter;
 ///
 /// # Arguments
 /// * `value` - The number that the node should contain.
-fn new_integer_constant_node<I: Integer + fmt::Display>(value: I) -> Result<VyperAST, GambitError> {
+fn new_integer_constant_node<I: Integer + fmt::Display>(value: I) -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999999,
@@ -41,7 +41,7 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(value: I) -> Result<Vype
 /// # Arguments
 ///
 /// * `value` - The number that the node should contain.
-fn new_float_constant_node<F: Float + fmt::Display>(value: F) -> Result<VyperAST, GambitError> {
+fn new_float_constant_node<F: Float + fmt::Display>(value: F) -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999998,
@@ -57,7 +57,7 @@ fn new_float_constant_node<F: Float + fmt::Display>(value: F) -> Result<VyperAST
 /// # Arguments
 ///
 /// * `value` - The boolean value that the node should contain.
-fn new_boolean_constant_node(value: bool) -> Result<VyperAST, GambitError> {
+fn new_boolean_constant_node(value: bool) -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999997,
@@ -72,13 +72,13 @@ fn new_boolean_constant_node(value: bool) -> Result<VyperAST, GambitError> {
 ///
 /// **Important**: The comment node is not a part of the official Vyper AST.
 /// We introduce it here in order to have a way to delete nodes from the tree, but
-/// still have the node text.  Only the GambitAST Vyper pretty-printing code supports
+/// still have the node text.  Only the Metamorph Vyper pretty-printing code supports
 /// comment nodes.
 ///
 /// # Arguments
 ///
 /// * `text` - The string slice referring to the text to put in the comment.
-fn new_comment_node(text: &str) -> Result<VyperAST, GambitError> {
+fn new_comment_node(text: &str) -> Result<VyperAST, MetamorphError> {
     let text_node = json![text];
 
     let node_str = format!(
@@ -94,7 +94,7 @@ fn new_comment_node(text: &str) -> Result<VyperAST, GambitError> {
 }
 
 /// Return a new Pass node.
-fn new_pass_node() -> Result<VyperAST, GambitError> {
+fn new_pass_node() -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999995,
@@ -109,7 +109,7 @@ fn new_pass_node() -> Result<VyperAST, GambitError> {
 /// # Arguments
 ///
 /// * `text` - The reference to the string slice containing the text for the node.
-fn new_string_node(text: &str) -> Result<VyperAST, GambitError> {
+fn new_string_node(text: &str) -> Result<VyperAST, MetamorphError> {
     let node_str = format! {
         "{{\
             \"node_id\": 9999994,
@@ -125,7 +125,7 @@ fn new_string_node(text: &str) -> Result<VyperAST, GambitError> {
 /// # Arguments
 ///
 /// * `node` - The node to use in the return.
-fn new_return_node(node: VyperAST) -> Result<VyperAST, GambitError> {
+fn new_return_node(node: VyperAST) -> Result<VyperAST, MetamorphError> {
     let node_str = format! {
         "{{\
             \"node_id\": 9999993,
@@ -145,7 +145,7 @@ fn new_return_node(node: VyperAST) -> Result<VyperAST, GambitError> {
 /// * `operator` - String ref referring to the operator name.  Usually 'Not'.
 /// * `operand` - The node that lives inside the UnaryOp (the node to which the node apples the
 /// operator).
-fn new_unary_op_node(operator: &str, operand: VyperAST) -> Result<VyperAST, GambitError> {
+fn new_unary_op_node(operator: &str, operand: VyperAST) -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999992,
@@ -184,7 +184,7 @@ impl fmt::Display for ListLikeThing {
 ///
 /// * `size` - The number of None elements in the tuple.
 /// * `kind` - The kind of list like thing to make.
-fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, GambitError> {
+fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, MetamorphError> {
     let mut none_array: Vec<VyperAST> = vec![];
     for _i in 0..size {
         let node_str = format!(

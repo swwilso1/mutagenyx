@@ -2,7 +2,7 @@
 //! module for the purpose of generating mutations. The programming language abstraction provides
 //! common APIs that a programming language module can implement and thereby plug-in to the library.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
@@ -25,10 +25,10 @@ pub trait MutableLanguage {
     /// # Arguments
     ///
     /// * `file_name` - The string slice referencing the text containing the file name.
-    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, GambitError>;
+    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, MetamorphError>;
 
     /// Prepare language specific mutator objects that will mutate the AST for the requested
-    /// mutation algorithms. The function may return [`GambitError::MutationAlgorithmNotSupported`].
+    /// mutation algorithms. The function may return [`MetamorphError::MutationAlgorithmNotSupported`].
     ///
     /// # Arguments
     ///
@@ -37,7 +37,7 @@ pub trait MutableLanguage {
     fn select_mutators_for_mutation_types(
         &mut self,
         mutation_types: &Vec<MutationType>,
-    ) -> Result<(), GambitError>;
+    ) -> Result<(), MetamorphError>;
 
     /// Traverse the abstract syntax tree `ast` to count the number of nodes in the tree that
     /// each requested mutation algorithm can mutate.  Return a [`HashMap`] of counts by
@@ -53,7 +53,7 @@ pub trait MutableLanguage {
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
-    ) -> Result<HashMap<MutationType, usize>, GambitError>;
+    ) -> Result<HashMap<MutationType, usize>, MetamorphError>;
 
     /// Make a copy of `ast`, traverse the copy and mutate one node in the AST using the
     /// `mutation_type` algorithm.  Return the mutated AST encapsulated in a [`SuperAST`] object.
@@ -73,7 +73,7 @@ pub trait MutableLanguage {
         mutation_type: &MutationType,
         index: usize,
         rng: &mut Pcg64,
-    ) -> Result<SuperAST, GambitError>;
+    ) -> Result<SuperAST, MetamorphError>;
 
     /// Pretty-print the contents of `ast` to the file named in `file_name`.
     ///
@@ -88,7 +88,7 @@ pub trait MutableLanguage {
         ast: &SuperAST,
         file_name: &str,
         pretty_printer: &mut PrettyPrinter,
-    ) -> Result<(), GambitError>;
+    ) -> Result<(), MetamorphError>;
 
     /// Return the file extension that a caller should append to a file name that the caller will
     /// later pass to `pretty_print_mutated_ast_to_file`.
@@ -126,7 +126,7 @@ impl LanguageInterface {
     /// * language - The language that the return object should support.
     pub fn get_language_object_for_language(
         language: &Language,
-    ) -> Result<Box<dyn MutableLanguage>, GambitError> {
+    ) -> Result<Box<dyn MutableLanguage>, MetamorphError> {
         match language {
             Language::Solidity => Ok(Box::new(JSONLanguageInterface::new(
                 get_solidity_sub_language_interface(),
@@ -139,7 +139,7 @@ impl LanguageInterface {
 
     /// Return a list of dynamic objects that conform to [`MutableLanguage`].  The list will contain
     /// one object for each language supported by the library.
-    pub fn get_list_of_all_language_objects() -> Result<Vec<Box<dyn MutableLanguage>>, GambitError>
+    pub fn get_list_of_all_language_objects() -> Result<Vec<Box<dyn MutableLanguage>>, MetamorphError>
     {
         let mut language_list: Vec<Box<dyn MutableLanguage>> = vec![];
         language_list.push(Box::new(JSONLanguageInterface::new(

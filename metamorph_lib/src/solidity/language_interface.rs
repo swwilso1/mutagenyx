@@ -1,7 +1,7 @@
 //! The `solidity::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_solidity_sub_language_interface`.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::mutator::*;
@@ -24,21 +24,21 @@ pub fn get_solidity_sub_language_interface<W: Write>() -> Box<dyn JSONLanguageDe
 pub struct SolidityLanguageSubInterface {}
 
 impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubInterface {
-    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, GambitError> {
+    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         let solidity_ast = match super_ast {
             SuperAST::Solidity(sast) => sast,
-            _ => return Err(GambitError::ASTTypeNotSupported),
+            _ => return Err(MetamorphError::ASTTypeNotSupported),
         };
         Ok(solidity_ast)
     }
 
-    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, GambitError> {
+    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, MetamorphError> {
         if <SolidityLanguageSubInterface as JSONLanguageDelegate<W>>::json_is_language_ast_json(
             self, &value,
         ) {
             return Ok(SuperAST::Solidity(value));
         }
-        Err(GambitError::LanguageNotRecognized)
+        Err(MetamorphError::LanguageNotRecognized)
     }
 
     fn get_mutator_factory(&self) -> Box<dyn MutatorFactory<Value>> {

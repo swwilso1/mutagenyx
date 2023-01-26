@@ -3,12 +3,12 @@
 //! that you can easily compare with the generated mutants using a diff tool.
 
 use crate::PrettyPrintCLArgs;
-use gambit_lib::error::GambitError;
-use gambit_lib::language_interface::*;
-use gambit_lib::pretty_printer::PrettyPrinter;
-use gambit_lib::recognizer::Recognizer;
-use gambit_lib::super_ast::language_for_ast;
-use gambit_lib::SuperAST;
+use metamorph_lib::error::MetamorphError;
+use metamorph_lib::language_interface::*;
+use metamorph_lib::pretty_printer::PrettyPrinter;
+use metamorph_lib::recognizer::Recognizer;
+use metamorph_lib::super_ast::language_for_ast;
+use metamorph_lib::SuperAST;
 use std::{path::PathBuf, str::FromStr};
 
 /// Iterate through the files in the args.file_names vector and pretty-print each file.
@@ -30,7 +30,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 ///
 /// * `file_name` - The path to the file to pretty-print in the file system.
 /// * `output_directory` - The path to the location to save the pretty-printed file.
-pub fn pretty_print_file(file_name: &String, output_directory: &String) -> Result<(), GambitError> {
+pub fn pretty_print_file(file_name: &String, output_directory: &String) -> Result<(), MetamorphError> {
     // Convert the output_directory to a PathBuf
     let out_dir = PathBuf::from_str(output_directory).unwrap();
 
@@ -57,7 +57,7 @@ pub fn pretty_print_file(file_name: &String, output_directory: &String) -> Resul
 
     // Try to create the output directory:
     if let Err(e) = std::fs::create_dir_all(outfile_name.parent().unwrap()) {
-        return Err(GambitError::from(e));
+        return Err(MetamorphError::from(e));
     }
 
     // Create a pretty printer for printing this AST.
@@ -82,7 +82,7 @@ pub fn pretty_print_ast(
     ast: &SuperAST,
     file_name: &str,
     output_dir: &PathBuf,
-) -> Result<(), GambitError> {
+) -> Result<(), MetamorphError> {
     let language = language_for_ast(ast);
 
     let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
@@ -99,7 +99,7 @@ pub fn pretty_print_ast(
 
     // Try to create the output directory:
     if let Err(e) = std::fs::create_dir_all(outfile_name.parent().unwrap()) {
-        return Err(GambitError::from(e));
+        return Err(MetamorphError::from(e));
     }
 
     // Create a pretty printer for printing this AST.

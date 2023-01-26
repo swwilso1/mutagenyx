@@ -1,5 +1,5 @@
 [package]
-name = "gambit"
+name = "metamorph"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "3.0.7", features = ["derive"] }
 env_logger = { version = "0.10.0", default-features = false }
-gambit_lib = { path = "../gambit_lib" }
+metamorph_lib = { path = "../metamorph_lib" }
 log = "0.4"
 rand = "0.7"
 rand_pcg = "0.2"

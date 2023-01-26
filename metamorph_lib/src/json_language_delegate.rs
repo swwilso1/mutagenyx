@@ -1,7 +1,7 @@
 //! The `json_language_delegate` provides an interface to language-specific behavior for each
 //! language the has a JSON encoded AST.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use crate::language::Language;
 use crate::mutator::MutatorFactory;
 use crate::pretty_printer::PrettyPrinter;
@@ -21,7 +21,7 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// # Arguments
     ///
     /// * `super_ast` - The SuperAST object that internally holds the JSON AST.
-    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, GambitError>;
+    fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, MetamorphError>;
 
     /// Checks a JSON AST for conformance to the language AST and if the JSON conforms,
     /// return the SuperAST wrapped JSON AST.
@@ -29,7 +29,7 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// # Arguments
     ///
     /// * `value` - The JSON AST.
-    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, GambitError>;
+    fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, MetamorphError>;
 
     /// Get a language-specific object that conforms to the [`MutatorFactory<T>`] trait for getting
     /// access to language specific [`crate::mutator::Mutator<T>`] objects.

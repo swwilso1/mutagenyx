@@ -1,6 +1,6 @@
 //! The `generator_parameters` module provides the definition and functions for [`GeneratorParameters`].
 
-use gambit_lib::mutation::MutationType;
+use metamorph_lib::mutation::MutationType;
 use rand_pcg::*;
 use std::path::PathBuf;
 

@@ -1,7 +1,7 @@
 //! The `mutation` module contains the enumeration of the mutation algorithms supported by the
 //! library.
 
-use crate::error::GambitError;
+use crate::error::MetamorphError;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
@@ -220,7 +220,7 @@ pub enum MutationType {
 
 /// Provide the ability to convert a string value into a [`MutationType`] enum.
 impl FromStr for MutationType {
-    type Err = GambitError;
+    type Err = MetamorphError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -246,7 +246,7 @@ impl FromStr for MutationType {
             "Require" => Ok(MutationType::Solidity(SolidityMutation::Require)),
             "UncheckedBlock" => Ok(MutationType::Solidity(SolidityMutation::UncheckedBlock)),
 
-            _last => Err(GambitError::MutationAlgorithmNotSupported(String::from(
+            _last => Err(MetamorphError::MutationAlgorithmNotSupported(String::from(
                 _last,
             ))),
         }
