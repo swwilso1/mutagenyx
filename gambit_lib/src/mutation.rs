@@ -281,3 +281,27 @@ impl fmt::Display for MutationType {
         write!(f, "{}", text)
     }
 }
+
+/// Return a list of all the available mutation algorithms.
+pub fn all_mutation_algorithms() -> Vec<MutationType> {
+    let algorithms = vec![
+        MutationType::Generic(GenericMutation::ArithmeticBinaryOp),
+        MutationType::Generic(GenericMutation::LogicalBinaryOp),
+        MutationType::Generic(GenericMutation::BitwiseBinaryOp),
+        MutationType::Generic(GenericMutation::BitshiftBinaryOp),
+        MutationType::Generic(GenericMutation::ComparisonBinaryOp),
+        MutationType::Generic(GenericMutation::Assignment),
+        MutationType::Generic(GenericMutation::DeleteStatement),
+        MutationType::Generic(GenericMutation::FunctionCall),
+        MutationType::Generic(GenericMutation::IfStatement),
+        MutationType::Generic(GenericMutation::Integer),
+        MutationType::Generic(GenericMutation::FunctionSwapArguments),
+        MutationType::Generic(GenericMutation::OperatorSwapArguments),
+        MutationType::Generic(GenericMutation::LinesSwap),
+        MutationType::Generic(GenericMutation::UnaryOp),
+        MutationType::Solidity(SolidityMutation::Require),
+        MutationType::Solidity(SolidityMutation::UncheckedBlock),
+    ];
+
+    algorithms
+}

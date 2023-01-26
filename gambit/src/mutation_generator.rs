@@ -5,7 +5,7 @@ use crate::generator_parameters::GeneratorParameters;
 use crate::MutateCLArgs;
 use gambit_lib::error::GambitError;
 use gambit_lib::language_interface::*;
-use gambit_lib::mutation::MutationType;
+use gambit_lib::mutation::{all_mutation_algorithms, MutationType};
 use gambit_lib::pretty_printer::PrettyPrinter;
 use gambit_lib::recognizer::Recognizer;
 use gambit_lib::super_ast::SuperAST;
@@ -22,12 +22,19 @@ use std::{path::PathBuf, str::FromStr};
 ///
 /// * `args` - The command line arguments that control the mutation algorithm.
 pub fn generate_mutants(args: MutateCLArgs) {
-    // Change the algorithm strings from the command line into actual MutationType values.
-    let mutations = args
-        .mutations
-        .iter()
-        .map(|m| MutationType::from_str(m).unwrap())
-        .collect();
+    // Select the mutation algorithms to use while generating mutations.  Args.all_mutations takes
+    // precedence over individual algorithms selected in args.mutations.
+    let mutations: Vec<MutationType>;
+    if args.all_mutations {
+        mutations = all_mutation_algorithms();
+    } else {
+        // Change the algorithm strings from the command line into actual MutationType values.
+        mutations = args
+            .mutations
+            .iter()
+            .map(|m| MutationType::from_str(m).unwrap())
+            .collect();
+    }
 
     let mut rng = Pcg64::seed_from_u64(args.rng_seed);
 

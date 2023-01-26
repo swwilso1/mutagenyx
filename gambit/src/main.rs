@@ -32,8 +32,12 @@ pub struct MutateCLArgs {
     pub num_mutants: usize,
 
     /// Mutation algorithms to enable
-    #[clap(long, required = true, multiple = true)]
+    #[clap(long, multiple = true)]
     pub mutations: Vec<String>,
+
+    /// Enable all mutation algorithms, takes precedence over --mutations
+    #[clap(short, long)]
+    pub all_mutations: bool,
 }
 
 /// Pretty-print sub-command command line arguments.
