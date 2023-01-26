@@ -163,6 +163,27 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Gam
     Ok(tuple_node)
 }
 
+/// Helper function to wrap an array of nodes in a Solidity UncheckedBlock node.
+///
+/// # Arguments
+///
+/// * `array` - The vector of [`SolidityAST`] nodes to place in the UncheckedBlock
+fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, GambitError> {
+    let node_array = json![array];
+
+    let node_str = format!(
+        "{{\
+            \"id\": 9999994,
+            \"nodeType\": \"UncheckedBlock\",
+            \"statements\": null
+        }}"
+    );
+
+    let mut unchecked_node = new_json_node(&node_str)?;
+    unchecked_node.set_node_for_key("statements", node_array);
+    Ok(unchecked_node)
+}
+
 /// The object that implements mutations for binary expressions.
 ///
 /// Multiple mutation algorithms operate on binary expressions.  Each of those
@@ -1158,6 +1179,78 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
     }
 }
 
+/// Implements the unchecked block mutation algorithm for Solidity programs.
+///
+/// The algorithm selects a random expression statement from a Block and replaces
+/// the statement with unchecked{ statement; }.  The algorithm will not select a
+/// statement that contains a Return.
+struct SolidityUncheckedBlockMutator {}
+
+impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "Block" {
+                if let Some(statements_node) = node.borrow_value_for_key("statements") {
+                    if let Some(statements_array) = statements_node.as_array() {
+                        if statements_array.len() > 0 {
+                            let mut have_return_statement = false;
+                            for value in statements_array {
+                                if let Some(value_node_type) = value.get_str_for_key("nodeType") {
+                                    if value_node_type == "Return" {
+                                        have_return_statement = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If the Block node has a return statement, we need at least two statements
+                            // in order for the algorithm to work.  We do not wrap a return statement
+                            // in unchecked{}.
+                            if (have_return_statement && statements_array.len() >= 2)
+                                || (!have_return_statement)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+        if let Some(mut statements_node) = node.take_value_for_key("statements") {
+            if let Some(statements_array) = statements_node.as_array_mut() {
+                // Pick a random statement, but avoid Return statements.
+                let mut node_to_wrap: SolidityAST;
+                let mut index: usize;
+                loop {
+                    index = (rand.next_u64() % statements_array.len() as u64) as usize;
+                    node_to_wrap = statements_array.remove(index);
+                    if let Some(node_type) = node_to_wrap.get_str_for_key("nodeType") {
+                        if node_type == "Return" {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+                let wrapped_array = vec![node_to_wrap];
+                let wrapped_node = match new_unchecked_block_node(wrapped_array) {
+                    Ok(n) => n,
+                    Err(_e) => return,
+                };
+                statements_array.insert(index, wrapped_node);
+                node.set_node_for_key("statements", statements_node);
+            }
+        }
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Solidity(SolidityMutation::UncheckedBlock)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct SolidityMutatorFactory {}
@@ -1202,7 +1295,9 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
             },
             MutationType::Solidity(t) => match t {
                 SolidityMutation::Require => Some(Box::new(SolidityRequireMutator::new())),
-                _ => None,
+                SolidityMutation::UncheckedBlock => {
+                    Some(Box::new(SolidityUncheckedBlockMutator {}))
+                }
             },
         }
     }
