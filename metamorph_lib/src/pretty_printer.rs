@@ -213,7 +213,7 @@ impl PrettyPrinter {
     ///
     /// * `stream` - The [`Write`] object that will receive the text.
     /// * `s` - The text to write.
-    /// * `next_line_text` - Sometimes, when the printer breaks a line of flowablew text and
+    /// * `next_line_text` - Sometimes, when the printer breaks a line of flowable text and
     /// writes the remaining text on the next line, the context requires that the next line start
     /// with a particular set of content.  `next_line_text` contains the text that the printer should
     /// write in the event that it breaks the flowable text into mutliple lines.

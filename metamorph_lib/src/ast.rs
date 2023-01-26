@@ -4,7 +4,7 @@
 
 use crate::visitor::*;
 
-/// Trait used to inspect a conforming AST object for information necessary to travers the syntax
+/// Trait used to inspect a conforming AST object for information necessary to traverse the syntax
 /// tree.
 pub trait SimpleAST<N> {
     /// Return a reference to the node of the syntax tree.

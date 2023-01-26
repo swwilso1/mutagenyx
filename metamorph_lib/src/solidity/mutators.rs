@@ -1,5 +1,5 @@
 //! The `solidity::mutators` module provides the objects that implement the mutation algorithms
-//! for the Solidity ASTs.  The module also provides the factory that implements [`MutatorFactory<t>`].
+//! for the Solidity ASTs.  The module also provides the factory that implements [`MutatorFactory<T>`].
 
 use crate::error::MetamorphError;
 use crate::json::{new_json_node, JSONMutate};
