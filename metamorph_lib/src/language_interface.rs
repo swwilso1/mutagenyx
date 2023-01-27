@@ -7,6 +7,7 @@ use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
 use crate::pretty_printer::PrettyPrinter;
+use crate::recognizer::FileType;
 use crate::solidity::language_interface::get_solidity_sub_language_interface;
 use crate::super_ast::SuperAST;
 use crate::vyper::language_interface::get_vyper_sub_language_interface;
@@ -25,7 +26,11 @@ pub trait MutableLanguage {
     /// # Arguments
     ///
     /// * `file_name` - The string slice referencing the text containing the file name.
-    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, MetamorphError>;
+    fn load_ast_from_file(
+        &mut self,
+        file_name: &str,
+        file_type: &FileType,
+    ) -> Result<SuperAST, MetamorphError>;
 
     /// Prepare language specific mutator objects that will mutate the AST for the requested
     /// mutation algorithms. The function may return [`MetamorphError::MutationAlgorithmNotSupported`].
@@ -102,6 +107,13 @@ pub trait MutableLanguage {
     /// * `file_name` - The string slice referencing the text containing the file name.
     fn file_is_language_source_file(&self, file_name: &str) -> bool;
 
+    /// Convert the contents of the source file named by `file_name` to an AST object that the
+    /// mutators can use.
+    ///
+    /// # Arguments
+    /// * `file_name` - The path of the source file in the file system.
+    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError>;
+
     /// Check that the contents of the file named by `file_name` contain an AST representation
     /// of a program for the language implementing the trait.
     ///
@@ -139,8 +151,8 @@ impl LanguageInterface {
 
     /// Return a list of dynamic objects that conform to [`MutableLanguage`].  The list will contain
     /// one object for each language supported by the library.
-    pub fn get_list_of_all_language_objects() -> Result<Vec<Box<dyn MutableLanguage>>, MetamorphError>
-    {
+    pub fn get_list_of_all_language_objects(
+    ) -> Result<Vec<Box<dyn MutableLanguage>>, MetamorphError> {
         let mut language_list: Vec<Box<dyn MutableLanguage>> = vec![];
         language_list.push(Box::new(JSONLanguageInterface::new(
             get_solidity_sub_language_interface(),

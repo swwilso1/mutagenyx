@@ -30,28 +30,35 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 ///
 /// * `file_name` - The path to the file to pretty-print in the file system.
 /// * `output_directory` - The path to the location to save the pretty-printed file.
-pub fn pretty_print_file(file_name: &String, output_directory: &String) -> Result<(), MetamorphError> {
+pub fn pretty_print_file(
+    file_name: &String,
+    output_directory: &String,
+) -> Result<(), MetamorphError> {
     // Convert the output_directory to a PathBuf
     let out_dir = PathBuf::from_str(output_directory).unwrap();
 
     // Recognize the language.
-    let language = Recognizer::recognize_file(file_name)?;
+    let recognize_result = Recognizer::recognize_file(file_name)?;
 
     // Get the language interface object for the language.
-    let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
+    let mut language_object =
+        LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
     // TODO: We need to have the module that loads either source or AST.
     // Load the ast.
-    let ast = language_object.load_ast_from_file(file_name)?;
+    let ast = language_object.load_ast_from_file(file_name, &recognize_result.file_type)?;
 
     // Calculate the name of the output file.
     let input_file_path = PathBuf::from(file_name);
     let base_file_name = input_file_path.file_name().unwrap();
-    let outfile_name = out_dir.join(
-        String::from(base_file_name.to_str().unwrap())
-            + "."
-            + language_object.get_extension_for_output_file(),
-    );
+    let file_extension = String::from(".") + language_object.get_extension_for_output_file();
+    let sfile_name = String::from(file_name);
+    let extension = if sfile_name.ends_with(file_extension.as_str()) {
+        ""
+    } else {
+        file_extension.as_str()
+    };
+    let outfile_name = out_dir.join(String::from(base_file_name.to_str().unwrap()) + extension);
 
     let outfile = String::from(outfile_name.to_str().unwrap());
 
@@ -89,11 +96,15 @@ pub fn pretty_print_ast(
 
     let input_file_name = PathBuf::from(file_name);
     let base_file_name = input_file_name.file_name().unwrap();
-    let outfile_name = output_dir.join(
-        String::from(base_file_name.to_str().unwrap())
-            + "."
-            + language_object.get_extension_for_output_file(),
-    );
+    let file_extension = String::from(".") + language_object.get_extension_for_output_file();
+    let sfile_name = String::from(file_name);
+    let extension = if sfile_name.ends_with(file_extension.as_str()) {
+        ""
+    } else {
+        file_extension.as_str()
+    };
+
+    let outfile_name = output_dir.join(String::from(base_file_name.to_str().unwrap()) + extension);
 
     let outfile = String::from(outfile_name.to_str().unwrap());
 

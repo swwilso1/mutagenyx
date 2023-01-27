@@ -74,14 +74,14 @@ static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
-    let language = Recognizer::recognize_file(&params.file_name)?;
+    let recognize_result = Recognizer::recognize_file(&params.file_name)?;
 
-    let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
+    let mut language_object =
+        LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
-    // TODO: We need to have the module that loads either source or AST.
-    let ast = language_object.load_ast_from_file(&params.file_name)?;
+    let ast = language_object.load_ast_from_file(&params.file_name, &recognize_result.file_type)?;
 
-    let _select_result = language_object.select_mutators_for_mutation_types(&params.mutations)?;
+    language_object.select_mutators_for_mutation_types(&params.mutations)?;
 
     let mutable_nodes_table = language_object.count_mutable_nodes(&ast)?;
 
@@ -146,9 +146,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             let input_file_path = PathBuf::from(&params.file_name);
             let base_file_name = input_file_path.file_name().unwrap();
             let outfile_name = params.output_directory.join(
-                String::from(base_file_name.to_str().unwrap())
-                    + "_"
-                    + &files_written.to_string()
+                String::from(base_file_name.to_str().unwrap()) + "_" + &files_written.to_string(),
             );
 
             let outfile = String::from(outfile_name.to_str().unwrap());

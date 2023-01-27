@@ -6,6 +6,35 @@ use crate::language::Language;
 use crate::language_interface::*;
 use crate::MetamorphError;
 
+/// Enumeration of possible file types that a [`Recognizer`] can identify.
+#[derive(PartialEq)]
+pub enum FileType {
+    Source,
+    AST,
+}
+
+/// Result type to use for results from [`Recognizer`] functions.
+#[derive(PartialEq)]
+pub struct RecognizeResult {
+    pub language: Language,
+    pub file_type: FileType,
+}
+
+impl RecognizeResult {
+    /// Create a new [`RecognizeResult`].
+    ///
+    /// # Arguments
+    ///
+    /// * `language` - The recognized [`Language`].
+    /// * `file_type` - The recognized [`FileType`].
+    fn new(language: Language, file_type: FileType) -> RecognizeResult {
+        RecognizeResult {
+            language,
+            file_type,
+        }
+    }
+}
+
 /// Provides facilities for identifying the programming language used by a source file or an
 /// abstract syntax tree of a program.
 pub struct Recognizer {}
@@ -16,7 +45,7 @@ impl Recognizer {
     /// # Arguments
     ///
     /// * `file_name` - Path to the file in the file system.
-    pub fn recognize_source_file(file_name: &String) -> Option<Language> {
+    pub fn recognize_source_file(file_name: &String) -> Option<RecognizeResult> {
         let language_objects = match LanguageInterface::get_list_of_all_language_objects() {
             Ok(l) => l,
             Err(_) => return None,
@@ -24,7 +53,10 @@ impl Recognizer {
 
         for language_object in language_objects {
             if language_object.file_is_language_source_file(file_name) {
-                return Some(language_object.implements());
+                return Some(RecognizeResult::new(
+                    language_object.implements(),
+                    FileType::Source,
+                ));
             }
         }
 
@@ -36,7 +68,7 @@ impl Recognizer {
     /// # Arguments
     ///
     /// * `file_name` - The path to the file in the file system.
-    pub fn recognize_ast_file(file_name: &String) -> Option<Language> {
+    pub fn recognize_ast_file(file_name: &String) -> Option<RecognizeResult> {
         let language_objects = match LanguageInterface::get_list_of_all_language_objects() {
             Ok(l) => l,
             Err(_) => return None,
@@ -44,7 +76,10 @@ impl Recognizer {
 
         for language_object in language_objects {
             if language_object.file_is_language_ast_file(file_name) {
-                return Some(language_object.implements());
+                return Some(RecognizeResult::new(
+                    language_object.implements(),
+                    FileType::AST,
+                ));
             }
         }
 
@@ -57,7 +92,7 @@ impl Recognizer {
     /// # Arguments
     ///
     /// * `file_name` - The path to the file in the file system.
-    pub fn recognize_file(file_name: &String) -> Result<Language, MetamorphError> {
+    pub fn recognize_file(file_name: &String) -> Result<RecognizeResult, MetamorphError> {
         // Try to recognize the language of the source file.  The file might be a source code file
         // or perhaps an AST file.
         let mut recognized_language = Recognizer::recognize_source_file(file_name);

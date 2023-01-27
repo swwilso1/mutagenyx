@@ -174,7 +174,11 @@ impl PrettyPrinter {
     /// will output:
     ///
     /// "The quick brown dog..."
-    pub fn write_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), MetamorphError> {
+    pub fn write_string<W: Write>(
+        &mut self,
+        stream: &mut W,
+        s: &str,
+    ) -> Result<(), MetamorphError> {
         let composed_string = String::from("\"") + s + "\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
@@ -295,7 +299,11 @@ impl PrettyPrinter {
     ///
     /// * `stream` - The [`Write`] object that will receive the text.
     /// * `s` - The string slice referring to the text to write to `stream`.
-    fn write_basic_string<W: Write>(&mut self, stream: &mut W, s: &str) -> Result<(), MetamorphError> {
+    fn write_basic_string<W: Write>(
+        &mut self,
+        stream: &mut W,
+        s: &str,
+    ) -> Result<(), MetamorphError> {
         if let Err(e) = write!(stream, "{s}") {
             return Err(MetamorphError::from(e));
         }

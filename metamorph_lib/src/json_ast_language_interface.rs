@@ -13,6 +13,7 @@ use crate::mutation::MutationType;
 use crate::mutation_visitor::*;
 use crate::mutator::*;
 use crate::pretty_printer::PrettyPrinter;
+use crate::recognizer::FileType;
 use crate::super_ast::SuperAST;
 use rand_pcg::Pcg64;
 use serde_json::Value;
@@ -56,13 +57,22 @@ impl JSONLanguageInterface {
 }
 
 impl MutableLanguage for JSONLanguageInterface {
-    fn load_ast_from_file(&mut self, file_name: &str) -> Result<SuperAST, MetamorphError> {
-        // TODO: Need to update this code with a recognizer that determines if the source is an AST
-        // or a source file.
-        let ast = load_json_from_file_with_name(file_name)?;
+    fn load_ast_from_file(
+        &mut self,
+        file_name: &str,
+        file_type: &FileType,
+    ) -> Result<SuperAST, MetamorphError> {
+        match file_type {
+            FileType::Source => self
+                .sub_language_interface
+                .convert_source_file_to_ast(file_name),
+            FileType::AST => {
+                let ast = load_json_from_file_with_name(file_name)?;
 
-        // Defer the conversion of the JSON to the AST to the delegate.
-        self.sub_language_interface.get_value_as_super_ast(ast)
+                // Defer the conversion of the JSON to the AST to the delegate.
+                self.sub_language_interface.get_value_as_super_ast(ast)
+            }
+        }
     }
 
     fn select_mutators_for_mutation_types(
@@ -162,10 +172,15 @@ impl MutableLanguage for JSONLanguageInterface {
         return self.sub_language_interface.get_file_extension();
     }
 
-    fn file_is_language_source_file(&self, _file_name: &str) -> bool {
-        // TODO: Implement check of source file to see that it is a solidity source file.
-        // Probably need to run it through the compiler.
-        false
+    fn file_is_language_source_file(&self, file_name: &str) -> bool {
+        return self
+            .sub_language_interface
+            .file_is_language_source_file(file_name);
+    }
+
+    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError> {
+        self.sub_language_interface
+            .convert_source_file_to_ast(file_name)
     }
 
     fn file_is_language_ast_file(&self, file_name: &str) -> bool {

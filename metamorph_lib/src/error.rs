@@ -37,6 +37,10 @@ pub enum MetamorphError {
     /// An error indicating that a language does not implement a mutation algorithm.
     #[error("Language does not support mutation algorithm: {0}")]
     MutationAlgorithmNotSupported(String),
+
+    /// An error indicating that source file did not compile.
+    #[error("Source file {0} would not compile")]
+    SourceDoesNotCompile(String),
 }
 
 impl From<std::io::Error> for MetamorphError {

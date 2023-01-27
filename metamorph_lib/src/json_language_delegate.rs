@@ -55,6 +55,20 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// * `value` - The JSON AST.
     fn json_is_language_ast_json(&self, value: &Value) -> bool;
 
+    /// Convert the source code file in `file_name` to a SuperAST.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_name` - The path to the source file in the file system
+    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError>;
+
+    /// Return true if the source file contains a program in the language.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_name` - The location of the file on disk
+    fn file_is_language_source_file(&self, file_name: &str) -> bool;
+
     /// Return the Language value implemented by the trait object.
     fn implements(&self) -> Language;
 
