@@ -14,6 +14,7 @@ pub struct PrettyPrinter {
     pub page_width: usize,
     pub indent: usize,
     pub newline: String,
+    pub max_indent: usize,
 }
 
 impl PrettyPrinter {
@@ -25,9 +26,15 @@ impl PrettyPrinter {
     /// * `page_width` - The number of spaces to use for the column width of the document.  If the
     /// column-width is small, the pretty-printer may overflow the `page_width` in order to prevent
     /// introducing line breaks inside of tokens that exceed the length of `page_width`.
-    /// * `newline` - The string slice to use for newline characters.  For unix-like platforms, use
-    /// "\n".  For Windows, use "\r\n".
-    pub fn new(tab_width: usize, page_width: usize, newline: &str) -> PrettyPrinter {
+    pub fn new(tab_width: usize, page_width: usize) -> PrettyPrinter {
+        let newline = if cfg!(target_os = "windows") {
+            "\r\n"
+        } else {
+            "\n"
+        };
+
+        let max_indent = (page_width as f64 / tab_width as f64) - 1.0;
+
         PrettyPrinter {
             row: 1,
             column: 1,
@@ -35,23 +42,40 @@ impl PrettyPrinter {
             page_width,
             indent: 0,
             newline: String::from(newline),
+            max_indent: max_indent as usize,
         }
     }
 
-    /// Increase the indentation level.
+    /// Increase the indentation level by 1.
     ///
-    /// When the printer emits the next newline character and starts a new-line, it will first print
-    /// indentations based on the number of indentations recorded in the indentation level.
+    /// The function will not increase the indent level past the page width.
     pub fn increase_indent(&mut self) {
-        let max_indent = (self.page_width as f64 / self.indent as f64) - 1.0;
-        if self.indent >= max_indent as usize {
-            self.indent = max_indent as usize;
+        if self.indent >= self.max_indent {
+            self.indent = self.max_indent;
         } else {
             self.indent += 1;
         }
     }
 
-    /// Decrease the indentation level.
+    /// Increase the indentation by `amount`.
+    ///
+    /// Use `increase_indent_by` when using a tab size of 1.  The function will not increase
+    /// the indent level past the page width.
+    ///
+    /// # Arguments
+    ///
+    /// * `amount` - The number of indents to add to the current indent value.
+    pub fn increase_indent_by(&mut self, amount: usize) {
+        if (self.indent + amount) <= self.max_indent {
+            self.indent += amount;
+        } else {
+            self.indent = self.max_indent;
+        }
+    }
+
+    /// Decrease the indentation level by 1.
+    ///
+    /// The function will not decrease the indent lower than 0.
     pub fn decrease_indent(&mut self) {
         if self.indent == 0 {
             return;
@@ -59,23 +83,48 @@ impl PrettyPrinter {
         self.indent -= 1;
     }
 
+    /// Decrease the indent level by `amount`.
+    ///
+    /// Use `decrease_indent_by` with a tab width of 1.  The function will
+    /// not decrease the indent level below zero.
+    ///
+    /// # Arguments
+    ///
+    /// * `amount` - The number of indents to remove from the current
+    /// indent level.
+    pub fn decrease_indent_by(&mut self, amount: usize) {
+        if amount > self.indent {
+            self.indent = 0;
+        } else {
+            self.indent -= amount;
+        }
+    }
+
     /// Return the length of the current indentation in spaces.
     fn indent_length(&self) -> usize {
         self.indent * self.tab_width
     }
 
-    /// Return the string slice that represents the space characters that make up the indentation
-    /// prefix for a new line.
-    pub fn indent_string(&self) -> String {
+    /// Helper function for generating a string containing `size` number of spaces.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - The number of spaces to have in the string.
+    fn space_string_for_length(&self, size: usize) -> String {
         // There is probably a String library method that can do this in one function call.
         let mut s = String::new();
-        let size = self.indent_length();
         let mut i = 0;
         while i < size {
             s += " ";
             i += 1;
         }
         s
+    }
+
+    /// Return the string slice that represents the space characters that make up the indentation
+    /// prefix for a new line.
+    pub fn indent_string(&self) -> String {
+        self.space_string_for_length(self.indent_length())
     }
 
     /// Write out the indentation string to the `stream`.
@@ -118,6 +167,17 @@ impl PrettyPrinter {
             self.write_indent(stream)?;
         }
         self.write_basic_string(stream, " ")?;
+        Ok(())
+    }
+
+    pub fn write_spaces<W: Write>(
+        &mut self,
+        stream: &mut W,
+        spaces: usize,
+    ) -> Result<(), MetamorphError> {
+        for _ in 0..spaces {
+            self.write_space(stream)?;
+        }
         Ok(())
     }
 
@@ -338,6 +398,20 @@ pub fn write_space<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
     }
 }
 
+/// Helper function to write `amount` spaces to `stream` while suppressing errors.  The function
+/// sends errors to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The [`PrettyPrinter`] that will write the spaces to the stream.
+/// * `stream` - The [`Write`] object that will receive the spaces.
+/// * `amount` - The number of spaces to write to `stream`.
+pub fn write_spaces<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, amount: usize) {
+    if let Err(e) = printer.write_spaces(stream, amount) {
+        log::info!("Unable to write space characters: {e}");
+    }
+}
+
 /// Helper function to write a newline to `stream` while suppressing any errors.  The function
 /// sends errors to the log.
 ///
@@ -415,5 +489,54 @@ pub fn write_flowable_text<W: Write>(
 ) {
     if let Err(e) = printer.write_flowable_text(stream, s, next_line_text) {
         log::info!("Unable to write punctuation: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_printer_increase_indent() {
+        let mut printer = PrettyPrinter::new(1, 3);
+        printer.increase_indent();
+        assert_eq!(printer.indent_length(), 1);
+        printer.increase_indent();
+        assert_eq!(printer.indent_length(), 2);
+        printer.increase_indent();
+        assert_eq!(printer.indent_length(), 2);
+    }
+
+    #[test]
+    fn test_printer_increase_indent_by() {
+        let mut printer = PrettyPrinter::new(1, 3);
+        printer.increase_indent_by(2);
+        assert_eq!(printer.indent_length(), 2);
+        printer.increase_indent_by(5);
+        assert_eq!(printer.indent_length(), 2);
+    }
+
+    #[test]
+    fn test_printer_decrease_indent() {
+        let mut printer = PrettyPrinter::new(1, 3);
+        printer.increase_indent_by(3);
+        assert_eq!(printer.indent_length(), 2);
+        printer.decrease_indent();
+        assert_eq!(printer.indent_length(), 1);
+        printer.decrease_indent();
+        assert_eq!(printer.indent_length(), 0);
+        printer.decrease_indent();
+        assert_eq!(printer.indent_length(), 0);
+    }
+
+    #[test]
+    fn test_printer_decrease_indent_by() {
+        let mut printer = PrettyPrinter::new(1, 3);
+        printer.increase_indent_by(5);
+        assert_eq!(printer.indent_length(), 2);
+        printer.decrease_indent_by(2);
+        assert_eq!(printer.indent_length(), 0);
+        printer.decrease_indent_by(10);
+        assert_eq!(printer.indent_length(), 0);
     }
 }

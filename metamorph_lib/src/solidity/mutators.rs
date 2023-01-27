@@ -192,7 +192,7 @@ fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Meta
 /// binary expression mutations.
 struct BinaryOpMutator {
     /// A list of operators valid for the binary expression
-    operators: Vec<String>,
+    operators: Vec<&'static str>, //Vec<String>,
 
     /// The mutation algorithm implemented by the mutator.
     mutation_type: MutationType,
@@ -205,7 +205,10 @@ impl BinaryOpMutator {
     ///
     /// * `operators` - the list of operators for the mutator
     /// * `mutation_type` - the mutation algorithm implemented by the mutator
-    pub fn new(operators: Vec<String>, mutation_type: MutationType) -> BinaryOpMutator {
+    pub fn new(
+        operators: Vec<&'static str>, /* Vec<String> */
+        mutation_type: MutationType,
+    ) -> BinaryOpMutator {
         BinaryOpMutator {
             operators,
             mutation_type,
@@ -222,8 +225,7 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
                 // list of supported operators. The mutator can mutate the node if it supports
                 // the node's operator.
                 if let Some(op) = node.get_str_for_key("operator") {
-                    let op_str = String::from(op);
-                    return self.operators.contains(&op_str);
+                    return self.operators.contains(&op);
                 }
             }
         }
@@ -241,7 +243,7 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
             };
 
             // If we chose the original operator, keep choosing until we get a different operator.
-            while original_operator == chosen_operator {
+            while original_operator == *chosen_operator {
                 chosen_operator = match self.operators.choose(rand) {
                     Some(o) => o,
                     None => return,
@@ -261,10 +263,10 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
 /// The structure/class that implements mutations for unary expressions.
 struct UnaryOpMutator {
     /// A list of operators usable as prefix operators.
-    prefix_operators: Vec<String>,
+    prefix_operators: Vec<&'static str>,
 
     /// A list of operators usable as postfix operators.
-    postfix_operators: Vec<String>,
+    postfix_operators: Vec<&'static str>,
 }
 
 impl UnaryOpMutator {
@@ -304,8 +306,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
                 // Check to see if the operator in the node is in the operator list for the
                 // mutator
                 if let Some(op) = node.get_str_for_key("operator") {
-                    let op_str = String::from(op);
-                    return operator_list.contains(&op_str);
+                    return operator_list.contains(&op);
                 }
             }
         }
@@ -347,7 +348,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         };
 
         // If the operators match, choose another operator until they no longer match.
-        while original_operator == chosen_operator {
+        while original_operator == *chosen_operator {
             chosen_operator = match operator_list.choose(rand) {
                 Some(o) => o,
                 None => return,
@@ -565,7 +566,7 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
 
                 // Now pretty-print the node so we can wrap the resulting string in a comment node.
                 let mut contents = Vec::new();
-                let mut printer = PrettyPrinter::new(4, 150, "\n");
+                let mut printer = PrettyPrinter::new(4, 150);
                 traverse_sub_node_and_print(
                     &mut printer,
                     &mut contents,
@@ -915,7 +916,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
 /// to a BinaryOperation.  The operator of the BinaryOperation must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
 struct OperatorSwapArgumentsMutator {
-    valid_operators: Vec<String>,
+    valid_operators: Vec<&'static str>,
 }
 
 impl OperatorSwapArgumentsMutator {
@@ -932,8 +933,7 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "BinaryOperation" {
                 if let Some(operator_string) = node.get_str_for_key("operator") {
-                    let operator = String::from(operator_string);
-                    if self.valid_operators.contains(&operator) {
+                    if self.valid_operators.contains(&operator_string) {
                         return true;
                     }
                 }

@@ -2,13 +2,18 @@
 //! library.
 
 use crate::error::MetamorphError;
+use crate::operators::{
+    arithmetic_operators, bitshift_operators, bitwise_operators, comparison_operators,
+    logical_operators, non_commutative_operators, prefix_operators,
+};
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
 /// Each item in the enumeration represents a generic mutation strategy deployable across all
 /// programming languages.
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum GenericMutation {
     /// Randomly replace the arithmetic operator in a binary expression.
     ///
@@ -43,8 +48,6 @@ pub enum GenericMutation {
     /// # Examples
     ///
     /// `a & b` might become `a | b`
-    ///
-    /// `a << b` might become `a >> b`
     ///
     /// # Operators
     ///
@@ -189,7 +192,7 @@ pub enum GenericMutation {
 }
 
 /// The items in this enumeration represent Solidity language specific mutation algorithms.
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum SolidityMutation {
     /// Replaces the argument expression to the Solidity function `require` with the negation
     /// of the expression.
@@ -209,7 +212,7 @@ pub enum SolidityMutation {
 }
 
 /// This enumeration collects all variations of mutation algorithms into a single enumeration.
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum MutationType {
     /// A generic mutation algorithm usable by all language instances
     Generic(GenericMutation),
@@ -283,25 +286,233 @@ impl fmt::Display for MutationType {
 }
 
 /// Return a list of all the available mutation algorithms.
-pub fn all_mutation_algorithms() -> Vec<MutationType> {
-    let algorithms = vec![
-        MutationType::Generic(GenericMutation::ArithmeticBinaryOp),
-        MutationType::Generic(GenericMutation::LogicalBinaryOp),
-        MutationType::Generic(GenericMutation::BitwiseBinaryOp),
-        MutationType::Generic(GenericMutation::BitshiftBinaryOp),
-        MutationType::Generic(GenericMutation::ComparisonBinaryOp),
-        MutationType::Generic(GenericMutation::Assignment),
-        MutationType::Generic(GenericMutation::DeleteStatement),
-        MutationType::Generic(GenericMutation::FunctionCall),
-        MutationType::Generic(GenericMutation::IfStatement),
-        MutationType::Generic(GenericMutation::Integer),
-        MutationType::Generic(GenericMutation::FunctionSwapArguments),
-        MutationType::Generic(GenericMutation::OperatorSwapArguments),
-        MutationType::Generic(GenericMutation::LinesSwap),
-        MutationType::Generic(GenericMutation::UnaryOp),
-        MutationType::Solidity(SolidityMutation::Require),
-        MutationType::Solidity(SolidityMutation::UncheckedBlock),
-    ];
+pub fn get_all_mutation_algorithms() -> Vec<MutationType> {
+    let map = all_algorithm_descriptions();
+
+    let mut algorithms: Vec<MutationType> = vec![];
+
+    for (key, _) in map {
+        algorithms.push(key);
+    }
+
+    algorithms.sort_unstable_by(|a, b| {
+        let a_str = a.to_string();
+        let b_str = b.to_string();
+        a_str.cmp(&b_str)
+    });
 
     algorithms
+}
+
+pub struct AlgorithmDescription {
+    pub short_description: &'static str,
+    pub long_description: &'static str,
+    pub operators: Vec<&'static str>,
+    pub examples: &'static str,
+}
+
+pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescription> {
+    let mut algorithm_map: HashMap<MutationType, AlgorithmDescription> = HashMap::new();
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::ArithmeticBinaryOp),
+        AlgorithmDescription {
+            short_description: "Randomly replace the arithmetic operator in a binary expression.",
+            long_description: "This algorithm will replace the operators in the operator list \
+                with another operator from the same list.",
+            operators: arithmetic_operators(),
+            examples: "a + b might become a - b, a * by might become a / b",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::LogicalBinaryOp),
+        AlgorithmDescription {
+            short_description: "Randomly replace the logical operator in a binary expression.",
+            long_description:
+                "This algorithm will replace the operators in the operator list with \
+            another operator from the same list.",
+            operators: logical_operators(),
+            examples: "a || b might become a && b",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::BitwiseBinaryOp),
+        AlgorithmDescription {
+            short_description: "Randomly replaces a bitwise operator in a binary expression.",
+            long_description: "Find bitwise binary operation expressions in the program and \
+            replace the operator in the expression with another operator from the list of bitwise \
+            operators.",
+            operators: bitwise_operators(),
+            examples: "a & b might become a | b",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::BitshiftBinaryOp),
+        AlgorithmDescription {
+            short_description: "Randomly replaces a bitshift operator in a binary expression.",
+            long_description: "Find bitshift binary operator expressions in the program and \
+            replace the operator in the expression with another operator from the list of \
+            bitshift operators.",
+            operators: bitshift_operators(),
+            examples: "a << b might become a >> b",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::ComparisonBinaryOp),
+        AlgorithmDescription {
+            short_description: "Randomly replace the comparison operator in a binary expression",
+            long_description:
+                "Find logical binary operator expressions in the program and replace \
+            the operator in the expression with another operator from the list of logical \
+            operators.",
+            operators: comparison_operators(),
+            examples: "a < b might become a > b, a == b might become a <= b",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::Assignment),
+        AlgorithmDescription {
+            short_description: "Replace right hand side of assignment expressions with type \
+            appropriate random alternative values.",
+            long_description: "Find assignment expressions in the program and evaluate the left \
+            hand side for type. After finding the type, attempt to replace the right hand size of \
+            the expression with a randomly generated type appropriate value. This algorithm \
+            currently only operates on expressions that have integer, floating-point, or boolean \
+            types.",
+            operators: vec![],
+            examples: "a = b + 10; where a is of type uint, might become a = 29494243244;",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::DeleteStatement),
+        AlgorithmDescription {
+            short_description: "Randomly select a statement in a program block and delete the \
+            statement.",
+            long_description:
+                "For languages that have variable declarations and return statements \
+            the algorithm will not delete declarations or return statements in order to minimize \
+            compilation issues caused by the mutation.",
+            operators: vec![],
+            examples: "",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::FunctionCall),
+        AlgorithmDescription {
+            short_description:
+                "Replace function calls with one of the randomly selected arguments \
+            to the function call.",
+            long_description: "For function calls that have one or more arguments, randomly \
+            select an argument from the argument list and replace the entire function call in the \
+            expression with the selected argument. This mutation algorithm will attempt to select \
+            arguments of the correct type (the return type of the function call) to minimize \
+            compilation issues caused by the mutation.",
+            operators: vec![],
+            examples: "a = foo(b, c); might become a = c;",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::IfStatement),
+        AlgorithmDescription {
+            short_description: "Replace the condition expression in an if(c) statement with true, \
+            false, or the logical negation of the condition if(!(c)).",
+            long_description: "",
+            operators: vec![],
+            examples: "if(a > b) might become if(true), if(c == 10) might become if(! (c == 1))",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::Integer),
+        AlgorithmDescription {
+            short_description: "Randomly replace integer constants with random values.",
+            long_description: "The mutation algorithm chooses between three possible behaviors \
+            when mutating the constant: add one to the existing value, subtract one from the \
+            existing value, or select a random integer value between 0:max(type of the constant).",
+            operators: vec![],
+            examples: "a = 10; might become a = 11;, a = 10 might become a = 9;, a = 10 might \
+            become a = 2932;",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::FunctionSwapArguments),
+        AlgorithmDescription {
+            short_description: "Randomly swap two arguments in a function call.",
+            long_description: "Find function calls in the program with two or more arguments, \
+            randomly select two arguments, and swap them.  When possible, the mutation algorithm \
+            will select arguments with the same type to avoid compilation issues.",
+            operators: vec![],
+            examples: "a = foo(bar, bat, bug); might become a = foo(but, bat, bar);",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::OperatorSwapArguments),
+        AlgorithmDescription {
+            short_description: "Swap left and right hand sides of binary expressions with \
+            non-commutative operators.",
+            long_description: "Select a random binary expression that has a non-commutative \
+            operator and swap the left and right hand sides of the expression.",
+            operators: non_commutative_operators(),
+            examples: "thing = a - b; might become thing = b - a;, this = that << 5; might become \
+            this = 5 << that;",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::LinesSwap),
+        AlgorithmDescription {
+            short_description: "Randomly select two statements in a block and swap the two \
+            statements.",
+            long_description: "The mutation algorithm will attempt to identify expression \
+            statements and to avoid return statements when selecting statements to swap.",
+            operators: vec![],
+            examples: "a = foo - bar(); ... foo += 8; might become foo += 8; ... a = foo - bar();",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Generic(GenericMutation::UnaryOp),
+        AlgorithmDescription {
+            short_description: "Random replace unary operators for both prefix and postfix \
+            expressions with operators from the unary operator list.",
+            long_description: "This mutation algorithm will not convert a prefix unary expression \
+            into a postfix unary expression.",
+            operators: prefix_operators(),
+            examples: "++a; might become ~a;, a-- might become a++.",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Solidity(SolidityMutation::Require),
+        AlgorithmDescription {
+            short_description: "Randomly select a use of the Solidity require() function and \
+            replace the argument with the logical negation of the argument expression.",
+            long_description: "This mutation algorithm only works for Solidity programs.",
+            operators: vec![],
+            examples: "require(b > 10); would become require(!(b > 0);",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Solidity(SolidityMutation::UncheckedBlock),
+        AlgorithmDescription {
+            short_description: "Randomly select an expression statement in a block of statements \
+            and decorate the statement with the Solidity unchecked{} block.",
+            long_description: "This mutation algorithm only works for Solidity programs.",
+            operators: vec![],
+            examples: "a = b + c; would become unchecked{ a = b + c; }",
+        },
+    );
+
+    algorithm_map
 }

@@ -400,7 +400,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for AttributePrinter {
 }
 
 struct AugAssignPrinter {
-    operator_map: HashMap<String, String>,
+    operator_map: HashMap<&'static str, &'static str>,
 }
 
 impl AugAssignPrinter {
@@ -453,7 +453,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for DecimalPrinter {
 }
 
 struct BinOpPrinter {
-    operator_map: HashMap<String, String>,
+    operator_map: HashMap<&'static str, &'static str>,
 }
 
 impl BinOpPrinter {

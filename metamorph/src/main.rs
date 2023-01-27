@@ -3,9 +3,11 @@
 
 mod generator_parameters;
 mod mutation_generator;
+mod mutations_info;
 mod pretty_printing;
 
 use crate::mutation_generator::generate_mutants;
+use crate::mutations_info::display_mutations_info;
 use crate::pretty_printing::pretty_print_files;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -57,11 +59,25 @@ pub struct PrettyPrintCLArgs {
     pub file_names: Vec<String>,
 }
 
+/// Arguments for listing details about mutation algorithms
+#[derive(Debug, Clone, Parser, Deserialize, Serialize)]
+#[clap(rename_all = "kebab-case")]
+pub struct AlgorithmsCLArgs {
+    /// List the available mutation algorithms
+    #[clap(short, long)]
+    pub list: bool,
+
+    /// Describe the available mutation algorithms
+    #[clap(short, long)]
+    pub describe: bool,
+}
+
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
 pub enum MetamorphCommand {
     Mutate(MutateCLArgs),
     PrettyPrint(PrettyPrintCLArgs),
+    Algorithms(AlgorithmsCLArgs),
 }
 
 fn main() {
@@ -72,6 +88,9 @@ fn main() {
         }
         MetamorphCommand::PrettyPrint(params) => {
             pretty_print_files(params);
+        }
+        MetamorphCommand::Algorithms(params) => {
+            display_mutations_info(params);
         }
     }
 }

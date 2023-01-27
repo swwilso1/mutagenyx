@@ -1,3 +1,6 @@
+//! The `utility` module contains various utility functions such as `shell_execute` used by
+//! other parts of the library.
+
 use crate::error::MetamorphError;
 use std::process::{Command, Output};
 

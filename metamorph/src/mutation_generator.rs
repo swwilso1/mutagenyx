@@ -6,7 +6,7 @@ use crate::pretty_printing::pretty_print_ast;
 use crate::MutateCLArgs;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
-use metamorph_lib::mutation::{all_mutation_algorithms, MutationType};
+use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
@@ -26,7 +26,7 @@ pub fn generate_mutants(args: MutateCLArgs) {
     // precedence over individual algorithms selected in args.mutations.
     let mutations: Vec<MutationType>;
     if args.all_mutations {
-        mutations = all_mutation_algorithms();
+        mutations = get_all_mutation_algorithms();
     } else {
         // Change the algorithm strings from the command line into actual MutationType values.
         mutations = args

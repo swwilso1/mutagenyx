@@ -223,13 +223,13 @@ fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, 
 /// binary expression mutations.
 struct BinaryOpMutator {
     /// A list of operators valid for the binary expression
-    operators: Vec<String>,
+    operators: Vec<&'static str>,
 
     /// A map of names from the Vyper operator name list to the actual operator string.
-    operator_map: HashMap<String, String>,
+    operator_map: HashMap<&'static str, &'static str>,
 
     /// A map of operator strings to the Vyper operator name.
-    reverse_operator_map: HashMap<String, String>,
+    reverse_operator_map: HashMap<&'static str, &'static str>,
 
     /// The mutation algorithm implemented by the mutator.
     mutation_type: MutationType,
@@ -242,12 +242,12 @@ impl BinaryOpMutator {
     ///
     /// * `operators` - the list of operators for the mutator
     /// * `mutation_type` - the mutation algorithm implemented by the mutator
-    pub fn new(operators: Vec<String>, mutation_type: MutationType) -> BinaryOpMutator {
+    pub fn new(operators: Vec<&'static str>, mutation_type: MutationType) -> BinaryOpMutator {
         let operator_map = get_python_operator_map();
-        let mut reverse_operator_map: HashMap<String, String> = HashMap::new();
+        let mut reverse_operator_map: HashMap<&'static str, &'static str> = HashMap::new();
 
         for (key, value) in operator_map.iter() {
-            reverse_operator_map.insert(value.clone(), key.clone());
+            reverse_operator_map.insert(value, key);
         }
 
         BinaryOpMutator {
@@ -476,7 +476,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 // Pretty-print the node so we can then wrap the string version in a comment
                 // node.
                 let mut contents = Vec::new();
-                let mut printer = PrettyPrinter::new(4, 150, "\n");
+                let mut printer = PrettyPrinter::new(4, 150);
                 traverse_sub_node_and_print(
                     &mut printer,
                     &mut contents,
@@ -861,8 +861,8 @@ impl Mutator<VyperAST> for IntegerMutator {
 /// to a BinOp/BoolOp/Compare.  The operator of the BinOp/BoolOp/Compare must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
 struct OperatorSwapArgumentsMutator {
-    valid_operators: Vec<String>,
-    operator_map: HashMap<String, String>,
+    valid_operators: Vec<&'static str>,
+    operator_map: HashMap<&'static str, &'static str>,
 }
 
 impl OperatorSwapArgumentsMutator {
@@ -881,8 +881,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
             if ast_type == "BinOp" || ast_type == "BoolOp" || ast_type == "Compare" {
                 if let Some(op_node) = node.borrow_value_for_key("op") {
                     if let Some(op_string) = op_node.get_str_for_key("ast_type") {
-                        let operator = String::from(op_string);
-                        let converted_operator = &self.operator_map[&operator];
+                        let converted_operator = self.operator_map[&op_string];
                         if self.valid_operators.contains(&converted_operator) {
                             return true;
                         }
