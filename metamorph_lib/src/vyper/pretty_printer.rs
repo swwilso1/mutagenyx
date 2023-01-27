@@ -22,7 +22,7 @@ use std::io::Write;
 /// * `node` - The node in the Vyper AST.
 fn write_simple_value<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, node: &VyperAST) {
     if let Some(value_node) = node.borrow_value_for_key("value") {
-        traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+        traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
     }
 }
 
@@ -67,7 +67,7 @@ fn write_value_assignment<W: Write>(printer: &mut PrettyPrinter, stream: &mut W,
     if let Some(value_node) = node.borrow_value_for_key("value") {
         if !value_node.is_null() {
             write_token(printer, stream, " = ");
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
     }
 }
@@ -84,7 +84,7 @@ fn write_body_as_nodes<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, no
         if let Some(body_array) = body_node.as_array() {
             for value in body_array {
                 write_indent(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value);
                 write_newline(printer, stream);
             }
         }
@@ -128,7 +128,7 @@ fn write_indented_array<W: Write>(
     while i < array.len() {
         let value = &array[i];
         write_indent(printer, stream);
-        traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value);
+        traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value);
         if i < (array.len() - 1) {
             write_newline(printer, stream);
         }
@@ -159,7 +159,7 @@ struct VariableDeclPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for VariableDeclPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(target_node) = node.borrow_value_for_key("target") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, target_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, target_node);
             write_token(printer, stream, ":");
             write_space(printer, stream);
 
@@ -181,7 +181,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for VariableDeclPrinter {
             }
 
             if let Some(annotation_node) = node.borrow_value_for_key("annotation") {
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, annotation_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, annotation_node);
             }
 
             if needs_close_paren {
@@ -198,11 +198,11 @@ struct SubscriptPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for SubscriptPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(value_node) = node.borrow_value_for_key("value") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
 
         if let Some(slice_node) = node.borrow_value_for_key("slice") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, slice_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, slice_node);
         }
     }
 }
@@ -254,7 +254,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
                     self.has_decorators = true;
                     write_token(printer, stream, "@");
                     let value = &decorator_array[0];
-                    traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value);
+                    traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value);
                     write_newline(printer, stream);
                 }
                 if decorator_array.len() >= 2 {
@@ -263,7 +263,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
                         let value = &decorator_array[index];
                         write_indent(printer, stream);
                         write_token(printer, stream, "@");
-                        traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value);
+                        traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value);
                         write_newline(printer, stream);
                         index += 1;
                     }
@@ -283,7 +283,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
         }
         write_token(printer, stream, "(");
         if let Some(args_node) = node.borrow_value_for_key("args") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, args_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, args_node);
         }
         write_token(printer, stream, ")");
         if let Some(returns_node) = node.borrow_value_for_key("returns") {
@@ -291,7 +291,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
                 write_space(printer, stream);
                 write_token(printer, stream, "->");
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, returns_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, returns_node);
             }
         }
         write_token(printer, stream, ":");
@@ -345,7 +345,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgPrinter {
             if !annotation_node.is_null() {
                 write_token(printer, stream, ":");
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, annotation_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, annotation_node);
             }
         }
     }
@@ -356,11 +356,11 @@ struct AssignPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for AssignPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(target_node) = node.borrow_value_for_key("target") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, target_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, target_node);
         }
         write_token(printer, stream, " = ");
         if let Some(value_node) = node.borrow_value_for_key("value") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
     }
 }
@@ -370,7 +370,7 @@ struct AttributePrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for AttributePrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(value_node) = node.borrow_value_for_key("value") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
         write_token(printer, stream, ".");
         if let Some(attribute_str) = node.get_str_for_key("attr") {
@@ -394,7 +394,7 @@ impl AugAssignPrinter {
 impl<W: Write> NodePrinter<W, VyperAST> for AugAssignPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(target_node) = node.borrow_value_for_key("target") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, target_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, target_node);
         }
         write_space(printer, stream);
         if let Some(op_node) = node.borrow_value_for_key("op") {
@@ -407,7 +407,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for AugAssignPrinter {
         write_token(printer, stream, "=");
         write_space(printer, stream);
         if let Some(value_node) = node.borrow_value_for_key("value") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
     }
 }
@@ -447,7 +447,7 @@ impl BinOpPrinter {
 impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(left_node) = node.borrow_value_for_key("left") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, left_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, left_node);
         }
         if let Some(op_node) = node.borrow_value_for_key("op") {
             if let Some(ast_type_str) = op_node.get_str_for_key("ast_type") {
@@ -459,7 +459,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
             }
         }
         if let Some(right_node) = node.borrow_value_for_key("right") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, right_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, right_node);
         }
     }
 }
@@ -477,15 +477,15 @@ impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
                 let left = &values_array[0];
                 let right = &values_array[1];
 
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, left);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, left);
                 write_space(printer, stream);
 
                 if let Some(op_node) = node.borrow_value_for_key("op") {
-                    traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, op_node);
+                    traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, op_node);
                 }
 
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, right);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, right);
             }
         }
     }
@@ -498,13 +498,13 @@ impl<W: Write> NodePrinter<W, VyperAST> for AssertPrinter {
         write_token(printer, stream, "assert");
         write_space(printer, stream);
         if let Some(test_node) = node.borrow_value_for_key("test") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, test_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, test_node);
         }
         if let Some(msg_node) = node.borrow_value_for_key("msg") {
             if msg_node.is_object() {
                 write_token(printer, stream, ",");
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, msg_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, msg_node);
             }
         }
     }
@@ -541,7 +541,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ModulePrinter {
         if let Some(body_node) = node.borrow_value_for_key("body") {
             if let Some(body_array) = body_node.as_array() {
                 for value in body_array {
-                    traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value);
+                    traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value);
                     write_newline(printer, stream);
                     write_newline(printer, stream);
                 }
@@ -555,12 +555,12 @@ struct AnnAssignPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for AnnAssignPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(target_node) = node.borrow_value_for_key("target") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, target_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, target_node);
         }
         if let Some(annotation_node) = node.borrow_value_for_key("annotation") {
             write_token(printer, stream, ":");
             write_space(printer, stream);
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, annotation_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, annotation_node);
         }
         write_value_assignment(printer, stream, node);
     }
@@ -571,7 +571,7 @@ struct ExprPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for ExprPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(value_node) = node.borrow_value_for_key("value") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
         }
     }
 }
@@ -581,7 +581,7 @@ struct CallPrinter {}
 impl<W: Write> NodePrinter<W, VyperAST> for CallPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
         if let Some(func_node) = node.borrow_value_for_key("func") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, func_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, func_node);
         }
         write_token(printer, stream, "(");
         write_args_as_array(printer, stream, node);
@@ -627,7 +627,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for UnaryOpPrinter {
             if needs_space {
                 write_space(printer, stream);
             }
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, operand_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, operand_node);
         }
     }
 }
@@ -685,13 +685,13 @@ impl<W: Write> NodePrinter<W, VyperAST> for ForPrinter {
         write_token(printer, stream, "for");
         write_space(printer, stream);
         if let Some(target_node) = node.borrow_value_for_key("target") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, target_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, target_node);
         }
         write_space(printer, stream);
         write_token(printer, stream, "in");
         write_space(printer, stream);
         if let Some(iter_node) = node.borrow_value_for_key("iter") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, iter_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, iter_node);
         }
         write_token(printer, stream, ":");
         write_newline(printer, stream);
@@ -724,7 +724,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for IfPrinter {
         write_token(printer, stream, "if");
         write_space(printer, stream);
         if let Some(test_node) = node.borrow_value_for_key("test") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, test_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, test_node);
         }
         write_token(printer, stream, ":");
         write_newline(printer, stream);
@@ -779,7 +779,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ReturnPrinter {
         if let Some(value_node) = node.borrow_value_for_key("value") {
             if !value_node.is_null() {
                 write_space(printer, stream);
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
             }
         }
     }
@@ -792,7 +792,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for RaisePrinter {
         write_token(printer, stream, "raise");
         write_space(printer, stream);
         if let Some(exc_node) = node.borrow_value_for_key("exc") {
-            traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, exc_node);
+            traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, exc_node);
         }
     }
 }
@@ -873,7 +873,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for LogPrinter {
         write_space(printer, stream);
         if let Some(value_node) = node.borrow_value_for_key("value") {
             if !value_node.is_null() {
-                traverse_sub_node(printer, stream, VyperNodePrinterFactory {}, value_node);
+                traverse_sub_node_and_print(printer, stream, VyperNodePrinterFactory {}, value_node);
             }
         }
     }

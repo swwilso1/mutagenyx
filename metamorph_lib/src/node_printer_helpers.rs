@@ -14,7 +14,7 @@ use std::io::Write;
 /// * `stream` - The [`Write`] object that will receive formatted output
 /// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 /// * `factory` - The [`NodePrinterFactory<W,AST>`] object for generating node printers.
-pub fn traverse_sub_node<W: Write, AST: SimpleAST<AST>, F: NodePrinterFactory<W, AST> + 'static>(
+pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>, F: NodePrinterFactory<W, AST> + 'static>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
     factory: F,
@@ -44,7 +44,7 @@ pub fn print_array_helper<
     let mut i = 0;
     while i < array.len() {
         if let Some(n) = array.get(i) {
-            traverse_sub_node(printer, stream, factory.clone(), n);
+            traverse_sub_node_and_print(printer, stream, factory.clone(), n);
             if i < (array.len() - 1) {
                 write_token(printer, stream, ",");
                 write_space(printer, stream);

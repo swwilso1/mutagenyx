@@ -5,7 +5,7 @@ use crate::error::MetamorphError;
 use crate::json::*;
 use crate::mutation::*;
 use crate::mutator::*;
-use crate::node_printer_helpers::traverse_sub_node;
+use crate::node_printer_helpers::traverse_sub_node_and_print;
 use crate::operators::*;
 use crate::pretty_printer::PrettyPrinter;
 use crate::vyper::ast::VyperAST;
@@ -477,7 +477,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 // node.
                 let mut contents = Vec::new();
                 let mut printer = PrettyPrinter::new(4, 150, "\n");
-                traverse_sub_node(
+                traverse_sub_node_and_print(
                     &mut printer,
                     &mut contents,
                     VyperNodePrinterFactory {},

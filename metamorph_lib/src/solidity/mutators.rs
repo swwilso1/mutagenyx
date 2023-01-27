@@ -5,7 +5,7 @@ use crate::error::MetamorphError;
 use crate::json::{new_json_node, JSONMutate};
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
 use crate::mutator::{Mutator, MutatorFactory};
-use crate::node_printer_helpers::traverse_sub_node;
+use crate::node_printer_helpers::traverse_sub_node_and_print;
 use crate::operators::*;
 use crate::solidity::ast::{SolidityAST, SolidityASTApi};
 use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
@@ -566,7 +566,7 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
                 // Now pretty-print the node so we can wrap the resulting string in a comment node.
                 let mut contents = Vec::new();
                 let mut printer = PrettyPrinter::new(4, 150, "\n");
-                traverse_sub_node(
+                traverse_sub_node_and_print(
                     &mut printer,
                     &mut contents,
                     SolidityNodePrinterFactory {},
