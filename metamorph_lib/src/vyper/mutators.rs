@@ -25,7 +25,9 @@ use std::fmt::Formatter;
 ///
 /// # Arguments
 /// * `value` - The number that the node should contain.
-fn new_integer_constant_node<I: Integer + fmt::Display>(value: I) -> Result<VyperAST, MetamorphError> {
+fn new_integer_constant_node<I: Integer + fmt::Display>(
+    value: I,
+) -> Result<VyperAST, MetamorphError> {
     let node_str = format!(
         "{{\
             \"node_id\": 9999999,
