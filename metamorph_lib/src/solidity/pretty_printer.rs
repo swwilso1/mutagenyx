@@ -171,7 +171,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
                 while i < node_array.len() {
                     if let Some(node) = node_array.get(i) {
                         write_indent(printer, stream);
-                        traverse_sub_node_and_print(printer, stream, SolidityNodePrinterFactory {}, node);
+                        traverse_sub_node_and_print(
+                            printer,
+                            stream,
+                            SolidityNodePrinterFactory {},
+                            node,
+                        );
                         if i < (node_array.len() - 1) {
                             write_newline(printer, stream);
                             write_newline(printer, stream);
@@ -318,7 +323,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructDefinitionPrinter {
                 while i < members_array.len() {
                     if let Some(member) = members_array.get(i) {
                         write_indent(printer, stream);
-                        traverse_sub_node_and_print(printer, stream, SolidityNodePrinterFactory {}, member);
+                        traverse_sub_node_and_print(
+                            printer,
+                            stream,
+                            SolidityNodePrinterFactory {},
+                            member,
+                        );
                         write_token(printer, stream, ";");
                         if i < (members_array.len() - 1) {
                             write_newline(printer, stream);
@@ -914,7 +924,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
         write_token(printer, stream, "using");
         if let Some(library_name) = node.borrow_value_for_key("libraryName") {
             write_space(printer, stream);
-            traverse_sub_node_and_print(printer, stream, SolidityNodePrinterFactory {}, library_name);
+            traverse_sub_node_and_print(
+                printer,
+                stream,
+                SolidityNodePrinterFactory {},
+                library_name,
+            );
         }
         write_space(printer, stream);
         write_token(printer, stream, "for");
@@ -1061,7 +1076,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TupleExpressionPrinter {
         if let Some(components) = node.borrow_value_for_key("components") {
             if let Some(components_array) = components.as_array() {
                 for component in components_array {
-                    traverse_sub_node_and_print(printer, stream, SolidityNodePrinterFactory {}, component);
+                    traverse_sub_node_and_print(
+                        printer,
+                        stream,
+                        SolidityNodePrinterFactory {},
+                        component,
+                    );
                 }
             }
         }

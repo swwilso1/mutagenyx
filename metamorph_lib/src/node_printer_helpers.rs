@@ -14,7 +14,11 @@ use std::io::Write;
 /// * `stream` - The [`Write`] object that will receive formatted output
 /// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 /// * `factory` - The [`NodePrinterFactory<W,AST>`] object for generating node printers.
-pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>, F: NodePrinterFactory<W, AST> + 'static>(
+pub fn traverse_sub_node_and_print<
+    W: Write,
+    AST: SimpleAST<AST>,
+    F: NodePrinterFactory<W, AST> + 'static,
+>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
     factory: F,
