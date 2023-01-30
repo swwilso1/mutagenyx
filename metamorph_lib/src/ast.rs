@@ -3,6 +3,8 @@
 //! for traversing a syntax tree that conforms to the [`SimpleAST`] trait.
 
 use crate::visitor::*;
+#[cfg(test)]
+use serde_json::{from_str, Value};
 
 /// Trait used to inspect a conforming AST object for information necessary to traverse the syntax
 /// tree.
@@ -133,5 +135,70 @@ impl ASTTraverser {
             return true;
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::json::JSONMutate;
+
+    struct TestVisitor {
+        node_count: usize,
+    }
+
+    impl Visitor<Value> for TestVisitor {
+        fn visit(&mut self, _node: &Value) -> bool {
+            self.node_count += 1;
+            false
+        }
+    }
+
+    impl VisitorMut<Value> for TestVisitor {
+        fn visit_mut(&mut self, node: &mut Value) -> bool {
+            if let Some(_value) = node.take_value_for_key("one") {
+                node.set_node_for_key("one", Value::from(2));
+            }
+            false
+        }
+    }
+
+    #[test]
+    fn test_ast_traverse() {
+        let simple_ast: Value = from_str(
+            "\
+        {
+            \"foo\": \"bar\",
+            \"one\": [1]
+        }",
+        )
+        .unwrap();
+
+        let mut visitor = TestVisitor { node_count: 0 };
+
+        ASTTraverser::traverse(&simple_ast, &mut visitor);
+        assert_eq!(visitor.node_count, 4);
+    }
+
+    #[test]
+    fn test_ast_traverse_mut() {
+        let mut simple_ast: Value = from_str(
+            "\
+        {
+            \"foo\": \"bar\",
+            \"one\": 1
+        }",
+        )
+        .unwrap();
+
+        let mut visitor = TestVisitor { node_count: 0 };
+
+        ASTTraverser::traverse_mut(&mut simple_ast, &mut visitor);
+
+        if let Some(one_node) = simple_ast.borrow_value_for_key("one") {
+            if let Some(i) = one_node.as_i64() {
+                assert_eq!(i, 2);
+            }
+        }
     }
 }
