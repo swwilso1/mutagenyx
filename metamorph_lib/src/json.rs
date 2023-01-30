@@ -164,6 +164,12 @@ impl JSONMutate for Value {
         let json_path = json_path(key);
         if let Some(v) = self.pointer_mut(&json_path) {
             *v = node;
+        } else {
+            // The node does not have an existing value for `key`.  We need to get
+            // the lower level map and insert the key/value pair.
+            if let Some(node_map) = self.as_object_mut() {
+                node_map.insert(String::from(key), node);
+            }
         }
     }
 

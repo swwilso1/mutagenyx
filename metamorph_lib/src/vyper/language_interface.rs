@@ -6,6 +6,7 @@ use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
 use crate::mutator::*;
+use crate::preferences::Preferences;
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
@@ -68,7 +69,11 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
         false
     }
 
-    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError> {
+    fn convert_source_file_to_ast(
+        &self,
+        file_name: &str,
+        _prefs: &Preferences,
+    ) -> Result<SuperAST, MetamorphError> {
         if let Ok(s) = file_is_source_file_with_vyper_from_pip(file_name) {
             let value = load_json_from_file_with_name(&s)?;
             return <VyperLanguageSubInterface as JSONLanguageDelegate<W>>::get_value_as_super_ast(
@@ -88,7 +93,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
         )))
     }
 
-    fn file_is_language_source_file(&self, file_name: &str) -> bool {
+    fn file_is_language_source_file(&self, file_name: &str, _prefs: &Preferences) -> bool {
         if let Ok(_) = file_is_source_file_with_vyper_from_pip(file_name) {
             return true;
         }

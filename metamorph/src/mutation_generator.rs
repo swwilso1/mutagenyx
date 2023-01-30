@@ -7,6 +7,7 @@ use crate::MutateCLArgs;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
 use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
+use metamorph_lib::preferences::{PreferenceValue, Preferences};
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
@@ -45,6 +46,12 @@ pub fn generate_mutants(args: MutateCLArgs) {
 
     let mut rng = Pcg64::seed_from_u64(args.rng_seed);
 
+    let mut preferences = Preferences::new();
+    preferences.set_value_for_key(
+        "solidity_compiler",
+        PreferenceValue::String(&args.solidity_compiler),
+    );
+
     // Now, for each input file, generate the requested number and type of mutations.
     for file_name in args.file_names {
         let mut generator_params = GeneratorParameters::new_from_parameters(
@@ -55,6 +62,7 @@ pub fn generate_mutants(args: MutateCLArgs) {
             &mutations,
             false,
             args.print_original,
+            &preferences,
         );
 
         if let Err(e) = generate_mutations(&mut generator_params) {
@@ -74,12 +82,17 @@ static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
-    let recognize_result = Recognizer::recognize_file(&params.file_name)?;
+    let recognizer = Recognizer::new(params.preferences);
+    let recognize_result = recognizer.recognize_file(&params.file_name)?;
 
     let mut language_object =
         LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
-    let ast = language_object.load_ast_from_file(&params.file_name, &recognize_result.file_type)?;
+    let ast = language_object.load_ast_from_file(
+        &params.file_name,
+        &recognize_result.file_type,
+        params.preferences,
+    )?;
 
     language_object.select_mutators_for_mutation_types(&params.mutations)?;
 

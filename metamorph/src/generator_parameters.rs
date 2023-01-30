@@ -1,6 +1,7 @@
 //! The `generator_parameters` module provides the definition and functions for [`GeneratorParameters`].
 
 use metamorph_lib::mutation::MutationType;
+use metamorph_lib::preferences::Preferences;
 use rand_pcg::*;
 use std::path::PathBuf;
 
@@ -29,6 +30,9 @@ pub struct GeneratorParameters<'a> {
 
     /// If true, then pretty-print a copy of the original AST in the output directory.
     pub print_original: bool,
+
+    /// Preferences
+    pub preferences: &'a Preferences,
 }
 
 impl<'a> GeneratorParameters<'a> {
@@ -43,6 +47,7 @@ impl<'a> GeneratorParameters<'a> {
     /// * `mutations` - The list of mutation algorithms to use when generating the mutants.
     /// * `verify_viability` - True if the generator should check that a mutant compiles correctly.
     /// * `print_original` - True if the generator should pretty-print a copy of the original AST.
+    /// * `prefs` - Other preference values.
     pub fn new_from_parameters(
         name: &str,
         mutants: usize,
@@ -51,6 +56,7 @@ impl<'a> GeneratorParameters<'a> {
         mutations: &Vec<MutationType>,
         verify_viability: bool,
         print_original: bool,
+        prefs: &'a Preferences,
     ) -> GeneratorParameters<'a> {
         GeneratorParameters {
             file_name: String::from(name),
@@ -60,6 +66,7 @@ impl<'a> GeneratorParameters<'a> {
             mutations: mutations.clone(),
             verify_mutant_viability: verify_viability,
             print_original,
+            preferences: prefs,
         }
     }
 }

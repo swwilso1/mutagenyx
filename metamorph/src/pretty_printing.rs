@@ -5,6 +5,7 @@
 use crate::PrettyPrintCLArgs;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
+use metamorph_lib::preferences::Preferences;
 use metamorph_lib::pretty_printer::PrettyPrinter;
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::language_for_ast;
@@ -37,8 +38,11 @@ pub fn pretty_print_file(
     // Convert the output_directory to a PathBuf
     let out_dir = PathBuf::from_str(output_directory).unwrap();
 
+    let preferences = Preferences::new();
+    let recognizer = Recognizer::new(&preferences);
+
     // Recognize the language.
-    let recognize_result = Recognizer::recognize_file(file_name)?;
+    let recognize_result = recognizer.recognize_file(file_name)?;
 
     // Get the language interface object for the language.
     let mut language_object =
@@ -46,7 +50,8 @@ pub fn pretty_print_file(
 
     // TODO: We need to have the module that loads either source or AST.
     // Load the ast.
-    let ast = language_object.load_ast_from_file(file_name, &recognize_result.file_type)?;
+    let ast =
+        language_object.load_ast_from_file(file_name, &recognize_result.file_type, &preferences)?;
 
     // Calculate the name of the output file.
     let input_file_path = PathBuf::from(file_name);

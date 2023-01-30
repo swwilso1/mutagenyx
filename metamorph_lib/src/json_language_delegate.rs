@@ -4,6 +4,7 @@
 use crate::error::MetamorphError;
 use crate::language::Language;
 use crate::mutator::MutatorFactory;
+use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
 use crate::visitor::Visitor;
@@ -60,14 +61,18 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// # Arguments
     ///
     /// * `file_name` - The path to the source file in the file system
-    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError>;
+    fn convert_source_file_to_ast(
+        &self,
+        file_name: &str,
+        prefs: &Preferences,
+    ) -> Result<SuperAST, MetamorphError>;
 
     /// Return true if the source file contains a program in the language.
     ///
     /// # Arguments
     ///
     /// * `file_name` - The location of the file on disk
-    fn file_is_language_source_file(&self, file_name: &str) -> bool;
+    fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool;
 
     /// Return the Language value implemented by the trait object.
     fn implements(&self) -> Language;

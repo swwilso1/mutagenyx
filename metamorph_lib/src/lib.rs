@@ -36,6 +36,7 @@ mod mutator;
 mod node_printer;
 mod node_printer_helpers;
 mod operators;
+pub mod preferences;
 mod pretty_print_visitor;
 pub mod pretty_printer;
 pub mod recognizer;

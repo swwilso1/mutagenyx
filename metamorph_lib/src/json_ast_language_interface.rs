@@ -12,6 +12,7 @@ use crate::language_interface::MutableLanguage;
 use crate::mutation::MutationType;
 use crate::mutation_visitor::*;
 use crate::mutator::*;
+use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::recognizer::FileType;
 use crate::super_ast::SuperAST;
@@ -61,11 +62,12 @@ impl MutableLanguage for JSONLanguageInterface {
         &mut self,
         file_name: &str,
         file_type: &FileType,
+        prefs: &Preferences,
     ) -> Result<SuperAST, MetamorphError> {
         match file_type {
             FileType::Source => self
                 .sub_language_interface
-                .convert_source_file_to_ast(file_name),
+                .convert_source_file_to_ast(file_name, prefs),
             FileType::AST => {
                 let ast = load_json_from_file_with_name(file_name)?;
 
@@ -172,15 +174,19 @@ impl MutableLanguage for JSONLanguageInterface {
         return self.sub_language_interface.get_file_extension();
     }
 
-    fn file_is_language_source_file(&self, file_name: &str) -> bool {
+    fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
         return self
             .sub_language_interface
-            .file_is_language_source_file(file_name);
+            .file_is_language_source_file(file_name, prefs);
     }
 
-    fn convert_source_file_to_ast(&self, file_name: &str) -> Result<SuperAST, MetamorphError> {
+    fn convert_source_file_to_ast(
+        &self,
+        file_name: &str,
+        prefs: &Preferences,
+    ) -> Result<SuperAST, MetamorphError> {
         self.sub_language_interface
-            .convert_source_file_to_ast(file_name)
+            .convert_source_file_to_ast(file_name, prefs)
     }
 
     fn file_is_language_ast_file(&self, file_name: &str) -> bool {

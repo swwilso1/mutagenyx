@@ -44,6 +44,10 @@ pub struct MutateCLArgs {
     /// Pretty-print the original source or AST in the output directory.
     #[clap(long)]
     pub print_original: bool,
+
+    /// Solidity compiler
+    #[clap(long, default_value = "solc")]
+    pub solidity_compiler: String,
 }
 
 /// Pretty-print sub-command command line arguments.
