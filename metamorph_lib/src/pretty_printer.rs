@@ -299,7 +299,7 @@ impl PrettyPrinter {
     /// * `next_line_text` - Sometimes, when the printer breaks a line of flowable text and
     /// writes the remaining text on the next line, the context requires that the next line start
     /// with a particular set of content.  `next_line_text` contains the text that the printer should
-    /// write in the event that it breaks the flowable text into mutliple lines.
+    /// write in the event that it breaks the flowable text into multiple lines.
     ///
     /// # Examples
     ///
@@ -345,7 +345,57 @@ impl PrettyPrinter {
                 self.write_token(stream, next_line_text)?;
                 self.write_flowable_text(stream, t, next_line_text)?;
             } else {
-                let first_part = &t[..space_left];
+                // Here we carefully examine the breakpoint of the text to see if we are breaking
+                // the text mid-word, or on a space boundary.  If we are breaking mid-word, then
+                // we back up the break point to the last space character and put the next full word
+                // on a newline.  This behavior prevents output flowable text from having wierd breaks
+                // in words.
+                let mut index_of_start_of_word: usize = 0;
+                let mut i: usize = 0;
+                let mut previous_char_was_space = false;
+                let bytes = t.as_bytes();
+
+                // First walk through the text that would fit in the remaining space and find any
+                // word boundaries.  We use a ' ' (space) character as the word boundary.
+                while i < space_left {
+                    if bytes[i] as char == ' ' {
+                        previous_char_was_space = true;
+                    } else {
+                        if previous_char_was_space {
+                            index_of_start_of_word = i;
+                        }
+                        previous_char_was_space = false;
+                    }
+
+                    i += 1;
+                }
+
+                let first_part: &str;
+                let rest: &str;
+
+                // Now, check the end of the text at the space_left boundary and see if it is a
+                // ' ' (space) character or a text character.  If it is a space character, then we
+                // can break the text exactly on the space_left boundary.  If not, we go back
+                // to the previous space and put the with the partial word on the next line.
+                //
+                // NOTE: The algorithm makes no attempt to correctly break text with spaces enclosed
+                // in quotation marks (either single or double).
+                if bytes[i] as char == ' ' {
+                    first_part = &t[..space_left];
+                    rest = if bytes[space_left] as char == ' ' {
+                        &t[space_left + 1..]
+                    } else {
+                        &t[space_left..]
+                    };
+                } else {
+                    first_part = &t[..index_of_start_of_word];
+                    rest = if bytes[index_of_start_of_word] as char == ' ' {
+                        &t[index_of_start_of_word + 1..]
+                    } else {
+                        &t[index_of_start_of_word..]
+                    };
+                }
+
                 if first_part.len() > 0 {
                     self.write_basic_string(stream, first_part)?;
                 }
@@ -353,7 +403,6 @@ impl PrettyPrinter {
                 self.write_indent(stream)?;
                 self.write_token(stream, next_line_text)?;
 
-                let rest = &t[space_left..];
                 if rest.len() > 0 {
                     self.write_flowable_text(stream, rest, next_line_text)?;
                 }
@@ -464,7 +513,7 @@ pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token:
 /// # Arguments
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will write the copies of token to `stream`.
-/// * `stream` - The [`Write`] object wthat will receive the text.
+/// * `stream` - The [`Write`] object that will receive the text.
 /// * `token` - The token text to write to the stream.
 /// * `count` - The number of copies of `token` to write to the stream.
 pub fn write_tokens<W: Write>(
