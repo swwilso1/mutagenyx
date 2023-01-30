@@ -244,7 +244,12 @@ impl JSONMutate for Value {
         let json_path = json_path(key);
         match self.pointer_mut(&json_path) {
             Some(v) => v.set_string(value),
-            _ => return,
+            _ => {
+                // The json object has no existing value for 'key'.  Get the map and insert it.
+                if let Some(map) = self.as_object_mut() {
+                    map.insert(String::from(key), Value::from(value));
+                }
+            }
         }
     }
 
@@ -279,6 +284,215 @@ impl JSONMutate for Value {
         match self.pointer(&json_path) {
             Some(v) => v.as_i64(),
             _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_json_mutate_set_string() {
+        let mut value = Value::Null;
+        value.set_string("foo");
+        assert!(value.is_string());
+        assert_eq!(value.as_str().unwrap(), "foo");
+    }
+
+    #[test]
+    fn test_json_mutate_has_value_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"dog\": \"bark\",
+            \"cat\": \"meow\"
+        }",
+        )
+        .unwrap();
+
+        assert!(value.has_value_for_key("dog"));
+        assert!(value.has_value_for_key("cat"));
+        assert!(!value.has_value_for_key("horse"));
+    }
+
+    #[test]
+    fn test_json_mutate_take_value_for_key() {
+        let mut value: Value = from_str(
+            "{\
+            \"first\": 1,
+            \"second\": 2
+        }",
+        )
+        .unwrap();
+
+        if let Some(first_node) = value.take_value_for_key("first") {
+            assert_eq!(first_node.as_i64().unwrap(), 1);
+        }
+
+        if let Some(first_node) = value.borrow_value_for_key("first") {
+            assert!(first_node.is_null());
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_borrow_value_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"first\": 1,
+            \"second\": 2
+        }",
+        )
+        .unwrap();
+
+        if let Some(second_node) = value.borrow_value_for_key("second") {
+            assert_eq!(second_node.as_i64().unwrap(), 2);
+        } else {
+            assert!(false, "Failed to get node 'second' from the test JSON.");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_set_node_for_key() {
+        let mut value: Value = from_str(
+            "{\
+            \"first\": 1
+        }",
+        )
+        .unwrap();
+
+        value.set_node_for_key("second", Value::from(2));
+
+        match value.borrow_value_for_key("second") {
+            Some(n) => {
+                assert_eq!(n.as_i64().unwrap(), 2);
+            }
+            None => assert!(false, "Failed to set node for key 'second'"),
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_set_node_for_key_at_index() {
+        let mut value: Value = from_str(
+            "{\
+            \"one\": [\"a\", \"b\", \"c\"]
+        }",
+        )
+        .unwrap();
+
+        let number: Value = json![47];
+
+        value.set_node_for_key_at_index("one", 1, number);
+
+        if let Some(one_node) = value.borrow_value_for_key("one") {
+            if let Some(one_array) = one_node.as_array() {
+                assert_eq!(one_array[1].as_i64().unwrap(), 47);
+                assert_eq!(one_array.len(), 3);
+            } else {
+                assert!(false, "Node for key 'one' not an array");
+            }
+        } else {
+            assert!(false, "Node for key 'one' not found");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_array_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"node\": [1, 3, 5]
+        }",
+        )
+        .unwrap();
+
+        if let Some(array) = value.get_array_for_key("node") {
+            assert_eq!(array.len(), 3);
+            if let Some(node) = array.get(0) {
+                assert_eq!(node.as_i64().unwrap(), 1);
+            }
+            if let Some(node) = array.get(1) {
+                assert_eq!(node.as_i64().unwrap(), 3);
+            }
+            if let Some(node) = array.get(2) {
+                assert_eq!(node.as_i64().unwrap(), 5);
+            }
+        } else {
+            assert!(false, "Cannot find value for key 'node'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_str_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"str_key\": \"str_value\"
+        }",
+        )
+        .unwrap();
+
+        if let Some(s) = value.get_str_for_key("str_key") {
+            assert_eq!(s, "str_value");
+        } else {
+            assert!(false, "Unable to retrieve string for key: 'str_key'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_set_str_for_key() {
+        let mut value: Value = from_str(
+            "{\
+            \"first\": 1
+        }",
+        )
+        .unwrap();
+
+        value.set_str_for_key("first", "one");
+
+        if let Some(s) = value.get_str_for_key("first") {
+            assert_eq!(s, "one");
+        } else {
+            assert!(false, "Unable to get string for key 'first'");
+        }
+
+        value = from_str("{}").unwrap();
+
+        value.set_str_for_key("first", "two");
+
+        if let Some(s) = value.get_str_for_key("first") {
+            assert_eq!(s, "two");
+        } else {
+            assert!(false, "Unable to get string for key 'first'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_book_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"first\": false
+        }",
+        )
+        .unwrap();
+
+        if let Some(b) = value.get_bool_for_key("first") {
+            assert!(!b);
+        } else {
+            assert!(false, "Unable to get bool for key 'first'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_int_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"one\": 100
+        }",
+        )
+        .unwrap();
+
+        if let Some(i) = value.get_int_for_key("one") {
+            assert_eq!(i, 100);
+        } else {
+            assert!(false, "Unable to get int for key 'one'");
         }
     }
 }
