@@ -304,21 +304,27 @@ pub fn get_all_mutation_algorithms() -> Vec<MutationType> {
     algorithms
 }
 
-pub struct AlgorithmDescription {
-    pub short_description: &'static str,
-    pub long_description: &'static str,
+/// Type that holds the description of a mutation algorithm.
+pub struct MutationAlgorithmDescription {
+    /// The basic summary of the algorithm.
+    pub summary: &'static str,
+    /// Extra useful details about the algorithm.
+    pub extra_details: &'static str,
+    /// A list of operators the algorithm may affect.
     pub operators: Vec<&'static str>,
+    /// Examples of algorithm behavior.
     pub examples: &'static str,
 }
 
-pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescription> {
-    let mut algorithm_map: HashMap<MutationType, AlgorithmDescription> = HashMap::new();
+/// Return a map of mutation types to the mutation algorithm descriptions.
+pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDescription> {
+    let mut algorithm_map: HashMap<MutationType, MutationAlgorithmDescription> = HashMap::new();
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::ArithmeticBinaryOp),
-        AlgorithmDescription {
-            short_description: "Randomly replace the arithmetic operator in a binary expression.",
-            long_description: "This algorithm will replace the operators in the operator list \
+        MutationAlgorithmDescription {
+            summary: "Randomly replace the arithmetic operator in a binary expression.",
+            extra_details: "This algorithm will replace the operators in the operator list \
                 with another operator from the same list.",
             operators: arithmetic_operators(),
             examples: "a + b might become a - b, a * by might become a / b",
@@ -327,10 +333,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::LogicalBinaryOp),
-        AlgorithmDescription {
-            short_description: "Randomly replace the logical operator in a binary expression.",
-            long_description:
-                "This algorithm will replace the operators in the operator list with \
+        MutationAlgorithmDescription {
+            summary: "Randomly replace the logical operator in a binary expression.",
+            extra_details: "This algorithm will replace the operators in the operator list with \
             another operator from the same list.",
             operators: logical_operators(),
             examples: "a || b might become a && b",
@@ -339,9 +344,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::BitwiseBinaryOp),
-        AlgorithmDescription {
-            short_description: "Randomly replaces a bitwise operator in a binary expression.",
-            long_description: "Find bitwise binary operation expressions in the program and \
+        MutationAlgorithmDescription {
+            summary: "Randomly replaces a bitwise operator in a binary expression.",
+            extra_details: "Find bitwise binary operation expressions in the program and \
             replace the operator in the expression with another operator from the list of bitwise \
             operators.",
             operators: bitwise_operators(),
@@ -351,9 +356,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::BitshiftBinaryOp),
-        AlgorithmDescription {
-            short_description: "Randomly replaces a bitshift operator in a binary expression.",
-            long_description: "Find bitshift binary operator expressions in the program and \
+        MutationAlgorithmDescription {
+            summary: "Randomly replaces a bitshift operator in a binary expression.",
+            extra_details: "Find bitshift binary operator expressions in the program and \
             replace the operator in the expression with another operator from the list of \
             bitshift operators.",
             operators: bitshift_operators(),
@@ -363,10 +368,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::ComparisonBinaryOp),
-        AlgorithmDescription {
-            short_description: "Randomly replace the comparison operator in a binary expression",
-            long_description:
-                "Find logical binary operator expressions in the program and replace \
+        MutationAlgorithmDescription {
+            summary: "Randomly replace the comparison operator in a binary expression",
+            extra_details: "Find logical binary operator expressions in the program and replace \
             the operator in the expression with another operator from the list of logical \
             operators.",
             operators: comparison_operators(),
@@ -376,10 +380,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::Assignment),
-        AlgorithmDescription {
-            short_description: "Replace right hand side of assignment expressions with type \
+        MutationAlgorithmDescription {
+            summary: "Replace right hand side of assignment expressions with type \
             appropriate random alternative values.",
-            long_description: "Find assignment expressions in the program and evaluate the left \
+            extra_details: "Find assignment expressions in the program and evaluate the left \
             hand side for type. After finding the type, attempt to replace the right hand size of \
             the expression with a randomly generated type appropriate value. This algorithm \
             currently only operates on expressions that have integer, floating-point, or boolean \
@@ -391,11 +395,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::DeleteStatement),
-        AlgorithmDescription {
-            short_description: "Randomly select a statement in a program block and delete the \
+        MutationAlgorithmDescription {
+            summary: "Randomly select a statement in a program block and delete the \
             statement.",
-            long_description:
-                "For languages that have variable declarations and return statements \
+            extra_details: "For languages that have variable declarations and return statements \
             the algorithm will not delete declarations or return statements in order to minimize \
             compilation issues caused by the mutation.",
             operators: vec![],
@@ -405,11 +408,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::FunctionCall),
-        AlgorithmDescription {
-            short_description:
-                "Replace function calls with one of the randomly selected arguments \
+        MutationAlgorithmDescription {
+            summary: "Replace function calls with one of the randomly selected arguments \
             to the function call.",
-            long_description: "For function calls that have one or more arguments, randomly \
+            extra_details: "For function calls that have one or more arguments, randomly \
             select an argument from the argument list and replace the entire function call in the \
             expression with the selected argument. This mutation algorithm will attempt to select \
             arguments of the correct type (the return type of the function call) to minimize \
@@ -421,10 +423,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::IfStatement),
-        AlgorithmDescription {
-            short_description: "Replace the condition expression in an if(c) statement with true, \
+        MutationAlgorithmDescription {
+            summary: "Replace the condition expression in an if(c) statement with true, \
             false, or the logical negation of the condition if(!(c)).",
-            long_description: "",
+            extra_details: "",
             operators: vec![],
             examples: "if(a > b) might become if(true), if(c == 10) might become if(! (c == 1))",
         },
@@ -432,9 +434,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::Integer),
-        AlgorithmDescription {
-            short_description: "Randomly replace integer constants with random values.",
-            long_description: "The mutation algorithm chooses between three possible behaviors \
+        MutationAlgorithmDescription {
+            summary: "Randomly replace integer constants with random values.",
+            extra_details: "The mutation algorithm chooses between three possible behaviors \
             when mutating the constant: add one to the existing value, subtract one from the \
             existing value, or select a random integer value between 0:max(type of the constant).",
             operators: vec![],
@@ -445,9 +447,9 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::FunctionSwapArguments),
-        AlgorithmDescription {
-            short_description: "Randomly swap two arguments in a function call.",
-            long_description: "Find function calls in the program with two or more arguments, \
+        MutationAlgorithmDescription {
+            summary: "Randomly swap two arguments in a function call.",
+            extra_details: "Find function calls in the program with two or more arguments, \
             randomly select two arguments, and swap them.  When possible, the mutation algorithm \
             will select arguments with the same type to avoid compilation issues.",
             operators: vec![],
@@ -457,10 +459,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::OperatorSwapArguments),
-        AlgorithmDescription {
-            short_description: "Swap left and right hand sides of binary expressions with \
+        MutationAlgorithmDescription {
+            summary: "Swap left and right hand sides of binary expressions with \
             non-commutative operators.",
-            long_description: "Select a random binary expression that has a non-commutative \
+            extra_details: "Select a random binary expression that has a non-commutative \
             operator and swap the left and right hand sides of the expression.",
             operators: non_commutative_operators(),
             examples: "thing = a - b; might become thing = b - a;, this = that << 5; might become \
@@ -470,10 +472,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::LinesSwap),
-        AlgorithmDescription {
-            short_description: "Randomly select two statements in a block and swap the two \
+        MutationAlgorithmDescription {
+            summary: "Randomly select two statements in a block and swap the two \
             statements.",
-            long_description: "The mutation algorithm will attempt to identify expression \
+            extra_details: "The mutation algorithm will attempt to identify expression \
             statements and to avoid return statements when selecting statements to swap.",
             operators: vec![],
             examples: "a = foo - bar(); ... foo += 8; might become foo += 8; ... a = foo - bar();",
@@ -482,10 +484,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Generic(GenericMutation::UnaryOp),
-        AlgorithmDescription {
-            short_description: "Random replace unary operators for both prefix and postfix \
+        MutationAlgorithmDescription {
+            summary: "Random replace unary operators for both prefix and postfix \
             expressions with operators from the unary operator list.",
-            long_description: "This mutation algorithm will not convert a prefix unary expression \
+            extra_details: "This mutation algorithm will not convert a prefix unary expression \
             into a postfix unary expression.",
             operators: prefix_operators(),
             examples: "++a; might become ~a;, a-- might become a++.",
@@ -494,10 +496,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Solidity(SolidityMutation::Require),
-        AlgorithmDescription {
-            short_description: "Randomly select a use of the Solidity require() function and \
+        MutationAlgorithmDescription {
+            summary: "Randomly select a use of the Solidity require() function and \
             replace the argument with the logical negation of the argument expression.",
-            long_description: "This mutation algorithm only works for Solidity programs.",
+            extra_details: "This mutation algorithm only works for Solidity programs.",
             operators: vec![],
             examples: "require(b > 10); would become require(!(b > 0);",
         },
@@ -505,10 +507,10 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, AlgorithmDescriptio
 
     algorithm_map.insert(
         MutationType::Solidity(SolidityMutation::UncheckedBlock),
-        AlgorithmDescription {
-            short_description: "Randomly select an expression statement in a block of statements \
+        MutationAlgorithmDescription {
+            summary: "Randomly select an expression statement in a block of statements \
             and decorate the statement with the Solidity unchecked{} block.",
-            long_description: "This mutation algorithm only works for Solidity programs.",
+            extra_details: "This mutation algorithm only works for Solidity programs.",
             operators: vec![],
             examples: "a = b + c; would become unchecked{ a = b + c; }",
         },

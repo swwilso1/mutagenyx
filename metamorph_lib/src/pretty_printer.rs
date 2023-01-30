@@ -218,12 +218,31 @@ impl PrettyPrinter {
         Ok(())
     }
 
+    /// Write multiple copies of `token` to `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The [`Write`] object that will receive the tokens.
+    /// * `token` - The token text to write to `stream`.
+    /// * `count` - The number of copies of `token` to write to the stream.
+    pub fn write_tokens<W: Write>(
+        &mut self,
+        stream: &mut W,
+        token: &str,
+        count: usize,
+    ) -> Result<(), MetamorphError> {
+        for _ in 0..count {
+            self.write_token(stream, token)?;
+        }
+        Ok(())
+    }
+
     /// Write a string value to the stream.  The function will emit the string surrounded by the
     /// \" delimiters.
     ///
     /// # Arguments
     ///
-    /// * `stream` - the [`Write`] object that will receive the string.
+    /// * `stream` - The [`Write`] object that will receive the string.
     ///
     /// # Examples
     ///
@@ -432,9 +451,31 @@ pub fn write_newline<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
 ///
 /// * `printer` - The pretty-printer that will write the token to the `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
+/// * `token` - The token text to write to the stream.
 pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token: &str) {
     if let Err(e) = printer.write_token(stream, token) {
         log::info!("Unable to write token: {e}");
+    }
+}
+
+/// Helper function to write multiple copies of `token` to `stream` while suppressing errors.  The
+/// function sends error messages to the log.
+///
+/// # Arguments
+///
+/// * `printer` - The [`PrettyPrinter`] object that will write the copies of token to `stream`.
+/// * `stream` - The [`Write`] object wthat will receive the text.
+/// * `token` - The token text to write to the stream.
+/// * `count` - The number of copies of `token` to write to the stream.
+pub fn write_tokens<W: Write>(
+    printer: &mut PrettyPrinter,
+    stream: &mut W,
+    token: &str,
+    count: usize,
+) {
+    if let Err(e) = printer.write_tokens(stream, token, count) {
+        log::info!("Unable to write multiple tokens: {e}");
+        return;
     }
 }
 
