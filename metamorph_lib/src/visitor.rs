@@ -24,7 +24,9 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the node that the visitor has started visiting.
-    fn on_enter(&mut self, node: &N);
+    fn on_enter(&mut self, _node: &N) {
+        return;
+    }
 
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal
@@ -33,7 +35,9 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the node that the visitor should should process.
-    fn visit(&mut self, node: &N) -> bool;
+    fn visit(&mut self, _node: &N) -> bool {
+        false
+    }
 
     /// Return true if the main traversal algorithm should process the nodes children.
     ///
@@ -44,7 +48,9 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the node.
-    fn visit_children(&mut self, node: &N) -> bool;
+    fn visit_children(&mut self, _node: &N) -> bool {
+        true
+    }
 
     /// The traversal algorithm calls this function just after processing the children of `node`
     /// and before moving on to the next node in the syntax tree.
@@ -52,7 +58,9 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the current node.
-    fn on_exit(&mut self, node: &N);
+    fn on_exit(&mut self, _node: &N) {
+        return;
+    }
 }
 
 /// Trait that describes the behavior required from objects that traverse an abstract syntax
@@ -66,7 +74,9 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A mutable reference to the node that the visitor has started visiting.
-    fn on_enter(&mut self, node: &mut N);
+    fn on_enter(&mut self, _node: &mut N) {
+        return;
+    }
 
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal
@@ -75,7 +85,9 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A mutable reference to the node that the visitor should should process.
-    fn visit_mut(&mut self, node: &mut N) -> bool;
+    fn visit_mut(&mut self, _node: &mut N) -> bool {
+        false
+    }
 
     /// Return true if the main traversal algorithm should process the nodes children.
     ///
@@ -86,7 +98,9 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A mutable reference to the node.
-    fn visit_children(&mut self, node: &mut N) -> bool;
+    fn visit_children(&mut self, _node: &mut N) -> bool {
+        true
+    }
 
     /// The traversal algorithm calls this function just after processing the children of `node`
     /// and before moving on to the next node in the syntax tree.
@@ -94,5 +108,7 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the current node.
-    fn on_exit(&mut self, node: &mut N);
+    fn on_exit(&mut self, _node: &mut N) {
+        return;
+    }
 }
