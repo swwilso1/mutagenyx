@@ -44,6 +44,16 @@ pub fn generate_mutants(args: MutateCLArgs) {
             .collect();
     }
 
+    // Output some log information about the selected algorithms.
+    let mut mutation_strings: Vec<String> = Vec::new();
+    for mutation in &mutations {
+        mutation_strings.push(mutation.to_string());
+    }
+    log::info!(
+        "Generating mutations using algorithms: {:?}",
+        mutation_strings
+    );
+
     let mut rng = Pcg64::seed_from_u64(args.rng_seed);
 
     let mut preferences = Preferences::new();
@@ -105,7 +115,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     // Only pretty-print the original file after verifying that we can load the AST, and that
     // we have valid mutators for the AST.
     if params.print_original {
+        let original_file = PathBuf::from_str(&params.file_name).unwrap();
         pretty_print_ast(&ast, &params.file_name, &params.output_directory)?;
+        log::info!(
+            "Pretty-printing original file {:?} to {}",
+            original_file.file_name().unwrap(),
+            &params.output_directory.to_str().unwrap()
+        );
     }
 
     // This list now holds the mutation types for which the AST has nodes to mutate.
@@ -164,7 +180,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
             let outfile = String::from(outfile_name.to_str().unwrap());
 
-            pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
+            let final_file = pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
+
+            log::info!(
+                "{} used to create mutant written to {}",
+                mutation_type,
+                final_file.to_str().unwrap()
+            );
 
             // Remove the item from the top of the VecDeque.
             mutation_kinds_todo.remove(0);

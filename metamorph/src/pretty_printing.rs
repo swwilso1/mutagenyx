@@ -5,7 +5,7 @@
 use crate::PrettyPrintCLArgs;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
-use metamorph_lib::preferences::Preferences;
+use metamorph_lib::preferences::{PreferenceValue, Preferences};
 use metamorph_lib::pretty_printer::PrettyPrinter;
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::language_for_ast;
@@ -18,9 +18,22 @@ use std::{path::PathBuf, str::FromStr};
 ///
 /// * `args` - The [`PrettyPrintCLArgs`] object.
 pub fn pretty_print_files(args: PrettyPrintCLArgs) {
+    let mut preferences = Preferences::new();
+    preferences.set_value_for_key(
+        "solidity_compiler",
+        PreferenceValue::String(&args.solidity_compiler),
+    );
+
     for file_name in args.file_names {
-        if let Err(e) = pretty_print_file(&file_name, &args.output_directory) {
-            println!("Unable to pretty-print {}: {}", file_name, e);
+        let original_file = PathBuf::from_str(&file_name).unwrap();
+        let original_file_str = original_file.file_name().unwrap();
+        match pretty_print_file(&file_name, &args.output_directory, &preferences) {
+            Ok(_buf) => log::info!(
+                "Pretty-printing original file {:?} to {}",
+                original_file_str,
+                &args.output_directory
+            ),
+            Err(e) => println!("Unable to pretty-print {:?}: {}", original_file_str, e),
         }
     }
 }
@@ -31,14 +44,15 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 ///
 /// * `file_name` - The path to the file to pretty-print in the file system.
 /// * `output_directory` - The path to the location to save the pretty-printed file.
+/// * `preferences` - [`Preferences`] object.
 pub fn pretty_print_file(
     file_name: &String,
     output_directory: &String,
-) -> Result<(), MetamorphError> {
+    preferences: &Preferences,
+) -> Result<PathBuf, MetamorphError> {
     // Convert the output_directory to a PathBuf
     let out_dir = PathBuf::from_str(output_directory).unwrap();
 
-    let preferences = Preferences::new();
     let recognizer = Recognizer::new(&preferences);
 
     // Recognize the language.
@@ -77,7 +91,7 @@ pub fn pretty_print_file(
     let _write_result =
         language_object.pretty_print_ast_to_file(&ast, &outfile, &mut pretty_printer)?;
 
-    Ok(())
+    Ok(outfile_name)
 }
 
 /// Pretty print an AST to the file named `file_name` in `output_dir`.
@@ -94,7 +108,7 @@ pub fn pretty_print_ast(
     ast: &SuperAST,
     file_name: &str,
     output_dir: &PathBuf,
-) -> Result<(), MetamorphError> {
+) -> Result<PathBuf, MetamorphError> {
     let language = language_for_ast(ast);
 
     let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
@@ -123,5 +137,5 @@ pub fn pretty_print_ast(
     let _write_result =
         language_object.pretty_print_ast_to_file(&ast, &outfile, &mut pretty_printer)?;
 
-    Ok(())
+    Ok(outfile_name)
 }

@@ -9,8 +9,11 @@ mod pretty_printing;
 use crate::mutation_generator::generate_mutants;
 use crate::mutations_info::display_mutations_info;
 use crate::pretty_printing::pretty_print_files;
+use chrono::Local;
 use clap::Parser;
+use env_logger::TimestampPrecision;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 
 /// Mutate sub-command command line arguments.
 #[derive(Debug, Clone, Parser, Deserialize, Serialize)]
@@ -61,6 +64,10 @@ pub struct PrettyPrintCLArgs {
     /// Input file(s) to pretty-print
     #[clap(short, long, required = true, multiple = true)]
     pub file_names: Vec<String>,
+
+    /// Solidity compiler
+    #[clap(long, default_value = "solc")]
+    pub solidity_compiler: String,
 }
 
 /// Arguments for listing details about mutation algorithms
@@ -85,7 +92,18 @@ pub enum MetamorphCommand {
 }
 
 fn main() {
-    let _ = env_logger::builder().try_init();
+    let _ = env_logger::builder()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] {}",
+                Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .format_timestamp(Some(TimestampPrecision::Seconds))
+        .try_init();
     match MetamorphCommand::parse() {
         MetamorphCommand::Mutate(params) => {
             generate_mutants(params);
