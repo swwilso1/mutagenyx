@@ -51,6 +51,10 @@ pub struct MutateCLArgs {
     /// Solidity compiler
     #[clap(long, default_value = "solc")]
     pub solidity_compiler: String,
+
+    /// Vyper compiler
+    #[clap(long, default_value = "vyper")]
+    pub vyper_compiler: String,
 }
 
 /// Pretty-print sub-command command line arguments.
@@ -68,6 +72,10 @@ pub struct PrettyPrintCLArgs {
     /// Solidity compiler
     #[clap(long, default_value = "solc")]
     pub solidity_compiler: String,
+
+    /// Vyper compiler
+    #[clap(long, default_value = "vyper")]
+    pub vyper_compiler: String,
 }
 
 /// Arguments for listing details about mutation algorithms

@@ -6,7 +6,7 @@ use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
 use crate::mutator::*;
-use crate::preferences::Preferences;
+use crate::preferences::{PreferenceValue, Preferences};
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
@@ -72,9 +72,9 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
     fn convert_source_file_to_ast(
         &self,
         file_name: &str,
-        _prefs: &Preferences,
+        prefs: &Preferences,
     ) -> Result<SuperAST, MetamorphError> {
-        if let Ok(s) = file_is_source_file_with_vyper_from_pip(file_name) {
+        if let Ok(s) = file_is_source_file_with_vyper_from_pip(file_name, prefs) {
             let value = load_json_from_file_with_name(&s)?;
             return <VyperLanguageSubInterface as JSONLanguageDelegate<W>>::get_value_as_super_ast(
                 self, value,
@@ -93,8 +93,8 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
         )))
     }
 
-    fn file_is_language_source_file(&self, file_name: &str, _prefs: &Preferences) -> bool {
-        if let Ok(_) = file_is_source_file_with_vyper_from_pip(file_name) {
+    fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
+        if let Ok(_) = file_is_source_file_with_vyper_from_pip(file_name, prefs) {
             return true;
         }
 
@@ -120,14 +120,28 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
 /// # Arguments
 ///
 /// * `file_name` - The path to the source file to compile.
-fn file_is_source_file_with_vyper_from_pip(file_name: &str) -> Result<String, MetamorphError> {
+/// * `preferences` - The [`Preferences`] object that might contain a value for `vyper_compiler`.
+fn file_is_source_file_with_vyper_from_pip(
+    file_name: &str,
+    preferences: &Preferences,
+) -> Result<String, MetamorphError> {
     let file_path = PathBuf::from_str(file_name).unwrap();
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
     let out_path = String::from(tmp_dir.to_str().unwrap()) + base_name + ".json";
     let args = vec!["-f", "ast", "-o", out_path.as_str(), file_name];
 
-    match shell_execute("vyper", args) {
+    let vyper_compiler: &str;
+    if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
+        vyper_compiler = match compiler {
+            PreferenceValue::String(s) => s,
+            _ => "vyper",
+        };
+    } else {
+        vyper_compiler = "vyper";
+    }
+
+    match shell_execute(vyper_compiler, args) {
         Ok(output) => {
             if output.status.success() {
                 Ok(out_path)

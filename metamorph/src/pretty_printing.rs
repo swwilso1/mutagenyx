@@ -23,6 +23,10 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
         "solidity_compiler",
         PreferenceValue::String(&args.solidity_compiler),
     );
+    preferences.set_value_for_key(
+        "vyper_compiler",
+        PreferenceValue::String(&args.vyper_compiler),
+    );
 
     for file_name in args.file_names {
         let original_file = PathBuf::from_str(&file_name).unwrap();

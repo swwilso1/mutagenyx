@@ -61,6 +61,10 @@ pub fn generate_mutants(args: MutateCLArgs) {
         "solidity_compiler",
         PreferenceValue::String(&args.solidity_compiler),
     );
+    preferences.set_value_for_key(
+        "vyper_compiler",
+        PreferenceValue::String(&args.vyper_compiler),
+    );
 
     // Now, for each input file, generate the requested number and type of mutations.
     for file_name in args.file_names {
