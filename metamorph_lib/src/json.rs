@@ -78,6 +78,7 @@ pub trait JSONMutate {
     fn set_str_for_key(&mut self, path: &str, value: &str);
     fn get_bool_for_key(&self, key: &str) -> Option<bool>;
     fn get_int_for_key(&self, key: &str) -> Option<i64>;
+    fn contains_key(&self, key: &str) -> bool;
 }
 
 impl JSONMutate for Value {
@@ -285,6 +286,21 @@ impl JSONMutate for Value {
             Some(v) => v.as_i64(),
             _ => None,
         }
+    }
+
+    /// Return true if the JSON object is an object and it has a key/value pair
+    /// for `key`.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key for which to search.
+    fn contains_key(&self, key: &str) -> bool {
+        if self.is_object() {
+            if let Some(_node) = self.borrow_value_for_key(key) {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -494,5 +510,21 @@ mod tests {
         } else {
             assert!(false, "Unable to get int for key 'one'");
         }
+    }
+
+    #[test]
+    fn test_json_mutate_contains_key() {
+        let value: Value = from_str(
+            "{\
+            \"foo\": 1
+        }",
+        )
+        .unwrap();
+
+        assert!(value.contains_key("foo"));
+
+        let value2 = json![[]];
+
+        assert!(!value2.contains_key("bar"));
     }
 }
