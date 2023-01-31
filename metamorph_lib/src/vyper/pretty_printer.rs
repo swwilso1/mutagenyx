@@ -41,6 +41,27 @@ fn write_elements_array<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, n
     }
 }
 
+/// Write the value of the array contained in `key`.
+///
+/// # Arguments
+///
+/// * `printer` - The [`PrettyPrinter`] object that will format the output.
+/// * `stream` - The [`Write`] object that will receive the formatted text.
+/// * `key` - The key string.
+/// * `node` - The node in the Vyper AST.
+fn write_key_of_node_as_array<W: Write>(
+    printer: &mut PrettyPrinter,
+    stream: &mut W,
+    key: &str,
+    node: &VyperAST,
+) {
+    if let Some(sub_node) = node.borrow_value_for_key(key) {
+        if let Some(sub_array) = sub_node.as_array() {
+            print_array_helper(printer, stream, VyperNodePrinterFactory {}, sub_array);
+        }
+    }
+}
+
 /// Write the value of the array contained in the 'args' key.
 ///
 /// # Arguments
@@ -49,11 +70,7 @@ fn write_elements_array<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, n
 /// * `stream` - The [`Write`] object that will receive the formatted text.
 /// * `node` - The node in the Vyper AST.
 fn write_args_as_array<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, node: &VyperAST) {
-    if let Some(args_node) = node.borrow_value_for_key("args") {
-        if let Some(args_array) = args_node.as_array() {
-            print_array_helper(printer, stream, VyperNodePrinterFactory {}, args_array);
-        }
-    }
+    write_key_of_node_as_array(printer, stream, "args", node);
 }
 
 /// Write the object in the `value` element of `node` with ' = <value>'.
@@ -344,7 +361,50 @@ struct ArgumentsPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
     fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
-        write_args_as_array(printer, stream, node);
+        // Writing the function arguments is a little complicated because of the way the Vyper AST
+        // represents default argument values.  The default values live in the node's 'defaults'
+        // key.  This key contains an array of default values. Since Vyper function defs can
+        // only have default values for the last arguments to the function, the array of defaults
+        // array of say length N apply only to the last N arguments of the function.
+        if let Some(defaults_node) = node.borrow_value_for_key("defaults") {
+            if let Some(defaults_array) = defaults_node.as_array() {
+                if defaults_array.len() == 0 {
+                    write_args_as_array(printer, stream, node);
+                } else {
+                    if let Some(args_node) = node.borrow_value_for_key("args") {
+                        if let Some(args_array) = args_node.as_array() {
+                            let first_default_index = args_array.len() - defaults_array.len();
+                            let mut i: usize = 0;
+                            while i < args_array.len() {
+                                let arg = args_array.get(i).unwrap();
+                                traverse_sub_node_and_print(
+                                    printer,
+                                    stream,
+                                    VyperNodePrinterFactory {},
+                                    arg,
+                                );
+                                if i >= first_default_index {
+                                    let default_index = i - first_default_index;
+                                    let default_node = defaults_array.get(default_index).unwrap();
+                                    write_token(printer, stream, "=");
+                                    traverse_sub_node_and_print(
+                                        printer,
+                                        stream,
+                                        VyperNodePrinterFactory {},
+                                        default_node,
+                                    );
+                                }
+                                if i < (args_array.len() - 1) {
+                                    write_token(printer, stream, ",");
+                                    write_space(printer, stream);
+                                }
+                                i += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -615,6 +675,15 @@ impl<W: Write> NodePrinter<W, VyperAST> for CallPrinter {
         }
         write_token(printer, stream, "(");
         write_args_as_array(printer, stream, node);
+        if let Some(keywords_node) = node.borrow_value_for_key("keywords") {
+            if let Some(keywords_array) = keywords_node.as_array() {
+                if keywords_array.len() > 0 {
+                    write_token(printer, stream, ",");
+                    write_space(printer, stream);
+                    write_key_of_node_as_array(printer, stream, "keywords", node);
+                }
+            }
+        }
         write_token(printer, stream, ")");
     }
 }
@@ -892,6 +961,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for EventDefPrinter {
         write_space(printer, stream);
         if let Some(name_str) = node.get_str_for_key("name") {
             write_token(printer, stream, name_str);
+            write_token(printer, stream, ":");
         }
         write_newline(printer, stream);
         printer.increase_indent();
@@ -952,6 +1022,25 @@ impl<W: Write> NodePrinter<W, VyperAST> for AndPrinter {
     }
 }
 
+struct KeywordPrinter {}
+
+impl<W: Write> NodePrinter<W, VyperAST> for KeywordPrinter {
+    fn print_node(&mut self, stream: &mut W, node: &VyperAST, printer: &mut PrettyPrinter) {
+        if let Some(arg_str) = node.get_str_for_key("arg") {
+            write_token(printer, stream, arg_str);
+            write_token(printer, stream, "=");
+            if let Some(value_node) = node.borrow_value_for_key("value") {
+                traverse_sub_node_and_print(
+                    printer,
+                    stream,
+                    VyperNodePrinterFactory {},
+                    value_node,
+                );
+            }
+        }
+    }
+}
+
 /// Type that implements [`NodePrinterFactory<W,AST>`] for Vyper AST nodes.
 ///
 /// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<W,AST>`] object.
@@ -1002,6 +1091,7 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "Log" => Box::new(LogPrinter {}),
                 "Comment" => Box::new(CommentPrinter {}),
                 "And" => Box::new(AndPrinter {}),
+                "keyword" => Box::new(KeywordPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }
         } else {
