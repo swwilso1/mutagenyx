@@ -22,6 +22,8 @@ pub fn get_python_operator_map() -> HashMap<&'static str, &'static str> {
     operator_map.insert("LtE", "<=");
     operator_map.insert("Not", "!");
     operator_map.insert("Invert", "~");
+    operator_map.insert("In", "in");
+    operator_map.insert("NotIn", "not in");
 
     operator_map
 }

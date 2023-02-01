@@ -41,6 +41,10 @@ pub enum MetamorphError {
     /// An error indicating that source file did not compile.
     #[error("Source file {0} would not compile")]
     SourceDoesNotCompile(String),
+
+    /// An error indicating the tool could not determine the compiler version.
+    #[error("Compiler {0} does not report its version number")]
+    CompilerNoVersion(String),
 }
 
 impl From<std::io::Error> for MetamorphError {

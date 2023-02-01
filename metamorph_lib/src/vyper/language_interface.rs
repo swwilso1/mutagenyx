@@ -13,12 +13,13 @@ use crate::super_ast::SuperAST;
 use crate::utility::shell_execute;
 use crate::visitor::Visitor;
 use crate::vyper::mutators::VyperMutatorFactory;
-use crate::vyper::pretty_printer::VyperNodePrinterFactory;
+use crate::vyper::pretty_printer::{VyperNodePrinterFactory, VyperPrettyPrinterSettings};
 use serde_json::Value;
 use std::env;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
+use versions::{Mess, Versioning};
 
 /// Return the object conforming to [`JSONLanguageDelegate<W>`]
 pub fn get_vyper_sub_language_interface<W: Write>() -> Box<dyn JSONLanguageDelegate<W>> {
@@ -58,7 +59,9 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
         return Box::new(PrettyPrintVisitor::new(
             w,
             printer,
-            Box::new(VyperNodePrinterFactory {}),
+            Box::new(VyperNodePrinterFactory::new(
+                VyperPrettyPrinterSettings::default(),
+            )),
         ));
     }
 
@@ -115,7 +118,8 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageSubInterface {
 }
 
 /// Try to execute the vyper compiler on the command line assuming that the user
-/// has installed the pip version of the vyper compiler.
+/// has installed the pip version of the vyper compiler. Return the path to the
+/// file that contains the Vyper AST.
 ///
 /// # Arguments
 ///
@@ -125,31 +129,116 @@ fn file_is_source_file_with_vyper_from_pip(
     file_name: &str,
     preferences: &Preferences,
 ) -> Result<String, MetamorphError> {
+    // This code does the following:
+    // * Tries to determine the Vyper compiler version.
+    // * Checks the discovered version against the first know version that supports -o output_file
+    // * Tries to generate the source file AST.
+    // * If successful, returns the file name of the AST.
+
     let file_path = PathBuf::from_str(file_name).unwrap();
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
-    let out_path = String::from(tmp_dir.to_str().unwrap()) + base_name + ".json";
-    let args = vec!["-f", "ast", "-o", out_path.as_str(), file_name];
+    let mut full_path_to_tmp_file = PathBuf::from(&tmp_dir);
 
-    let vyper_compiler: &str;
-    if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
-        vyper_compiler = match compiler {
+    // The Vyper compiler did not start support '-o outfile_name' as a command line option until
+    // Vyper compiler version 3.0.0.
+    let first_version_to_support_dash_o = Versioning::new("3.0.0").unwrap();
+
+    full_path_to_tmp_file.push(String::from(base_name) + ".json");
+
+    // Check to see if the caller gave us a unique Vyper compiler, otherwise use `vyper` as the
+    // default.
+    let vyper_compiler = if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
+        match compiler {
             PreferenceValue::String(s) => s,
             _ => "vyper",
-        };
+        }
     } else {
-        vyper_compiler = "vyper";
+        "vyper"
+    };
+
+    let discovered_compiler_version: Versioning;
+
+    // Now check the compiler version to see if we support -o.
+    match shell_execute(vyper_compiler, vec!["--version"]) {
+        Ok(output) => {
+            if output.status.success() {
+                let output_version = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+
+                // Clip off the newline character.  The Mess code dislikes the newline.
+                let output_version = &output_version[..output_version.len() - 1];
+
+                // We use Mess here because the compiler may output some non-semantic versioned string
+                // like `0.2.11+commit.5db35ef` for a compiler version.  Mess gives us a shot at recovering
+                // the major/minor/release numbers even when the version string has extra, hard-to-parse
+                // contents.
+                discovered_compiler_version = match Mess::new(output_version) {
+                    Some(v) => {
+                        let mut vstr = String::new();
+                        if let Some(value) = v.nth(0) {
+                            vstr += &(value as u32).to_string();
+                        }
+                        vstr += ".";
+                        if let Some(value) = v.nth(1) {
+                            vstr += &(value as u32).to_string();
+                        }
+                        vstr += ".";
+                        if let Some(value) = v.nth(2) {
+                            vstr += &(value as u32).to_string();
+                        }
+                        Versioning::new(&vstr).unwrap()
+                    }
+                    None => {
+                        return Err(MetamorphError::CompilerNoVersion(String::from(
+                            vyper_compiler,
+                        )))
+                    }
+                };
+            } else {
+                let command_error = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::error!("Unable to retrieve compiler version: {}", command_error);
+                return Err(MetamorphError::CompilerNoVersion(String::from(
+                    vyper_compiler,
+                )));
+            }
+        }
+        Err(e) => {
+            log::error!("shell_execute error: {}", e);
+            return Err(e);
+        }
     }
+
+    // Now that we know the compiler version, set the appropriate command-line arguments and
+    // mark whether or not we should post-process the output.  If the compiler does not support
+    // `-o outfile_name`, then we need to take the contents of stdout and write them to the
+    // temporary file.
+    let post_process_compiler_output_to_file: bool;
+    let args = if discovered_compiler_version >= first_version_to_support_dash_o {
+        post_process_compiler_output_to_file = false;
+        vec![
+            "-f",
+            "ast",
+            "-o",
+            full_path_to_tmp_file.to_str().unwrap(),
+            file_name,
+        ]
+    } else {
+        post_process_compiler_output_to_file = true;
+        vec!["-f", "ast", file_name]
+    };
 
     match shell_execute(vyper_compiler, args) {
         Ok(output) => {
             if output.status.success() {
-                Ok(out_path)
+                if post_process_compiler_output_to_file {
+                    // The compiler did not support the -o flag to output the AST to a file.  So,
+                    // we get the output from stdout and write that to the output file.
+                    let ast_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+                    let mut file = std::fs::File::create(full_path_to_tmp_file.to_str().unwrap())?;
+                    write!(file, "{ast_contents}")?;
+                }
+                Ok(String::from(full_path_to_tmp_file.to_str().unwrap()))
             } else {
-                println!(
-                    "{}",
-                    core::str::from_utf8(output.stderr.as_slice()).unwrap()
-                );
                 Err(MetamorphError::SourceDoesNotCompile(String::from(
                     file_name,
                 )))
@@ -161,7 +250,8 @@ fn file_is_source_file_with_vyper_from_pip(
     }
 }
 
-/// Try to execute the vyper compiler in a docker container.
+/// Try to execute the vyper compiler in a docker container. On success, return the path to
+/// the output file that contains the Vyper AST.
 ///
 /// # Arguments
 ///

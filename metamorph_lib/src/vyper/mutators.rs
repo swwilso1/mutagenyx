@@ -10,7 +10,7 @@ use crate::operators::*;
 use crate::pretty_printer::PrettyPrinter;
 use crate::vyper::ast::VyperAST;
 use crate::vyper::operators::get_python_operator_map;
-use crate::vyper::pretty_printer::VyperNodePrinterFactory;
+use crate::vyper::pretty_printer::{VyperNodePrinterFactory, VyperPrettyPrinterSettings};
 use num::{Float, Integer};
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -480,7 +480,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 traverse_sub_node_and_print(
                     &mut printer,
                     &mut contents,
-                    VyperNodePrinterFactory {},
+                    VyperNodePrinterFactory::new(VyperPrettyPrinterSettings::default()),
                     &value,
                 );
                 let s = core::str::from_utf8(contents.as_slice()).unwrap();

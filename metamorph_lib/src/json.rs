@@ -78,6 +78,7 @@ pub trait JSONMutate {
     fn set_str_for_key(&mut self, path: &str, value: &str);
     fn get_bool_for_key(&self, key: &str) -> Option<bool>;
     fn get_int_for_key(&self, key: &str) -> Option<i64>;
+    fn get_float_for_key(&self, key: &str) -> Option<f64>;
     fn contains_key(&self, key: &str) -> bool;
 }
 
@@ -279,11 +280,28 @@ impl JSONMutate for Value {
     ///
     /// # Arguments
     ///
-    /// * `key` = The string slice referencing the text comprising the key.
+    /// * `key` - The string slice referencing the text comprising the key.
     fn get_int_for_key(&self, key: &str) -> Option<i64> {
         let json_path = json_path(key);
         match self.pointer(&json_path) {
             Some(v) => v.as_i64(),
+            _ => None,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object,
+    /// the function will return the f64 value stored in the object for `key`.
+    ///
+    /// The caller should use [`Value::is_object`] and [`Value::is_f64`] to
+    /// check for a JSON dictionary/man and for an f64 value.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string slice referencing the text comprising the key.
+    fn get_float_for_key(&self, key: &str) -> Option<f64> {
+        let json_path = json_path(key);
+        match self.pointer(&json_path) {
+            Some(v) => v.as_f64(),
             _ => None,
         }
     }
@@ -509,6 +527,22 @@ mod tests {
             assert_eq!(i, 100);
         } else {
             assert!(false, "Unable to get int for key 'one'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_float_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"f\": 1.23
+        }",
+        )
+        .unwrap();
+
+        if let Some(f) = value.get_float_for_key("f") {
+            assert_eq!(f, 1.23);
+        } else {
+            assert!(false, "Unable to get float for key `f`");
         }
     }
 
