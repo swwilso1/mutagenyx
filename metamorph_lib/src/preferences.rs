@@ -3,7 +3,7 @@ use serde_json::{from_str, json, Value};
 use std::collections::HashMap;
 
 /// Value type stored in the preferences object.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PreferenceValue<'a> {
     Int(i64),
     Float(f64),
@@ -15,7 +15,7 @@ pub enum PreferenceValue<'a> {
 }
 
 /// Preferences object that provides a key/value store where the value can have multiple sub-types.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Preferences {
     /// A JSON object.
     data: Value,

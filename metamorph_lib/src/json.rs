@@ -2,7 +2,7 @@
 //! [`Value`] objects for the purpose of traversing and mutating abstract syntax trees
 //! encoded in JSON.
 use crate::error::MetamorphError;
-use serde_json::{from_str, json, Value};
+use serde_json::{from_str, json, Map, Value};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -74,6 +74,7 @@ pub trait JSONMutate {
     fn set_node_for_key(&mut self, key: &str, node: Value);
     fn set_node_for_key_at_index(&mut self, key: &str, index: usize, node: Value);
     fn get_array_for_key(&self, key: &str) -> Option<&Vec<Value>>;
+    fn get_map_for_key(&self, key: &str) -> Option<&Map<String, Value>>;
     fn get_str_for_key(&self, path: &str) -> Option<&str>;
     fn set_str_for_key(&mut self, path: &str, value: &str);
     fn get_bool_for_key(&self, key: &str) -> Option<bool>;
@@ -210,6 +211,24 @@ impl JSONMutate for Value {
         let json_path = json_path(key);
         match self.pointer(&json_path) {
             Some(v) => v.as_array(),
+            _ => None,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
+    /// the dictionary contains an entry for `key` that holds a JSON map, return a reference
+    /// to that map.
+    ///
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map that contains
+    /// a JSON map.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string slice referencing the text comprising the key.
+    fn get_map_for_key(&self, key: &str) -> Option<&Map<String, Value>> {
+        let json_path = json_path(key);
+        match self.pointer(&json_path) {
+            Some(v) => v.as_object(),
             _ => None,
         }
     }
@@ -442,12 +461,47 @@ mod tests {
             assert_eq!(array.len(), 3);
             if let Some(node) = array.get(0) {
                 assert_eq!(node.as_i64().unwrap(), 1);
+            } else {
+                assert!(false, "Array did not have anything at index 0");
             }
             if let Some(node) = array.get(1) {
                 assert_eq!(node.as_i64().unwrap(), 3);
+            } else {
+                assert!(false, "Array did not have anything at index 1");
             }
             if let Some(node) = array.get(2) {
                 assert_eq!(node.as_i64().unwrap(), 5);
+            } else {
+                assert!(false, "Array did not have anything at index 2");
+            }
+        } else {
+            assert!(false, "Cannot find value for key 'node'");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_map_for_key() {
+        let value: Value = from_str(
+            "{\
+            \"node\": {\
+                \"one\": 1,
+                \"two\": 2
+            }
+        }",
+        )
+        .unwrap();
+
+        if let Some(map) = value.get_map_for_key("node") {
+            assert_eq!(map.len(), 2);
+            if let Some(node) = map.get("one") {
+                assert_eq!(node.as_i64().unwrap(), 1);
+            } else {
+                assert!(false, "map did not contain key/value for key 'one'");
+            }
+            if let Some(node) = map.get("two") {
+                assert_eq!(node.as_i64().unwrap(), 2);
+            } else {
+                assert!(false, "map did not contain key/value for key 'two'");
             }
         } else {
             assert!(false, "Cannot find value for key 'node'");

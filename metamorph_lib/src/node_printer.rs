@@ -1,6 +1,7 @@
 //! The `node_printer` module contains the [`NodePrinter<W,AST>`] and [`NodePrinterFactory<W,AST>`]
 //! traits.
 
+use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use std::io::Write;
 
@@ -16,12 +17,20 @@ pub trait NodePrinter<W: Write, AST> {
     ///
     /// # Arguments
     ///
-    /// * `_stream` - The [`Write`] object that will receive formatted output.
-    /// * `_node` - The AST node.
     /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_factory` - The [`NodePrinterFactory<W, AST>`] trait object that will generate node
+    /// printers for the nodes of the AST.
+    /// * `_node` - The AST node.
     ///
     /// The default version of this function do not use any of the arguments.
-    fn on_entry(&mut self, _stream: &mut W, _node: &AST, _printer: &mut PrettyPrinter) {
+    fn on_entry(
+        &mut self,
+        _printer: &mut PrettyPrinter,
+        _stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _node: &AST,
+    ) {
         return;
     }
 
@@ -29,12 +38,20 @@ pub trait NodePrinter<W: Write, AST> {
     ///
     /// # Arguments
     ///
-    /// * `_stream` - The [`Write`] object that will receive formatted output.
-    /// * `_node` - The AST node.
     /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`.
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_factory` - The [`NodePrinterFactory<W, AST>`] trait object that will generate node
+    /// printers for the nodes of the AST.
+    /// * `_node` - The AST node.
     ///
     /// The default version of this function do not use any of the arguments.
-    fn print_node(&mut self, _stream: &mut W, _node: &AST, _printer: &mut PrettyPrinter) {
+    fn print_node(
+        &mut self,
+        _printer: &mut PrettyPrinter,
+        _stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _node: &AST,
+    ) {
         return;
     }
 
@@ -42,10 +59,18 @@ pub trait NodePrinter<W: Write, AST> {
     ///
     /// # Arguments
     ///
-    /// * `_stream` - The [`Write`] object that will receive formatted output.
-    /// * `_node` - The AST node.
     /// * `_printer` - The [`PrettyPrinter`] that will write content to `_stream`.
-    fn on_exit(&mut self, _stream: &mut W, _node: &AST, _printer: &mut PrettyPrinter) {
+    /// * `_stream` - The [`Write`] object that will receive formatted output.
+    /// * `_factory` - The [`NodePrinterFactory<W, AST>`] trait object that will generate node
+    /// printers for the nodes of the AST.
+    /// * `_node` - The AST node.
+    fn on_exit(
+        &mut self,
+        _printer: &mut PrettyPrinter,
+        _stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _node: &AST,
+    ) {
         return;
     }
 
@@ -58,5 +83,12 @@ pub trait NodePrinter<W: Write, AST> {
 /// Trait that describes the functionality for an object that will create [`NodePrinter<W,AST>`]
 /// objects for printing a node of an AST.
 pub trait NodePrinterFactory<W: Write, AST> {
+    /// Get a node printer for `node`.
+    ///
+    /// # Arguments
+    /// * `node` - The node from the AST.
     fn printer_for(&self, node: &AST) -> Box<dyn NodePrinter<W, AST>>;
+
+    /// Get the settings object for the factory.
+    fn get_settings(&self) -> &Preferences;
 }

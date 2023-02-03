@@ -9,9 +9,9 @@ use crate::mutation::MutationType;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::recognizer::FileType;
-use crate::solidity::language_interface::get_solidity_sub_language_interface;
+use crate::solidity::language_interface::get_solidity_delegate;
 use crate::super_ast::SuperAST;
-use crate::vyper::language_interface::get_vyper_sub_language_interface;
+use crate::vyper::language_interface::get_vyper_delegate;
 use rand_pcg::*;
 use std::collections::HashMap;
 
@@ -149,12 +149,10 @@ impl LanguageInterface {
         language: &Language,
     ) -> Result<Box<dyn MutableLanguage>, MetamorphError> {
         match language {
-            Language::Solidity => Ok(Box::new(JSONLanguageInterface::new(
-                get_solidity_sub_language_interface(),
-            ))),
-            Language::Vyper => Ok(Box::new(JSONLanguageInterface::new(
-                get_vyper_sub_language_interface(),
-            ))),
+            Language::Solidity => Ok(Box::new(
+                JSONLanguageInterface::new(get_solidity_delegate()),
+            )),
+            Language::Vyper => Ok(Box::new(JSONLanguageInterface::new(get_vyper_delegate()))),
         }
     }
 
@@ -163,12 +161,10 @@ impl LanguageInterface {
     pub fn get_list_of_all_language_objects(
     ) -> Result<Vec<Box<dyn MutableLanguage>>, MetamorphError> {
         let mut language_list: Vec<Box<dyn MutableLanguage>> = vec![];
-        language_list.push(Box::new(JSONLanguageInterface::new(
-            get_solidity_sub_language_interface(),
-        )));
-        language_list.push(Box::new(JSONLanguageInterface::new(
-            get_vyper_sub_language_interface(),
-        )));
+        language_list.push(Box::new(
+            JSONLanguageInterface::new(get_solidity_delegate()),
+        ));
+        language_list.push(Box::new(JSONLanguageInterface::new(get_vyper_delegate())));
         Ok(language_list)
     }
 }

@@ -5,12 +5,13 @@ use crate::error::MetamorphError;
 use crate::json::*;
 use crate::mutation::*;
 use crate::mutator::*;
+use crate::node_printer::NodePrinterFactory;
 use crate::node_printer_helpers::traverse_sub_node_and_print;
 use crate::operators::*;
 use crate::pretty_printer::PrettyPrinter;
 use crate::vyper::ast::VyperAST;
 use crate::vyper::operators::get_python_operator_map;
-use crate::vyper::pretty_printer::{VyperNodePrinterFactory, VyperPrettyPrinterSettings};
+use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use num::{Float, Integer};
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -477,12 +478,9 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 // node.
                 let mut contents = Vec::new();
                 let mut printer = PrettyPrinter::new(4, 150);
-                traverse_sub_node_and_print(
-                    &mut printer,
-                    &mut contents,
-                    VyperNodePrinterFactory::new(VyperPrettyPrinterSettings::default()),
-                    &value,
-                );
+                let factory: Box<dyn NodePrinterFactory<Vec<u8>, VyperAST>> =
+                    Box::new(VyperNodePrinterFactory::default());
+                traverse_sub_node_and_print(&mut printer, &mut contents, &factory, &value);
                 let s = core::str::from_utf8(contents.as_slice()).unwrap();
 
                 let new_node = match new_comment_node(s) {

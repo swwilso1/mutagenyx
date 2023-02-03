@@ -44,7 +44,7 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// * `w` - The [`Write`] trait object that will receive the formatted output.
     /// * `printer` - The [`PrettyPrinter`] object that will produce the formatted output.
     fn get_pretty_print_visitor<'a>(
-        &self,
+        &'a self,
         w: &'a mut W,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a>;

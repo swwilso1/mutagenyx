@@ -18,7 +18,7 @@ pub struct PrettyPrintVisitor<'a, W: Write, AST> {
     out_stream: &'a mut W,
     /// A [`NodePrinterFactory<W,AST>`] object that will produce [`NodePrinter<W,AST>`] trait
     /// objects
-    node_printer_factory: Box<dyn NodePrinterFactory<W, AST>>,
+    node_printer_factory: &'a Box<dyn NodePrinterFactory<W, AST>>,
 }
 
 impl<'a, W: Write, AST> PrettyPrintVisitor<'a, W, AST> {
@@ -27,11 +27,13 @@ impl<'a, W: Write, AST> PrettyPrintVisitor<'a, W, AST> {
     /// # Arguments
     ///
     /// * `stream` - A reference to the [`Write`] object that will receive formatted output.
-    /// * `printer` - A reference to the [`PrettyPrinter`] object that will generate formated output.
+    /// * `printer` - A reference to the [`PrettyPrinter`] object that will generate formatted output.
+    /// * `factory` - A boxed trait reference object for [`NodePrinterFactory<W,AST>`] that generates
+    /// [`NodePrinter<W, AST>`] objects for nodes in the AST.
     pub fn new(
         stream: &'a mut W,
         printer: &'a mut PrettyPrinter,
-        factory: Box<dyn NodePrinterFactory<W, AST>>,
+        factory: &'a Box<dyn NodePrinterFactory<W, AST>>,
     ) -> PrettyPrintVisitor<'a, W, AST> {
         PrettyPrintVisitor {
             stack: vec![],
@@ -48,13 +50,23 @@ impl<'a, W: Write, AST> Visitor<AST> for PrettyPrintVisitor<'a, W, AST> {
         self.stack.push(printer);
 
         if let Some(p) = self.stack.last_mut() {
-            p.on_entry(&mut self.out_stream, node, self.pretty_printer);
+            p.on_entry(
+                self.pretty_printer,
+                &mut self.out_stream,
+                self.node_printer_factory,
+                node,
+            );
         }
     }
 
     fn visit(&mut self, node: &AST) -> bool {
         if let Some(p) = self.stack.last_mut() {
-            p.print_node(&mut self.out_stream, node, self.pretty_printer);
+            p.print_node(
+                self.pretty_printer,
+                &mut self.out_stream,
+                self.node_printer_factory,
+                node,
+            );
         }
         false
     }
@@ -68,7 +80,12 @@ impl<'a, W: Write, AST> Visitor<AST> for PrettyPrintVisitor<'a, W, AST> {
 
     fn on_exit(&mut self, node: &AST) {
         if let Some(p) = self.stack.last_mut() {
-            p.on_exit(&mut self.out_stream, node, self.pretty_printer);
+            p.on_exit(
+                self.pretty_printer,
+                &mut self.out_stream,
+                self.node_printer_factory,
+                node,
+            );
         }
         self.stack.pop();
     }

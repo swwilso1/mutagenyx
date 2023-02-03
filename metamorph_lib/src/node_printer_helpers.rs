@@ -14,17 +14,13 @@ use std::io::Write;
 /// * `stream` - The [`Write`] object that will receive formatted output
 /// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 /// * `factory` - The [`NodePrinterFactory<W,AST>`] object for generating node printers.
-pub fn traverse_sub_node_and_print<
-    W: Write,
-    AST: SimpleAST<AST>,
-    F: NodePrinterFactory<W, AST> + 'static,
->(
+pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: F,
+    factory: &Box<dyn NodePrinterFactory<W, AST>>,
     node: &AST,
 ) {
-    let mut visitor = PrettyPrintVisitor::<W, AST>::new(stream, printer, Box::new(factory));
+    let mut visitor = PrettyPrintVisitor::<W, AST>::new(stream, printer, factory);
     ASTTraverser::traverse(node, &mut visitor);
 }
 
@@ -32,23 +28,21 @@ pub fn traverse_sub_node_and_print<
 ///
 /// # Arguments
 ///
-/// * `stream` - The [`Write`] object that will receive the formatted output.
-/// * `array` - The [`Vec`] of nodes
 /// * `printer` - The [`PrettyPrinter`] that will send formatted output to `stream`.
-pub fn print_array_helper<
-    W: Write,
-    AST: SimpleAST<AST>,
-    F: NodePrinterFactory<W, AST> + Clone + 'static,
->(
+/// * `stream` - The [`Write`] object that will receive the formatted output.
+/// * `factory` - The reference to a [`NodePrinterFactory<W, AST>`] trait object to use for generating
+/// [`crate::node_printer::NodePrinter<W, AST>`] trait objects to print AST nodes.
+/// * `array` - The [`Vec`] of nodes
+pub fn print_array_helper<W: Write, AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: F,
+    factory: &Box<dyn NodePrinterFactory<W, AST>>,
     array: &Vec<AST>,
 ) {
     let mut i = 0;
     while i < array.len() {
         if let Some(n) = array.get(i) {
-            traverse_sub_node_and_print(printer, stream, factory.clone(), n);
+            traverse_sub_node_and_print(printer, stream, factory, n);
             if i < (array.len() - 1) {
                 write_token(printer, stream, ",");
                 write_space(printer, stream);
