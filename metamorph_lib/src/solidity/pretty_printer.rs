@@ -10,6 +10,7 @@ use crate::pretty_printer::{
     PrettyPrinter,
 };
 use crate::solidity::ast::SolidityAST;
+use serde_json::Value;
 use std::io::Write;
 
 /// Helper function for printing out documentation sub-nodes from a node.
@@ -171,6 +172,32 @@ fn print_arguments_helper<W: Write>(
     }
 }
 
+/// Write the returnParameters node with a returns statement.
+///
+/// # Arguments
+///
+/// * `printer` - The [`PrettyPrinter`] object that will format the output text.
+/// * `stream` - The [`Write`] object that will received the formatted text.
+/// * `factory` - The [`SolidityNodePrinterFactory`] that generates printers for AST nodes.
+/// * `node` - The node in the Solidity AST.
+fn print_return_parameters_helper<W: Write>(
+    printer: &mut PrettyPrinter,
+    stream: &mut W,
+    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    node: &SolidityAST,
+) {
+    if let Some(return_parameters_node) = node.borrow_value_for_key("returnParameters") {
+        if let Some(parameters_array) = return_parameters_node.get_array_for_key("parameters") {
+            if parameters_array.len() > 0 {
+                write_space(printer, stream);
+                write_token(printer, stream, "returns");
+                write_space(printer, stream);
+                traverse_sub_node_and_print(printer, stream, factory, return_parameters_node);
+            }
+        }
+    }
+}
+
 /// Change any non-ASCII characters into a Solidity escaped character form.
 ///
 /// # Arguments
@@ -323,15 +350,6 @@ impl<W: Write> NodePrinter<W, SolidityAST> for PragmaDirectivePrinter {
                 }
             }
         }
-    }
-
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
         write_token(printer, stream, ";");
     }
 }
@@ -711,18 +729,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
             print_space_and_array_helper(printer, stream, factory, modifiers);
         }
 
-        if let Some(return_parameters) = node.borrow_value_for_key("returnParameters") {
-            if let Some(parameters) = return_parameters.borrow_value_for_key("parameters") {
-                if let Some(parameter_array) = parameters.as_array() {
-                    if parameter_array.len() > 0 {
-                        write_space(printer, stream);
-                        write_token(printer, stream, "returns");
-                        write_space(printer, stream);
-                        traverse_sub_node_and_print(printer, stream, factory, return_parameters);
-                    }
-                }
-            }
-        }
+        print_return_parameters_helper(printer, stream, factory, node);
 
         if let Some(body) = node.borrow_value_for_key("body") {
             write_space(printer, stream);
@@ -775,7 +782,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ParameterListPrinter {
     }
 }
 
+/// Used for both Block, UncheckedBlock, and YulBlock nodes.
 struct BlockPrinter {
+    /// When true, write a block with only one statement on the same line:
+    ///
+    /// { <statement>; }
     single_statement_on_same_line: bool,
 }
 
@@ -799,8 +810,14 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BlockPrinter {
         printer: &mut PrettyPrinter,
         stream: &mut W,
         _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
+        node: &SolidityAST,
     ) {
+        if let Some(node_type_str) = node.get_str_for_key("nodeType") {
+            if node_type_str == "UncheckedBlock" {
+                write_token(printer, stream, "unchecked");
+                write_space(printer, stream);
+            }
+        }
         write_token(printer, stream, "{");
     }
 
@@ -873,15 +890,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationStatementPrint
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, initial_value);
         }
-    }
 
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
         write_token(printer, stream, ";");
     }
 }
@@ -1308,15 +1317,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
                 write_token(printer, stream, unit_alias_str);
             }
         }
-    }
 
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
         write_token(printer, stream, ";");
     }
 }
@@ -1339,20 +1340,6 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InheritanceSpecifierPrinter {
             print_array_helper(printer, stream, factory, arguments_array);
             write_token(printer, stream, ")");
         }
-    }
-}
-
-struct IdentifierPathPrinter {}
-
-impl<W: Write> NodePrinter<W, SolidityAST> for IdentifierPathPrinter {
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        node: &SolidityAST,
-    ) {
-        print_name_helper(printer, stream, node);
     }
 }
 
@@ -1420,15 +1407,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
                 write_token(printer, stream, "global");
             }
         }
-    }
 
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
         write_token(printer, stream, ";");
     }
 }
@@ -1682,63 +1661,6 @@ impl<W: Write> NodePrinter<W, SolidityAST> for CommentPrinter {
     }
 }
 
-struct UncheckedBlockPrinter {
-    single_statement_on_same_line: bool,
-}
-
-impl UncheckedBlockPrinter {
-    /// Create a new UncheckedBlock printer.
-    ///
-    /// # Arguments
-    ///
-    /// * `single_statement_on_same_line` - If true, the printer will write blocks with one
-    /// statement on the same line without writing newlines and indents.
-    pub fn new(single_statement_on_same_line: bool) -> UncheckedBlockPrinter {
-        UncheckedBlockPrinter {
-            single_statement_on_same_line,
-        }
-    }
-}
-
-impl<W: Write> NodePrinter<W, SolidityAST> for UncheckedBlockPrinter {
-    fn on_entry(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
-        write_token(printer, stream, "unchecked");
-        write_token(printer, stream, "{");
-    }
-
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        node: &SolidityAST,
-    ) {
-        print_statements_helper(
-            printer,
-            stream,
-            factory,
-            node,
-            self.single_statement_on_same_line,
-        );
-    }
-
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
-        write_token(printer, stream, "}");
-    }
-}
-
 struct ErrorDefinitionPrinter {}
 
 impl<W: Write> NodePrinter<W, SolidityAST> for ErrorDefinitionPrinter {
@@ -1796,6 +1718,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ForStatementPrinter {
         if let Some(body_node) = node.borrow_value_for_key("body") {
             if let Some(node_type_str) = body_node.get_str_for_key("nodeType") {
                 if node_type_str == "Block" {
+                    write_space(printer, stream);
                     traverse_sub_node_and_print(printer, stream, factory, body_node);
                 } else {
                     write_newline(printer, stream);
@@ -1888,62 +1811,6 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
     }
 }
 
-struct YulBlockPrinter {
-    single_statement_on_same_line: bool,
-}
-
-impl YulBlockPrinter {
-    /// Create a new YulBlock printer.
-    ///
-    /// # Arguments
-    ///
-    /// * `single_statement_on_same_line` - If true, the printer will write blocks with only one
-    /// statement on the same line without using newlines and indents.
-    pub fn new(single_statement_on_same_line: bool) -> YulBlockPrinter {
-        YulBlockPrinter {
-            single_statement_on_same_line,
-        }
-    }
-}
-
-impl<W: Write> NodePrinter<W, SolidityAST> for YulBlockPrinter {
-    fn on_entry(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
-        write_token(printer, stream, "{");
-    }
-
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        node: &SolidityAST,
-    ) {
-        print_statements_helper(
-            printer,
-            stream,
-            factory,
-            node,
-            self.single_statement_on_same_line,
-        );
-    }
-
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        _node: &SolidityAST,
-    ) {
-        write_token(printer, stream, "}");
-    }
-}
-
 struct YulVariableDeclarationPrinter {}
 
 impl<W: Write> NodePrinter<W, SolidityAST> for YulVariableDeclarationPrinter {
@@ -1989,23 +1856,14 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionCallPrinter {
     }
 }
 
-struct YulIdentifierPrinter {}
+/// Used for nodes that need to just print the string in the 'name' parameter.
+/// * EnumValue
+/// * IdentifierPath
+/// * YulIdentifier
+/// * YulTypedName
+struct NamePrinter {}
 
-impl<W: Write> NodePrinter<W, SolidityAST> for YulIdentifierPrinter {
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        node: &SolidityAST,
-    ) {
-        print_name_helper(printer, stream, node);
-    }
-}
-
-struct YulTypedNamePrinter {}
-
-impl<W: Write> NodePrinter<W, SolidityAST> for YulTypedNamePrinter {
+impl<W: Write> NodePrinter<W, SolidityAST> for NamePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
@@ -2130,24 +1988,8 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionTypeNamePrinter {
                 write_token(printer, stream, visibility_str);
             }
         }
-        if let Some(return_parameters_node) = node.borrow_value_for_key("returnParameterTypes") {
-            if let Some(parameters_node) = return_parameters_node.borrow_value_for_key("parameters")
-            {
-                if let Some(parameters_array) = parameters_node.as_array() {
-                    if parameters_array.len() > 0 {
-                        write_space(printer, stream);
-                        write_token(printer, stream, "returns");
-                        write_space(printer, stream);
-                        traverse_sub_node_and_print(
-                            printer,
-                            stream,
-                            factory,
-                            return_parameters_node,
-                        );
-                    }
-                }
-            }
-        }
+
+        print_return_parameters_helper(printer, stream, factory, node);
     }
 }
 
@@ -2238,20 +2080,6 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EnumDefinitionPrinter {
                 }
             }
         }
-    }
-}
-
-struct EnumValuePrinter {}
-
-impl<W: Write> NodePrinter<W, SolidityAST> for EnumValuePrinter {
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
-        node: &SolidityAST,
-    ) {
-        print_name_helper(printer, stream, node);
     }
 }
 
@@ -2722,17 +2550,6 @@ impl SolidityNodePrinterFactory {
             settings: preferences,
         }
     }
-
-    fn get_preference_value_for_key(&self, key: &str) -> bool {
-        if let Some(preference) = self.settings.get_value_for_key(key) {
-            match preference {
-                PreferenceValue::Boolean(b) => b,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
 }
 
 impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory {
@@ -2743,7 +2560,7 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "Assignment" => Box::new(AssignmentPrinter {}),
                 "BinaryOperation" => Box::new(BinaryOperationPrinter {}),
                 "Block" => Box::new(BlockPrinter::new(
-                    self.get_preference_value_for_key(SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
+                    <SolidityNodePrinterFactory as NodePrinterFactory<W, Value>>::get_preference_value_for_key(self, SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
                 "Break" => Box::new(BreakPrinter {}),
                 "Comment" => Box::new(CommentPrinter {}),
@@ -2755,21 +2572,21 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "ElementaryTypeNameExpression" => Box::new(ElementaryTypeNameExpressionPrinter {}),
                 "EmitStatement" => Box::new(EmitStatementPrinter {}),
                 "EnumDefinition" => Box::new(EnumDefinitionPrinter {}),
-                "EnumValue" => Box::new(EnumValuePrinter {}),
+                "EnumValue" => Box::new(NamePrinter {}),
                 "ErrorDefinition" => Box::new(ErrorDefinitionPrinter {}),
                 "EventDefinition" => Box::new(EventDefinitionPrinter {}),
                 "ExpressionStatement" => Box::new(ExpressionStatementPrinter::new(
-                    self.get_preference_value_for_key(WRITE_EXPRESSION_STATEMENT_SEMICOLON),
+                    <SolidityNodePrinterFactory as NodePrinterFactory<W, Value>>::get_preference_value_for_key(self, WRITE_EXPRESSION_STATEMENT_SEMICOLON),
                 )),
                 "ForStatement" => Box::new(ForStatementPrinter {}),
                 "FunctionCall" => Box::new(FunctionCallPrinter {}),
                 "FunctionCallOptions" => Box::new(FunctionCallOptionsPrinter {}),
                 "FunctionDefinition" => Box::new(FunctionDefinitionPrinter::new(
-                    self.get_preference_value_for_key(WRITE_NONPAYABLE_STATE_MUTABILITY),
+                    <SolidityNodePrinterFactory as NodePrinterFactory<W, Value>>::get_preference_value_for_key(self, WRITE_NONPAYABLE_STATE_MUTABILITY),
                 )),
                 "FunctionTypeName" => Box::new(FunctionTypeNamePrinter {}),
                 "Identifier" => Box::new(IdentifierPrinter {}),
-                "IdentifierPath" => Box::new(IdentifierPathPrinter {}),
+                "IdentifierPath" => Box::new(NamePrinter {}),
                 "IfStatement" => Box::new(IfStatementPrinter {}),
                 "ImportDirective" => Box::new(ImportDirectivePrinter {}),
                 "IndexAccess" => Box::new(IndexAccessPrinter {}),
@@ -2797,8 +2614,8 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "VariableDeclaration" => Box::new(VariableDeclarationPrinter {}),
                 "VariableDeclarationStatement" => Box::new(VariableDeclarationStatementPrinter {}),
                 "UnaryOperation" => Box::new(UnaryOperationPrinter {}),
-                "UncheckedBlock" => Box::new(UncheckedBlockPrinter::new(
-                    self.get_preference_value_for_key(SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
+                "UncheckedBlock" => Box::new(BlockPrinter::new(
+                    <SolidityNodePrinterFactory as NodePrinterFactory<W, Value>>::get_preference_value_for_key(self, SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
                 "UserDefinedValueTypeDefinition" => {
                     Box::new(UserDefinedValueTypeDefinitionPrinter {})
@@ -2806,8 +2623,8 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "UsingForDirective" => Box::new(UsingForDirectivePrinter {}),
                 "WhileStatement" => Box::new(WhileStatementPrinter {}),
                 "YulAssignment" => Box::new(YulAssignmentPrinter {}),
-                "YulBlock" => Box::new(YulBlockPrinter::new(
-                    self.get_preference_value_for_key(SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
+                "YulBlock" => Box::new(BlockPrinter::new(
+                    <SolidityNodePrinterFactory as NodePrinterFactory<W, Value>>::get_preference_value_for_key(self, SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
                 "YulBreak" => Box::new(YulBreakPrinter {}),
                 "YulCase" => Box::new(YulCasePrinter {}),
@@ -2815,12 +2632,12 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "YulForLoop" => Box::new(YulForLoopPrinter {}),
                 "YulFunctionCall" => Box::new(YulFunctionCallPrinter {}),
                 "YulFunctionDefinition" => Box::new(YulFunctionDefinitionPrinter {}),
-                "YulIdentifier" => Box::new(YulIdentifierPrinter {}),
+                "YulIdentifier" => Box::new(NamePrinter {}),
                 "YulIf" => Box::new(YulIfPrinter {}),
                 "YulLeave" => Box::new(YulLeavePrinter {}),
                 "YulLiteral" => Box::new(YulLiteralPrinter {}),
                 "YulSwitch" => Box::new(YulSwitchPrinter {}),
-                "YulTypedName" => Box::new(YulTypedNamePrinter {}),
+                "YulTypedName" => Box::new(NamePrinter {}),
                 "YulVariableDeclaration" => Box::new(YulVariableDeclarationPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }

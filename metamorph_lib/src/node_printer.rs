@@ -1,7 +1,7 @@
 //! The `node_printer` module contains the [`NodePrinter<W,AST>`] and [`NodePrinterFactory<W,AST>`]
 //! traits.
 
-use crate::preferences::Preferences;
+use crate::preferences::{PreferenceValue, Preferences};
 use crate::pretty_printer::PrettyPrinter;
 use std::io::Write;
 
@@ -88,6 +88,22 @@ pub trait NodePrinterFactory<W: Write, AST> {
     /// # Arguments
     /// * `node` - The node from the AST.
     fn printer_for(&self, node: &AST) -> Box<dyn NodePrinter<W, AST>>;
+
+    /// Get a true/false value for a settings key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string for the key.
+    fn get_preference_value_for_key(&self, key: &str) -> bool {
+        if let Some(preference) = self.get_settings().get_value_for_key(key) {
+            match preference {
+                PreferenceValue::Boolean(b) => b,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
 
     /// Get the settings object for the factory.
     fn get_settings(&self) -> &Preferences;

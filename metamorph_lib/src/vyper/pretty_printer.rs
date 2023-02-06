@@ -352,16 +352,6 @@ impl<W: Write> NodePrinter<W, VyperAST> for SubscriptPrinter {
 struct IndexPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for IndexPrinter {
-    fn on_entry(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
-        _node: &VyperAST,
-    ) {
-        write_token(printer, stream, "[");
-    }
-
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
@@ -369,16 +359,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for IndexPrinter {
         factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
         node: &VyperAST,
     ) {
+        write_token(printer, stream, "[");
         write_simple_value(printer, stream, factory, node);
-    }
-
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
-        _node: &VyperAST,
-    ) {
         write_token(printer, stream, "]");
     }
 }
@@ -695,9 +677,10 @@ impl<W: Write> NodePrinter<W, VyperAST> for IntPrinter {
     }
 }
 
-struct DecimalPrinter {}
+/// Used to print Hex and Decimal nodes.
+struct ValuePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for DecimalPrinter {
+impl<W: Write> NodePrinter<W, VyperAST> for ValuePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
@@ -1099,16 +1082,6 @@ impl<W: Write> NodePrinter<W, VyperAST> for ForPrinter {
 struct ListPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for ListPrinter {
-    fn on_entry(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
-        _node: &VyperAST,
-    ) {
-        write_token(printer, stream, "[");
-    }
-
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
@@ -1116,16 +1089,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for ListPrinter {
         factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
         node: &VyperAST,
     ) {
+        write_token(printer, stream, "[");
         write_elements_array(printer, stream, factory, node);
-    }
-
-    fn on_exit(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
-        _node: &VyperAST,
-    ) {
         write_token(printer, stream, "]");
     }
 }
@@ -1511,20 +1476,6 @@ impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
     }
 }
 
-struct HexPrinter {}
-
-impl<W: Write> NodePrinter<W, VyperAST> for HexPrinter {
-    fn print_node(
-        &mut self,
-        printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, VyperAST>>,
-        node: &VyperAST,
-    ) {
-        write_value_string_as_token(printer, stream, node);
-    }
-}
-
 struct EnumDefPrinter {}
 
 impl<W: Write> NodePrinter<W, VyperAST> for EnumDefPrinter {
@@ -1587,17 +1538,6 @@ impl VyperNodePrinterFactory {
             settings: preferences,
         }
     }
-
-    fn get_preference_value_for_key(&self, key: &str) -> bool {
-        if let Some(preference) = self.settings.get_value_for_key(key) {
-            match preference {
-                PreferenceValue::Boolean(b) => b,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
 }
 
 impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
@@ -1608,20 +1548,31 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "VariableDecl" => Box::new(VariableDeclPrinter {}),
                 "Subscript" => Box::new(SubscriptPrinter {}),
                 "Index" => Box::new(IndexPrinter {}),
-                "Tuple" => Box::new(TuplePrinter {
-                    use_parentheses: self
-                        .get_preference_value_for_key(TUPLES_SHOULD_USE_PARENTHESES),
-                }),
-                "FunctionDef" => Box::new(FunctionDefPrinter::new(
-                    self.get_preference_value_for_key(FUNCTION_DEF_USES_STRUCT_DECL_FORM),
-                )),
+                "Tuple" => {
+                    Box::new(TuplePrinter {
+                        use_parentheses: <VyperNodePrinterFactory as NodePrinterFactory<
+                            W,
+                            VyperAST,
+                        >>::get_preference_value_for_key(
+                            self, TUPLES_SHOULD_USE_PARENTHESES
+                        ),
+                    })
+                }
+                "FunctionDef" => Box::new(
+                    FunctionDefPrinter::new(<VyperNodePrinterFactory as NodePrinterFactory<
+                        W,
+                        VyperAST,
+                    >>::get_preference_value_for_key(
+                        self, FUNCTION_DEF_USES_STRUCT_DECL_FORM
+                    )),
+                ),
                 "arguments" => Box::new(ArgumentsPrinter {}),
                 "arg" => Box::new(ArgPrinter {}),
                 "Assign" => Box::new(AssignPrinter {}),
                 "Attribute" => Box::new(AttributePrinter {}),
                 "AugAssign" => Box::new(AugAssignPrinter::new()),
                 "Int" => Box::new(IntPrinter {}),
-                "Decimal" => Box::new(DecimalPrinter {}),
+                "Decimal" => Box::new(ValuePrinter {}),
                 "BinOp" => Box::new(BinOpPrinter::new()),
                 "BoolOp" => Box::new(BoolOpPrinter {}),
                 "Compare" => Box::new(BinOpPrinter::new()),
@@ -1653,7 +1604,7 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "keyword" => Box::new(KeywordPrinter {}),
                 "Bytes" => Box::new(BytesPrinter {}),
                 "Dict" => Box::new(DictPrinter {}),
-                "Hex" => Box::new(HexPrinter {}),
+                "Hex" => Box::new(ValuePrinter {}),
                 "EnumDef" => Box::new(EnumDefPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
             }
