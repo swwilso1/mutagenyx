@@ -2052,9 +2052,13 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulLiteralPrinter {
         node: &SolidityAST,
     ) {
         if let Some(kind_str) = node.get_str_for_key("kind") {
-            if kind_str == "number" {
+            if kind_str == "number" || kind_str == "bool" {
                 if let Some(value_str) = node.get_str_for_key("value") {
                     write_token(printer, stream, value_str);
+                }
+            } else if kind_str == "string" {
+                if let Some(value_str) = node.get_str_for_key("value") {
+                    write_string(printer, stream, value_str);
                 }
             }
         }
@@ -2432,6 +2436,250 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryCatchClausePrinter {
     }
 }
 
+struct WhileStatementPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for WhileStatementPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "while");
+        write_space(printer, stream);
+        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+            write_token(printer, stream, "(");
+            traverse_sub_node_and_print(printer, stream, factory, condition_node);
+            write_token(printer, stream, ")");
+        }
+        if let Some(body_node) = node.borrow_value_for_key("body") {
+            write_space(printer, stream);
+            traverse_sub_node_and_print(printer, stream, factory, body_node);
+        }
+    }
+}
+
+struct DoWhileStatementPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for DoWhileStatementPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "do");
+        if let Some(body_node) = node.borrow_value_for_key("body") {
+            write_space(printer, stream);
+            traverse_sub_node_and_print(printer, stream, factory, body_node);
+        }
+        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+            write_space(printer, stream);
+            write_token(printer, stream, "while");
+            write_space(printer, stream);
+            write_token(printer, stream, "(");
+            traverse_sub_node_and_print(printer, stream, factory, condition_node);
+            write_token(printer, stream, ")");
+        }
+        write_token(printer, stream, ";");
+    }
+}
+
+struct ContinuePrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for ContinuePrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "continue");
+        write_token(printer, stream, ";");
+    }
+}
+
+struct BreakPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for BreakPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "break");
+        write_token(printer, stream, ";");
+    }
+}
+
+struct YulIfPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulIfPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "if");
+        write_space(printer, stream);
+        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+            traverse_sub_node_and_print(printer, stream, factory, condition_node);
+        }
+        if let Some(body_node) = node.borrow_value_for_key("body") {
+            write_space(printer, stream);
+            traverse_sub_node_and_print(printer, stream, factory, body_node);
+        }
+    }
+}
+
+struct YulSwitchPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulSwitchPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "switch");
+        write_space(printer, stream);
+        if let Some(expression_node) = node.borrow_value_for_key("expression") {
+            traverse_sub_node_and_print(printer, stream, factory, expression_node);
+            write_space(printer, stream);
+        }
+        if let Some(cases_array) = node.get_array_for_key("cases") {
+            if cases_array.len() > 0 {
+                printer.increase_indent();
+                for value in cases_array {
+                    write_newline(printer, stream);
+                    write_indent(printer, stream);
+                    traverse_sub_node_and_print(printer, stream, factory, value);
+                }
+                printer.decrease_indent();
+            }
+        }
+    }
+}
+
+struct YulCasePrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulCasePrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        if let Some(value_node) = node.borrow_value_for_key("value") {
+            if value_node.is_object() {
+                write_token(printer, stream, "case");
+                write_space(printer, stream);
+                traverse_sub_node_and_print(printer, stream, factory, value_node);
+                write_space(printer, stream);
+            } else if let Some(value_string) = value_node.as_str() {
+                if value_string == "default" {
+                    write_token(printer, stream, value_string);
+                    write_space(printer, stream);
+                }
+            }
+        }
+        if let Some(body_node) = node.borrow_value_for_key("body") {
+            traverse_sub_node_and_print(printer, stream, factory, body_node);
+        }
+    }
+}
+
+struct YulFunctionDefinitionPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionDefinitionPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "function");
+        write_space(printer, stream);
+        print_name_helper(printer, stream, node);
+        write_token(printer, stream, "(");
+        if let Some(parameters_array) = node.get_array_for_key("parameters") {
+            print_array_helper(printer, stream, factory, parameters_array);
+        }
+        write_token(printer, stream, ")");
+        write_space(printer, stream);
+        if let Some(return_vars_array) = node.get_array_for_key("returnVariables") {
+            if return_vars_array.len() > 0 {
+                write_token(printer, stream, "->");
+                write_space(printer, stream);
+                if return_vars_array.len() > 1 {
+                    write_token(printer, stream, "(");
+                }
+
+                print_array_helper(printer, stream, factory, return_vars_array);
+
+                if return_vars_array.len() > 1 {
+                    write_token(printer, stream, ")");
+                }
+                write_space(printer, stream);
+            }
+        }
+        if let Some(body_node) = node.borrow_value_for_key("body") {
+            traverse_sub_node_and_print(printer, stream, factory, body_node);
+        }
+    }
+}
+
+struct YulBreakPrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulBreakPrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "break");
+    }
+}
+
+struct YulContinuePrinter {}
+
+impl<W: Write> NodePrinter<W, SolidityAST> for YulContinuePrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "continue");
+    }
+}
+
+struct YulLeavePrinter {}
+impl<W: Write> NodePrinter<W, SolidityAST> for YulLeavePrinter {
+    fn print_node(
+        &mut self,
+        printer: &mut PrettyPrinter,
+        stream: &mut W,
+        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _node: &SolidityAST,
+    ) {
+        write_token(printer, stream, "leave");
+    }
+}
+
 static WRITE_EXPRESSION_STATEMENT_SEMICOLON: &str = "write_expression_statement_semicolon";
 static SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE: &str = "single_block_statements_on_same_line";
 static WRITE_NONPAYABLE_STATE_MUTABILITY: &str = "write_nonpayable_state_mutability";
@@ -2497,9 +2745,12 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                 "Block" => Box::new(BlockPrinter::new(
                     self.get_preference_value_for_key(SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
+                "Break" => Box::new(BreakPrinter {}),
                 "Comment" => Box::new(CommentPrinter {}),
                 "Conditional" => Box::new(ConditionalPrinter {}),
+                "Continue" => Box::new(ContinuePrinter {}),
                 "ContractDefinition" => Box::new(ContractDefinitionPrinter {}),
+                "DoWhileStatement" => Box::new(DoWhileStatementPrinter {}),
                 "ElementaryTypeName" => Box::new(ElementaryTypeNamePrinter {}),
                 "ElementaryTypeNameExpression" => Box::new(ElementaryTypeNameExpressionPrinter {}),
                 "EmitStatement" => Box::new(EmitStatementPrinter {}),
@@ -2553,14 +2804,22 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
                     Box::new(UserDefinedValueTypeDefinitionPrinter {})
                 }
                 "UsingForDirective" => Box::new(UsingForDirectivePrinter {}),
+                "WhileStatement" => Box::new(WhileStatementPrinter {}),
                 "YulAssignment" => Box::new(YulAssignmentPrinter {}),
                 "YulBlock" => Box::new(YulBlockPrinter::new(
                     self.get_preference_value_for_key(SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
+                "YulBreak" => Box::new(YulBreakPrinter {}),
+                "YulCase" => Box::new(YulCasePrinter {}),
+                "YulContinue" => Box::new(YulContinuePrinter {}),
                 "YulForLoop" => Box::new(YulForLoopPrinter {}),
                 "YulFunctionCall" => Box::new(YulFunctionCallPrinter {}),
+                "YulFunctionDefinition" => Box::new(YulFunctionDefinitionPrinter {}),
                 "YulIdentifier" => Box::new(YulIdentifierPrinter {}),
+                "YulIf" => Box::new(YulIfPrinter {}),
+                "YulLeave" => Box::new(YulLeavePrinter {}),
                 "YulLiteral" => Box::new(YulLiteralPrinter {}),
+                "YulSwitch" => Box::new(YulSwitchPrinter {}),
                 "YulTypedName" => Box::new(YulTypedNamePrinter {}),
                 "YulVariableDeclaration" => Box::new(YulVariableDeclarationPrinter {}),
                 _ => Box::new(DummyNodePrinter {}),
