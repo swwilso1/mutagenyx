@@ -134,17 +134,17 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         file_name,
     ];
 
-    let solidity_compiler: &str;
+    let solidity_compiler: String;
     if let Some(compiler) = prefs.get_value_for_key("solidity_compiler") {
         solidity_compiler = match compiler {
             PreferenceValue::String(s) => s,
-            _ => "solc",
+            _ => String::from("solc"),
         };
     } else {
-        solidity_compiler = "solc";
+        solidity_compiler = String::from("solc");
     }
 
-    match shell_execute(solidity_compiler, args) {
+    match shell_execute(&solidity_compiler, args) {
         Ok(output) => {
             if output.status.success() {
                 Ok(out_path)

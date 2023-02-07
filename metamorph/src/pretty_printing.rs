@@ -21,11 +21,11 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
     let mut preferences = Preferences::new();
     preferences.set_value_for_key(
         "solidity_compiler",
-        PreferenceValue::String(&args.solidity_compiler),
+        PreferenceValue::String(args.solidity_compiler),
     );
     preferences.set_value_for_key(
         "vyper_compiler",
-        PreferenceValue::String(&args.vyper_compiler),
+        PreferenceValue::String(args.vyper_compiler),
     );
 
     for file_name in args.file_names {

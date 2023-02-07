@@ -59,11 +59,11 @@ pub fn generate_mutants(args: MutateCLArgs) {
     let mut preferences = Preferences::new();
     preferences.set_value_for_key(
         "solidity_compiler",
-        PreferenceValue::String(&args.solidity_compiler),
+        PreferenceValue::String(args.solidity_compiler),
     );
     preferences.set_value_for_key(
         "vyper_compiler",
-        PreferenceValue::String(&args.vyper_compiler),
+        PreferenceValue::String(args.vyper_compiler),
     );
 
     // Now, for each input file, generate the requested number and type of mutations.

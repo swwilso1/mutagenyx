@@ -162,16 +162,16 @@ fn file_is_source_file_with_vyper_from_pip(
     let vyper_compiler = if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
         match compiler {
             PreferenceValue::String(s) => s,
-            _ => "vyper",
+            _ => String::from("vyper"),
         }
     } else {
-        "vyper"
+        String::from("vyper")
     };
 
     let discovered_compiler_version: Versioning;
 
     // Now check the compiler version to see if we support -o.
-    match shell_execute(vyper_compiler, vec!["--version"]) {
+    match shell_execute(&vyper_compiler, vec!["--version"]) {
         Ok(output) => {
             if output.status.success() {
                 let output_version = core::str::from_utf8(output.stdout.as_slice()).unwrap();
@@ -238,7 +238,7 @@ fn file_is_source_file_with_vyper_from_pip(
         vec!["-f", "ast", file_name]
     };
 
-    match shell_execute(vyper_compiler, args) {
+    match shell_execute(&vyper_compiler, args) {
         Ok(output) => {
             if output.status.success() {
                 if post_process_compiler_output_to_file {
