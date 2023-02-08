@@ -209,6 +209,13 @@ pub enum SolidityMutation {
     ///
     /// `a = b + c;` would become `unchecked{ a = b + c; }`
     UncheckedBlock,
+
+    /// For function calls of the form object.delegatecall(...), replace delegatecall() with call().
+    ///
+    /// # Examples
+    ///
+    /// `let a := foo.delegatecall()` would become `let a := foo.call()`
+    ElimDelegateCall,
 }
 
 /// This enumeration collects all variations of mutation algorithms into a single enumeration.
@@ -248,6 +255,7 @@ impl FromStr for MutationType {
 
             "Require" => Ok(MutationType::Solidity(SolidityMutation::Require)),
             "UncheckedBlock" => Ok(MutationType::Solidity(SolidityMutation::UncheckedBlock)),
+            "ElimDelegateCall" => Ok(MutationType::Solidity(SolidityMutation::ElimDelegateCall)),
 
             _last => Err(MetamorphError::MutationAlgorithmNotSupported(String::from(
                 _last,
@@ -278,6 +286,7 @@ impl fmt::Display for MutationType {
             MutationType::Solidity(s) => match s {
                 SolidityMutation::Require => "Require",
                 SolidityMutation::UncheckedBlock => "UncheckedBlock",
+                SolidityMutation::ElimDelegateCall => "ElimDelegateCall",
             },
         };
 
@@ -513,6 +522,16 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
             extra_details: "This mutation algorithm only works for Solidity programs.",
             operators: vec![],
             examples: "a = b + c; would become unchecked{ a = b + c; }",
+        },
+    );
+
+    algorithm_map.insert(
+        MutationType::Solidity(SolidityMutation::ElimDelegateCall),
+        MutationAlgorithmDescription {
+            summary: "Replace delegatecall() functions with call().",
+            extra_details: "This mutation algorithm only works for Solidity programs.",
+            operators: vec![],
+            examples: "let a := foo.delegatecall() would become let a := foo.call()",
         },
     );
 

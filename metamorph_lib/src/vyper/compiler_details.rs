@@ -1,7 +1,7 @@
 /// The `compiler_details` module provides Vyper specific compiler configuration information
 /// for invoking the Vyper compiler to generate an AST and possibly to compile a file.
 use crate::json::*;
-use serde_json::{Value, from_str};
+use serde_json::{from_str, Value};
 use std::{path::PathBuf, str::FromStr};
 
 static PATH_KEY: &str = "path";
@@ -33,13 +33,10 @@ impl VyperCompilerDetails {
     ///
     /// * `path` - The path to the compiler.
     /// * `root_path` - The path in the file system to use as the root path for contract imports.
-    pub fn new_from_args(
-        path: &str,
-        root_path: Option<&str>,
-    ) -> VyperCompilerDetails {
+    pub fn new_from_args(path: &str, root_path: Option<&str>) -> VyperCompilerDetails {
         let root_path_option = match root_path {
             Some(p) => Some(PathBuf::from_str(p).unwrap()),
-            _ => None
+            _ => None,
         };
 
         VyperCompilerDetails {

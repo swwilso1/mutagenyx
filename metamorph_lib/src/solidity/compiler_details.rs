@@ -1,7 +1,7 @@
 /// The `compiler_details` module provides Solidity specific compiler configuration information
 /// for invoking the Solidity compiler to generate an AST and possibly to compile a file.
 use crate::json::*;
-use serde_json::{Value, from_str, json};
+use serde_json::{from_str, json, Value};
 use std::{path::PathBuf, str::FromStr};
 
 static PATH_KEY: &str = "path";
@@ -56,7 +56,7 @@ impl SolidityCompilerDetails {
     ) -> SolidityCompilerDetails {
         let base_path_buf = match base_path {
             Some(p) => Some(PathBuf::from_str(p).unwrap()),
-            None => None
+            None => None,
         };
         let mut my_include_paths: Vec<PathBuf> = Vec::new();
 

@@ -1254,6 +1254,35 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
     }
 }
 
+/// Implements the eliminate-delegate-call mutation algorithm for Solidity programs.
+///
+/// The algorithm finds MemberAccess nodes whose expression sub-node has a memberName key
+/// with the value `delegatecall`. The algorithm replaces the `delegatecall` with `call`.
+struct SolidityElimDelegateCallMutator {}
+
+impl Mutator<SolidityAST> for SolidityElimDelegateCallMutator {
+    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+        if let Some(node_type) = node.get_str_for_key("nodeType") {
+            if node_type == "MemberAccess" {
+                if let Some(member_name_str) = node.get_str_for_key("memberName") {
+                    if member_name_str == "delegatecall" {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn mutate(&self, node: &mut SolidityAST, _rand: &mut Pcg64) {
+        node.set_str_for_key("memberName", "call");
+    }
+
+    fn implements(&self) -> MutationType {
+        MutationType::Solidity(SolidityMutation::ElimDelegateCall)
+    }
+}
+
 /// Implement the [`MutatorFactory<T>`] trait to have an interface for getting mutators for requested
 /// mutation algorithms.
 pub struct SolidityMutatorFactory {}
@@ -1300,6 +1329,9 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 SolidityMutation::Require => Some(Box::new(SolidityRequireMutator::new())),
                 SolidityMutation::UncheckedBlock => {
                     Some(Box::new(SolidityUncheckedBlockMutator {}))
+                }
+                SolidityMutation::ElimDelegateCall => {
+                    Some(Box::new(SolidityElimDelegateCallMutator {}))
                 }
             },
         }

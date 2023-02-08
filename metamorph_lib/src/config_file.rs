@@ -1,14 +1,13 @@
 /// The `config_file` module contains code for reading a Metamorph configuration file.
 /// Metamorph uses the configuration files to allow the user to control the tool behavior
 /// for each source or AST file with specific settings that apply to just that file.
-
 use crate::json::*;
 use crate::language::Language;
 use crate::solidity::compiler_details::SolidityCompilerDetails;
 use crate::vyper::compiler_details::VyperCompilerDetails;
 use crate::{MetamorphError, MutationType};
 use jsonxf;
-use serde_json::{Value, from_str, json};
+use serde_json::{from_str, json, Value};
 use std::ffi::OsStr;
 use std::io::Write;
 use std::{path::PathBuf, str::FromStr};
@@ -87,7 +86,7 @@ impl ConfigurationFileDetails {
         seed: Option<u64>,
         mutations: &Vec<MutationType>,
         all_mutations: bool,
-        compiler_details: Option<CompilerDetails>
+        compiler_details: Option<CompilerDetails>,
     ) -> ConfigurationFileDetails {
         let filename_pathbuf = PathBuf::from(filename);
         ConfigurationFileDetails {
@@ -97,7 +96,7 @@ impl ConfigurationFileDetails {
             seed,
             mutations: mutations.clone(),
             all_mutations,
-            compiler_details
+            compiler_details,
         }
     }
 
@@ -280,7 +279,7 @@ impl ConfigurationFileDetails {
             match &compiler_details {
                 CompilerDetails::Solidity(details) => {
                     json_value.set_node_for_key(COMPILER_DETAILS_KEY, details.to_json())
-                },
+                }
                 CompilerDetails::Vyper(details) => {
                     json_value.set_node_for_key(COMPILER_DETAILS_KEY, details.to_json())
                 }
