@@ -74,6 +74,9 @@ impl MutableLanguage for JSONLanguageInterface {
                 // Defer the conversion of the JSON to the AST to the delegate.
                 self.sub_language_interface.get_value_as_super_ast(ast)
             }
+            FileType::Config => Err(MetamorphError::ConfigFileNotSupported(String::from(
+                file_name,
+            ))),
         }
     }
 
@@ -155,10 +158,7 @@ impl MutableLanguage for JSONLanguageInterface {
         pretty_printer: &mut PrettyPrinter,
     ) -> Result<(), MetamorphError> {
         let actual_ast = self.recover_json_ast(ast)?;
-        let mut f = match std::fs::File::create(file_name) {
-            Ok(file) => file,
-            Err(e) => return Err(MetamorphError::from(e)),
-        };
+        let mut f = std::fs::File::create(file_name)?;
 
         let mut pretty_print_visitor = self
             .sub_language_interface

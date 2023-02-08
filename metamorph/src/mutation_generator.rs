@@ -4,18 +4,30 @@
 use crate::generator_parameters::GeneratorParameters;
 use crate::pretty_printing::pretty_print_ast;
 use crate::MutateCLArgs;
+use metamorph_lib::config_file::*;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
 use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
 use metamorph_lib::preferences::{PreferenceValue, Preferences};
-use metamorph_lib::recognizer::Recognizer;
+use metamorph_lib::recognizer::{FileType, Recognizer};
+use metamorph_lib::solidity::compiler_details::SolidityCompilerDetails;
 use metamorph_lib::super_ast::SuperAST;
+use metamorph_lib::vyper::compiler_details::VyperCompilerDetails;
 use rand::seq::SliceRandom;
 use rand::RngCore;
 use rand::SeedableRng;
 use rand_pcg::*;
 use std::collections::VecDeque;
 use std::{path::PathBuf, str::FromStr};
+use std::time::{SystemTime, UNIX_EPOCH};
+use metamorph_lib::Language;
+
+fn get_mutation_strings_from_types(array: &Vec<MutationType>) -> Vec<String> {
+    array
+        .iter()
+        .map(|t| t.to_string())
+        .collect()
+}
 
 /// Run the mutation generator algorithm.
 ///
@@ -44,18 +56,6 @@ pub fn generate_mutants(args: MutateCLArgs) {
             .collect();
     }
 
-    // Output some log information about the selected algorithms.
-    let mut mutation_strings: Vec<String> = Vec::new();
-    for mutation in &mutations {
-        mutation_strings.push(mutation.to_string());
-    }
-    log::info!(
-        "Generating mutations using algorithms: {:?}",
-        mutation_strings
-    );
-
-    let mut rng = Pcg64::seed_from_u64(args.rng_seed);
-
     let mut preferences = Preferences::new();
     preferences.set_value_for_key(
         "solidity_compiler",
@@ -68,15 +68,36 @@ pub fn generate_mutants(args: MutateCLArgs) {
 
     // Now, for each input file, generate the requested number and type of mutations.
     for file_name in args.file_names {
+
+        // We build a new random number generator for each file.  The file might be a config
+        // file and contain a new random number generator seed.  The `generate_mutations` code
+        // will handle loading a config file and will create a new rng from a seed from a config
+        // file if the config file has a new seed.  Here, we just create a new seed from time,
+        // or use the seed from the command line.
+        let seed: u64 = if args.rng_seed < 0 {
+            let start = SystemTime::now();
+            let since_the_epoch = start
+                .duration_since(UNIX_EPOCH);
+            match since_the_epoch {
+                // Todo: This step truncates a u128 to u64.  We probably need those extra bits.
+                Ok(t) => t.as_millis() as u64,
+                _ => 0
+            }
+        } else {
+            args.rng_seed as u64
+        };
+
         let mut generator_params = GeneratorParameters::new_from_parameters(
             &file_name,
             args.num_mutants,
-            &mut rng,
+            seed,
+            Pcg64::seed_from_u64(seed),
             PathBuf::from_str(&args.output_directory).unwrap(),
-            &mutations,
+            mutations.clone(),
             false,
             args.print_original,
-            &preferences,
+            args.save_config_files,
+            &mut preferences,
         );
 
         if let Err(e) = generate_mutations(&mut generator_params) {
@@ -97,7 +118,56 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
     let recognizer = Recognizer::new(params.preferences);
-    let recognize_result = recognizer.recognize_file(&params.file_name)?;
+    let mut recognize_result = recognizer.recognize_file(&params.file_name)?;
+
+    if recognize_result.file_type == FileType::Config {
+        // If we have a config file, then we need to override parameters with details from
+        // the config file.
+        let configuration_details = ConfigurationFileDetails::new_from_file(&params.file_name)?;
+
+        if let Some(compiler_details) = &configuration_details.compiler_details {
+            params.preferences.set_value_for_key(
+                "compiler_details",
+                PreferenceValue::CompilerDetails(compiler_details.clone()),
+            );
+        }
+
+        let mut prefs_copy = params.preferences.clone();
+        let sub_recognizer = Recognizer::new(&mut prefs_copy);
+
+        // The file in the config file may still be either an AST or a source code file. We need
+        // to recognize that file.
+        recognize_result =
+            sub_recognizer.recognize_file(configuration_details.filename.to_str().unwrap())?;
+
+        params.file_name = String::from(configuration_details.filename.to_str().unwrap());
+
+        params.number_of_mutants = configuration_details.number_of_mutants as usize;
+
+        // Here we update the random number generator from the configuration details seed if the
+        // details have a new seed.
+        match configuration_details.seed {
+            Some(s) => {
+                params.rng_seed = s;
+                params.rng = Pcg64::seed_from_u64(s)
+            },
+            _ => {}
+        };
+
+        // Check to see if the configuration file requested a different set of mutation algorithms.
+        if configuration_details.all_mutations {
+            params.mutations = get_all_mutation_algorithms();
+        } else if configuration_details.mutations.len() > 0 {
+            params.mutations = configuration_details.mutations;
+        }
+    }
+
+    if params.mutations.len() > 0 {
+        log::info!(
+                "Generating mutations using algorithms: {:?}",
+                get_mutation_strings_from_types(&params.mutations)
+            );
+    }
 
     let mut language_object =
         LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
@@ -128,6 +198,80 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
         );
     }
 
+    // Now, see if we need to create a configuration file with the details used to mutate
+    // params.file_name.
+    if params.save_configuration_file {
+        let compiler_details = if let Some(details) = params.preferences.get_value_for_key("compiler_details") {
+            match details {
+                PreferenceValue::CompilerDetails(cdetails) => Some(cdetails),
+                _ => None
+            }
+        } else {
+            match recognize_result.language {
+                Language::Solidity => {
+                    if let Some(solidity_compiler) = params.preferences.get_value_for_key("solidity_compiler") {
+                        match solidity_compiler {
+                            PreferenceValue::String(compiler) => {
+                                Some(CompilerDetails::Solidity(
+                                    SolidityCompilerDetails::new_from_args(
+                                        &compiler,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                ))
+                            }
+                            _ => Some(CompilerDetails::Solidity(SolidityCompilerDetails::new()))
+                        }
+                    } else {
+                        Some(CompilerDetails::Solidity(SolidityCompilerDetails::new()))
+                    }
+                },
+                Language::Vyper => {
+                    if let Some(vyper_compiler) = params.preferences.get_value_for_key("vyper_compiler") {
+                        match vyper_compiler {
+                            PreferenceValue::String(compiler) => {
+                                Some(CompilerDetails::Vyper(
+                                    VyperCompilerDetails::new_from_args(
+                                        &compiler,
+                                        None,
+                                    )
+                                ))
+                            }
+                            _ => Some(CompilerDetails::Vyper(VyperCompilerDetails::new()))
+                        }
+                    } else {
+                        Some(CompilerDetails::Vyper(VyperCompilerDetails::new()))
+                    }
+                }
+            }
+        };
+
+        let details = ConfigurationFileDetails::new(
+            Some(recognize_result.language),
+            params.file_name.clone(),
+            params.number_of_mutants as i64,
+            Some(params.rng_seed),
+            &params.mutations,
+            false,
+            compiler_details
+        );
+
+        // Build the output file name.
+        let input_file_name = PathBuf::from(&params.file_name);
+        let mut base_file_name = String::from(input_file_name.file_name().unwrap().to_str().unwrap());
+        let base_out_file_name: String = if let Some(index) = base_file_name.rfind('.') {
+            base_file_name.drain(..index).collect()
+        } else {
+            base_file_name
+        };
+        let file_extension = String::from(".") + CONFIG_FILE_EXTENSION;
+        let out_file_name = base_out_file_name + file_extension.as_str();
+        let out_file_path = params.output_directory.join(out_file_name);
+
+        details.write_to_file_as_json(out_file_path.to_str().unwrap())?;
+    }
+
     // This list now holds the mutation types for which the AST has nodes to mutate.
     let mutation_type_list: Vec<MutationType> = mutable_nodes_table
         .iter()
@@ -140,7 +284,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     let mut mutation_kinds_todo: VecDeque<MutationType> = VecDeque::new();
     let mut requested_mutants_remaining = params.number_of_mutants;
     while requested_mutants_remaining > 0 {
-        let mutation_type = match mutation_type_list.choose(params.rng) {
+        let mutation_type = match mutation_type_list.choose(&mut params.rng) {
             Some(t) => t,
             None => continue,
         };
@@ -166,7 +310,8 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             };
 
             // Generate the mutated AST.
-            let mutated_ast = language_object.mutate_ast(&ast, mutation_type, index, params.rng)?;
+            let mutated_ast =
+                language_object.mutate_ast(&ast, mutation_type, index, &mut params.rng)?;
 
             // See if we have already generated this AST before.  We only want to output unique
             // mutations.

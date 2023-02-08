@@ -1,3 +1,6 @@
+/// The `preferences` module provides a simple preferences object that supports key/value pairs
+/// where the value can vary between numbers, strings, booleans, etc...
+use crate::config_file::CompilerDetails;
 use std::collections::HashMap;
 
 /// Value type stored in the preferences object.
@@ -9,6 +12,7 @@ pub enum PreferenceValue {
     Boolean(bool),
     Object(HashMap<String, PreferenceValue>),
     Array(Vec<PreferenceValue>),
+    CompilerDetails(CompilerDetails),
     Null,
 }
 

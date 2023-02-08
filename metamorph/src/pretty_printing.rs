@@ -31,7 +31,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
     for file_name in args.file_names {
         let original_file = PathBuf::from_str(&file_name).unwrap();
         let original_file_str = original_file.file_name().unwrap();
-        match pretty_print_file(&file_name, &args.output_directory, &preferences) {
+        match pretty_print_file(&file_name, &args.output_directory, &mut preferences) {
             Ok(_buf) => log::info!(
                 "Pretty-printing original file {:?} to {}",
                 original_file_str,
@@ -52,12 +52,12 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 pub fn pretty_print_file(
     file_name: &String,
     output_directory: &String,
-    preferences: &Preferences,
+    preferences: &mut Preferences,
 ) -> Result<PathBuf, MetamorphError> {
     // Convert the output_directory to a PathBuf
     let out_dir = PathBuf::from_str(output_directory).unwrap();
 
-    let recognizer = Recognizer::new(&preferences);
+    let recognizer = Recognizer::new(preferences);
 
     // Recognize the language.
     let recognize_result = recognizer.recognize_file(file_name)?;
@@ -86,9 +86,7 @@ pub fn pretty_print_file(
     let outfile = String::from(outfile_name.to_str().unwrap());
 
     // Try to create the output directory:
-    if let Err(e) = std::fs::create_dir_all(outfile_name.parent().unwrap()) {
-        return Err(MetamorphError::from(e));
-    }
+    std::fs::create_dir_all(outfile_name.parent().unwrap())?;
 
     // Create a pretty printer for printing this AST.
     let mut pretty_printer = PrettyPrinter::new(4, 150);
@@ -132,9 +130,7 @@ pub fn pretty_print_ast(
     let outfile = String::from(outfile_name.to_str().unwrap());
 
     // Try to create the output directory:
-    if let Err(e) = std::fs::create_dir_all(outfile_name.parent().unwrap()) {
-        return Err(MetamorphError::from(e));
-    }
+    std::fs::create_dir_all(outfile_name.parent().unwrap())?;
 
     // Create a pretty printer for printing this AST.
     let mut pretty_printer = PrettyPrinter::new(4, 150);

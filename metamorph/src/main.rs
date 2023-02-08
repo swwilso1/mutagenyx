@@ -20,7 +20,7 @@ use std::io::Write;
 #[clap(rename_all = "kebab-case")]
 pub struct MutateCLArgs {
     /// Directory to store mutants
-    #[clap(long, default_value = "out")]
+    #[clap(short, long, default_value = "out")]
     pub output_directory: String,
 
     /// Input file(s) to mutate
@@ -29,8 +29,8 @@ pub struct MutateCLArgs {
     pub file_names: Vec<String>,
 
     /// Random number generator seed.
-    #[clap(long, default_value = "0")]
-    pub rng_seed: u64,
+    #[clap(long, default_value = "-1")]
+    pub rng_seed: i64,
 
     /// Number of mutants
     #[clap(long, default_value = "5")]
@@ -55,6 +55,11 @@ pub struct MutateCLArgs {
     /// Vyper compiler
     #[clap(long, default_value = "vyper")]
     pub vyper_compiler: String,
+
+    /// Save the mutation information used to mutate each file in a config (.morph) file
+    /// in the output directory
+    #[clap(long)]
+    pub save_config_files: bool,
 }
 
 /// Pretty-print sub-command command line arguments.

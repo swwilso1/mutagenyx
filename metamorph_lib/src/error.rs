@@ -2,6 +2,7 @@
 //! library errors.
 
 use std::convert::From;
+use std::time::SystemTimeError;
 use thiserror::Error;
 
 /// The list of errors that the library can generate.
@@ -45,6 +46,29 @@ pub enum MetamorphError {
     /// An error indicating the tool could not determine the compiler version.
     #[error("Compiler {0} does not report its version number")]
     CompilerNoVersion(String),
+
+    /// An error indicating that the tool received a config file that it does not support or
+    /// cannot support in the current function.
+    #[error("Configuration file {0} not supported")]
+    ConfigFileNotSupported(String),
+
+    /// An error indicating that the tool received a configuration file that does not have the
+    /// correct file extension.
+    #[error("Configuration file {0} does not have the correct extension")]
+    ConfigFileBadExtension(String),
+
+    /// An error indicating that configuration file keys are missing.
+    #[error("Configuration file {0} does not have keys: {1:?}")]
+    ConfigFileMissingRequiredKey(String, Vec<String>),
+
+    /// An error indicating the configuration file contains an unsupported value for the language
+    /// key.
+    #[error("Configuration file {0} contains an invalid value for the language key: {1}")]
+    ConfigFileUnsupportedLanguage(String, String),
+
+    /// An error indicating an attempt to work with system time failed.
+    #[error("Request for or operation on system time failed")]
+    SystemTime,
 }
 
 impl From<std::io::Error> for MetamorphError {
@@ -56,5 +80,11 @@ impl From<std::io::Error> for MetamorphError {
 impl From<serde_json::Error> for MetamorphError {
     fn from(e: serde_json::Error) -> Self {
         MetamorphError::JSON(e)
+    }
+}
+
+impl From<SystemTimeError> for MetamorphError {
+    fn from(_: SystemTimeError) -> Self {
+        MetamorphError::SystemTime
     }
 }

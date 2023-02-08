@@ -1,6 +1,7 @@
 //! The `solidity::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_solidity_sub_language_interface`.
 
+use crate::config_file::CompilerDetails;
 use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
@@ -134,17 +135,42 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         file_name,
     ];
 
-    let solidity_compiler: String;
-    if let Some(compiler) = prefs.get_value_for_key("solidity_compiler") {
-        solidity_compiler = match compiler {
-            PreferenceValue::String(s) => s,
-            _ => String::from("solc"),
+    let mut full_compiler_args: Vec<String> = Vec::new();
+
+    let mut solidity_compiler = String::from("solc");
+    if let Some(compiler_details) = prefs.get_value_for_key("compiler_details") {
+        match compiler_details {
+            PreferenceValue::CompilerDetails(details) => match details {
+                CompilerDetails::Solidity(sdetails) => {
+                    solidity_compiler = String::from(sdetails.path.to_str().unwrap());
+                    if let Some(bp) = &sdetails.base_path {
+                        full_compiler_args.push(String::from("--base-path"));
+                        full_compiler_args.push(String::from(bp.to_str().unwrap()));
+                    }
+                    for path in &sdetails.include_paths {
+                        full_compiler_args.push(String::from("--include-path"));
+                        full_compiler_args.push(String::from(path.to_str().unwrap()));
+                    }
+                    for mapping in &sdetails.remappings {
+                        full_compiler_args.push(String::from(mapping.as_str()));
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
         };
-    } else {
-        solidity_compiler = String::from("solc");
+    } else if let Some(compiler) = prefs.get_value_for_key("solidity_compiler") {
+        match compiler {
+            PreferenceValue::String(s) => solidity_compiler = s,
+            _ => {}
+        }
     }
 
-    match shell_execute(&solidity_compiler, args) {
+    for arg in &args {
+        full_compiler_args.push(String::from(*arg));
+    }
+
+    match shell_execute(&solidity_compiler, full_compiler_args) {
         Ok(output) => {
             if output.status.success() {
                 Ok(out_path)

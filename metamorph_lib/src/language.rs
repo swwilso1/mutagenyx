@@ -38,6 +38,6 @@ impl fmt::Display for Language {
             Language::Vyper => "Vyper",
         };
 
-        writeln!(f, "{}", text)
+        write!(f, "{}", text)
     }
 }

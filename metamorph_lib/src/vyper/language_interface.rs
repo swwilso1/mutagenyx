@@ -1,6 +1,7 @@
 //! The `vyper::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_vyper_sub_language_interface`.
 
+use crate::config_file::CompilerDetails;
 use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
@@ -95,7 +96,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
             );
         }
 
-        if let Ok(s) = file_is_source_file_with_docker(file_name) {
+        if let Ok(s) = file_is_source_file_with_docker(file_name, prefs) {
             let value = load_json_from_file_with_name(&s)?;
             return <VyperLanguageDelegate<W> as JSONLanguageDelegate<W>>::get_value_as_super_ast(
                 self, value,
@@ -112,7 +113,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
             return true;
         }
 
-        if let Ok(_) = file_is_source_file_with_docker(file_name) {
+        if let Ok(_) = file_is_source_file_with_docker(file_name, prefs) {
             return true;
         }
 
@@ -150,8 +151,9 @@ fn file_is_source_file_with_vyper_from_pip(
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
     let mut full_path_to_tmp_file = PathBuf::from(&tmp_dir);
+    let mut full_compiler_args: Vec<String> = Vec::new();
 
-    // The Vyper compiler did not start support '-o outfile_name' as a command line option until
+    // The Vyper compiler did not start to support '-o outfile_name' as a command line option until
     // Vyper compiler version 3.0.0.
     let first_version_to_support_dash_o = Versioning::new("3.0.0").unwrap();
 
@@ -159,19 +161,33 @@ fn file_is_source_file_with_vyper_from_pip(
 
     // Check to see if the caller gave us a unique Vyper compiler, otherwise use `vyper` as the
     // default.
-    let vyper_compiler = if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
+    let mut vyper_compiler = String::from("vyper");
+
+    if let Some(compiler_details) = preferences.get_value_for_key("compiler_details") {
+        match compiler_details {
+            PreferenceValue::CompilerDetails(details) => match details {
+                CompilerDetails::Vyper(vdetails) => {
+                    vyper_compiler = String::from(vdetails.path.to_str().unwrap());
+                    if let Some(root_path) = &vdetails.root_path {
+                        full_compiler_args.push(String::from("-p"));
+                        full_compiler_args.push(String::from(root_path.to_str().unwrap()));
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+    } else if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
         match compiler {
-            PreferenceValue::String(s) => s,
-            _ => String::from("vyper"),
+            PreferenceValue::String(s) => vyper_compiler = s,
+            _ => {}
         }
-    } else {
-        String::from("vyper")
-    };
+    }
 
     let discovered_compiler_version: Versioning;
 
     // Now check the compiler version to see if we support -o.
-    match shell_execute(&vyper_compiler, vec!["--version"]) {
+    match shell_execute(&vyper_compiler, vec![String::from("--version")]) {
         Ok(output) => {
             if output.status.success() {
                 let output_version = core::str::from_utf8(output.stdout.as_slice()).unwrap();
@@ -238,7 +254,11 @@ fn file_is_source_file_with_vyper_from_pip(
         vec!["-f", "ast", file_name]
     };
 
-    match shell_execute(&vyper_compiler, args) {
+    for arg in args {
+        full_compiler_args.push(String::from(arg));
+    }
+
+    match shell_execute(&vyper_compiler, full_compiler_args) {
         Ok(output) => {
             if output.status.success() {
                 if post_process_compiler_output_to_file {
@@ -267,7 +287,10 @@ fn file_is_source_file_with_vyper_from_pip(
 /// # Arguments
 ///
 /// * `file_name` - The path to the source file to compile.
-fn file_is_source_file_with_docker(file_name: &str) -> Result<String, MetamorphError> {
+fn file_is_source_file_with_docker(
+    file_name: &str,
+    preferences: &Preferences,
+) -> Result<String, MetamorphError> {
     // The docker command to invoke the Vyper compiler requires the path where the source file
     // is located to map into the container /code directory.
     let full_file_path = PathBuf::from_str(file_name).unwrap();
@@ -284,19 +307,36 @@ fn file_is_source_file_with_docker(file_name: &str) -> Result<String, MetamorphE
 
     let dir_name = directory_name.to_str().unwrap();
 
-    let mut args: Vec<&str> = vec![];
-    args.push("run");
-    args.push("-v");
+    let mut args: Vec<String> = Vec::new();
+    args.push(String::from("run"));
+    args.push(String::from("-v"));
+    args.push(format!("{dir_name}:/code"));
+    args.push(String::from("vyperlang/vyper"));
+    args.push(String::from("-f"));
+    args.push(String::from("ast"));
 
-    let path_arg = format!("{dir_name}:/code");
+    // Here we pause in constructing 'args' to check if the user passed us some compiler_details.
+    // In this case the compiler details might contain information about the -p command line flag
+    // and if present we need to add that flag to 'args'.
+    if let Some(compiler_details) = preferences.get_value_for_key("compiler_details") {
+        match compiler_details {
+            PreferenceValue::CompilerDetails(details) => match details {
+                CompilerDetails::Vyper(vdetails) => {
+                    if let Some(root_path) = &vdetails.root_path {
+                        args.push(String::from("-p"));
+                        args.push(String::from(root_path.to_str().unwrap()));
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+    }
 
-    args.push(path_arg.as_str());
-    args.push("vyperlang/vyper");
-    args.push("-f");
-    args.push("ast");
-    args.push(file_name);
-    args.push("-o");
-    args.push(out_path.as_str());
+    args.push(String::from(file_name));
+    args.push(String::from("-o"));
+    // Clone here because we need out_path later.
+    args.push(out_path.clone());
 
     match shell_execute("docker", args) {
         Ok(output) => {

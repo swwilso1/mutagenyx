@@ -10,16 +10,17 @@ use std::process::{Command, Output};
 ///
 /// * `command` - The command to execute.
 /// * `arguments` - The array of arguments to the command.
-pub fn shell_execute(command: &str, arguments: Vec<&str>) -> Result<Output, MetamorphError> {
+pub fn shell_execute(command: &str, arguments: Vec<String>) -> Result<Output, MetamorphError> {
+    let args: Vec<&str> = arguments.iter().map(|v| v.as_str()).collect();
     let output = if cfg!(target_os = "windows") {
         Command::new("cmd")
             .arg("/C")
             .arg(command)
-            .args(arguments.iter().map(|arg| arg.to_string()))
+            .args(args.iter().map(|arg| arg.to_string()))
             .output()
     } else {
         Command::new(command)
-            .args(arguments.iter().map(|arg| arg.to_string()))
+            .args(args.iter().map(|arg| arg.to_string()))
             .output()
     };
 
