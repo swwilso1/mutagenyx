@@ -827,7 +827,7 @@ impl Mutator<VyperAST> for IntegerMutator {
                 }
             }
             1 => {
-                // Subtract one from the integer contant.
+                // Subtract one from the integer constant.
                 if let Some(value_node) = node.get("value") {
                     if let Some(mut value) = value_node.as_i64() {
                         value -= 1;

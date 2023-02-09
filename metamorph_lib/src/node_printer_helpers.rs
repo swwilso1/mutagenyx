@@ -10,7 +10,7 @@ use std::io::Write;
 ///
 /// # Arguments
 ///
-/// * `node` - The node in the Vyper AST to traverse.
+/// * `node` - The node in the AST to traverse.
 /// * `stream` - The [`Write`] object that will receive formatted output
 /// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
 /// * `factory` - The [`NodePrinterFactory<W,AST>`] object for generating node printers.

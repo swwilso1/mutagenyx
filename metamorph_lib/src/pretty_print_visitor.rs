@@ -8,7 +8,7 @@ use crate::pretty_printer::PrettyPrinter;
 use crate::visitor::Visitor;
 use std::io::Write;
 
-/// [`Visitor<T>`] conforming object that will emit the source code version of a Solidity program.
+/// [`Visitor<T>`] conforming object that will emit the source code version of a program.
 pub struct PrettyPrintVisitor<'a, W: Write, AST> {
     /// Stack of [`NodePrinter<W,AST>`] objects.
     stack: Vec<Box<dyn NodePrinter<W, AST>>>,

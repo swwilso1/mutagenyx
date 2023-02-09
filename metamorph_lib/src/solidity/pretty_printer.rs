@@ -1055,7 +1055,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
                     assert_eq!(
                         names_array.len(),
                         arguments_array.len(),
-                        "names and arguments arrays have different lenghts in FunctionCallPrinter"
+                        "names and arguments arrays have different lengths in FunctionCallPrinter"
                     );
                     write_token(printer, stream, "{");
                     printer.increase_indent();
