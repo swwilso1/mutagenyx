@@ -15,6 +15,10 @@ pub enum MetamorphError {
     #[error("JSON error occurred: {0}")]
     JSON(serde_json::Error),
 
+    /// An error indicating the tool found an unrecognized JSON element.
+    #[error("Unrecognized JSON element: {0}")]
+    UnrecognizedJSON(String),
+
     /// An error indicating that the AST does not have any nodes suitable for
     /// mutating the AST according to the specified mutation algorithms.
     #[error("AST does not contain any mutable node for requested mutations")]

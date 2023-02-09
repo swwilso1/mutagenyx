@@ -1,7 +1,7 @@
 //! The `solidity::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_solidity_sub_language_interface`.
 
-use crate::config_file::CompilerDetails;
+use crate::compiler_details::*;
 use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
@@ -11,6 +11,7 @@ use crate::preferences::*;
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::ast::SolidityAST;
+use crate::solidity::compiler_details::{BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY};
 use crate::solidity::mutators::SolidityMutatorFactory;
 use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
 use crate::super_ast::SuperAST;
@@ -114,6 +115,12 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     fn get_file_extension(&self) -> &str {
         return "sol";
     }
+
+    fn default_compiler_settings(&self) -> Preferences {
+        let mut preferences = Preferences::new();
+        preferences.set_string_for_key(PATH_KEY, "solc");
+        preferences
+    }
 }
 
 /// Try to execute the Solidity compiler on the command line.
@@ -138,27 +145,39 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
     let mut full_compiler_args: Vec<String> = Vec::new();
 
     let mut solidity_compiler = String::from("solc");
-    if let Some(compiler_details) = prefs.get_value_for_key("compiler_details") {
-        match compiler_details {
-            PreferenceValue::CompilerDetails(details) => match details {
-                CompilerDetails::Solidity(sdetails) => {
-                    solidity_compiler = String::from(sdetails.path.to_str().unwrap());
-                    if let Some(bp) = &sdetails.base_path {
-                        full_compiler_args.push(String::from("--base-path"));
-                        full_compiler_args.push(String::from(bp.to_str().unwrap()));
-                    }
-                    for path in &sdetails.include_paths {
-                        full_compiler_args.push(String::from("--include-path"));
-                        full_compiler_args.push(String::from(path.to_str().unwrap()));
-                    }
-                    for mapping in &sdetails.remappings {
-                        full_compiler_args.push(String::from(mapping.as_str()));
+
+    let language_key = format!["{}", Language::Solidity];
+    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
+                solidity_compiler = path;
+            }
+            if let Some(base_path) = compiler_prefs.get_string_for_key(BASE_PATH_KEY) {
+                full_compiler_args.push(String::from("--base-path"));
+                full_compiler_args.push(base_path.clone());
+            }
+            if let Some(include_path_array) = compiler_prefs.get_array_for_key(INCLUDE_PATHS_KEY) {
+                for path in &include_path_array {
+                    match path {
+                        PreferenceValue::String(s) => {
+                            full_compiler_args.push(String::from("--include-path"));
+                            full_compiler_args.push(s.clone());
+                        }
+                        _ => {}
                     }
                 }
-                _ => {}
-            },
-            _ => {}
-        };
+            }
+            if let Some(remappings_array) = compiler_prefs.get_array_for_key(REMAPPINGS_KEY) {
+                for mapping in &remappings_array {
+                    match mapping {
+                        PreferenceValue::String(s) => {
+                            full_compiler_args.push(s.clone());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
     } else if let Some(compiler) = prefs.get_value_for_key("solidity_compiler") {
         match compiler {
             PreferenceValue::String(s) => solidity_compiler = s,
@@ -170,6 +189,11 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         full_compiler_args.push(String::from(*arg));
     }
 
+    log::debug!(
+        "Invoking Solidity compiler {} with {:?}",
+        solidity_compiler,
+        full_compiler_args
+    );
     match shell_execute(&solidity_compiler, full_compiler_args) {
         Ok(output) => {
             if output.status.success() {

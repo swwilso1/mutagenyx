@@ -3,8 +3,7 @@
 /// for each source or AST file with specific settings that apply to just that file.
 use crate::json::*;
 use crate::language::Language;
-use crate::solidity::compiler_details::SolidityCompilerDetails;
-use crate::vyper::compiler_details::VyperCompilerDetails;
+use crate::preferences::Preferences;
 use crate::{MetamorphError, MutationType};
 use jsonxf;
 use serde_json::{from_str, json, Value};
@@ -36,13 +35,6 @@ pub static MUTATIONS_KEY: &str = "mutations";
 /// The key for the boolean value to use all mutation algorithms.
 pub static ALL_MUTATIONS_KEY: &str = "all-mutations";
 
-/// Type to coalesce different compiler details into one type.
-#[derive(Debug, Clone)]
-pub enum CompilerDetails {
-    Solidity(SolidityCompilerDetails),
-    Vyper(VyperCompilerDetails),
-}
-
 /// Configuration details loaded from a .morph configuration file.
 pub struct ConfigurationFileDetails {
     /// Language specified in configuration file.
@@ -64,7 +56,7 @@ pub struct ConfigurationFileDetails {
     pub all_mutations: bool,
 
     /// Details for compiler invocation.
-    pub compiler_details: Option<CompilerDetails>,
+    pub compiler_details: Option<Preferences>,
 }
 
 impl ConfigurationFileDetails {
@@ -86,7 +78,7 @@ impl ConfigurationFileDetails {
         seed: Option<u64>,
         mutations: &Vec<MutationType>,
         all_mutations: bool,
-        compiler_details: Option<CompilerDetails>,
+        compiler_details: Option<Preferences>,
     ) -> ConfigurationFileDetails {
         let filename_pathbuf = PathBuf::from(filename);
         ConfigurationFileDetails {
@@ -201,34 +193,9 @@ impl ConfigurationFileDetails {
             if let Some(compiler_details_node) =
                 json_value.borrow_value_for_key(COMPILER_DETAILS_KEY)
             {
-                match details.language {
-                    Some(l) => match l {
-                        Language::Solidity => {
-                            details.compiler_details = Some(CompilerDetails::Solidity(
-                                SolidityCompilerDetails::new_from_json(compiler_details_node),
-                            ));
-                        }
-                        Language::Vyper => {
-                            details.compiler_details = Some(CompilerDetails::Vyper(
-                                VyperCompilerDetails::new_from_json(compiler_details_node),
-                            ));
-                        }
-                    },
-                    _ => {}
-                }
-            } else {
-                match details.language {
-                    Some(l) => match l {
-                        Language::Solidity => {
-                            details.compiler_details =
-                                Some(CompilerDetails::Solidity(SolidityCompilerDetails::new()));
-                        }
-                        Language::Vyper => {
-                            details.compiler_details =
-                                Some(CompilerDetails::Vyper(VyperCompilerDetails::new()));
-                        }
-                    },
-                    _ => {}
+                match Preferences::try_from(compiler_details_node.clone()) {
+                    Ok(p) => details.compiler_details = Some(p),
+                    Err(e) => return Err(e),
                 }
             }
         } else {
@@ -276,14 +243,8 @@ impl ConfigurationFileDetails {
         }
 
         if let Some(compiler_details) = &self.compiler_details {
-            match &compiler_details {
-                CompilerDetails::Solidity(details) => {
-                    json_value.set_node_for_key(COMPILER_DETAILS_KEY, details.to_json())
-                }
-                CompilerDetails::Vyper(details) => {
-                    json_value.set_node_for_key(COMPILER_DETAILS_KEY, details.to_json())
-                }
-            }
+            let details_value = Value::try_from(compiler_details.clone())?;
+            json_value.set_node_for_key(COMPILER_DETAILS_KEY, details_value);
         }
 
         let config_file_path = PathBuf::from_str(config_file).unwrap();
@@ -297,7 +258,7 @@ impl ConfigurationFileDetails {
         let standard_json = format!("{json_value}");
         let pretty_json = jsonxf::pretty_print(&standard_json).unwrap();
 
-        write!(f, "{pretty_json}")?;
+        writeln!(f, "{pretty_json}")?;
 
         Ok(())
     }

@@ -131,6 +131,9 @@ pub trait MutableLanguage {
     /// * `file_name` - The string slice referencing the text containing the file name.
     fn file_is_language_ast_file(&self, file_name: &str) -> bool;
 
+    /// Return a [`Preferences`] object containing default compiler settings for the language.
+    fn default_compiler_settings(&self) -> Preferences;
+
     /// Returns the [`Language`] type that the language sub-module implements.
     fn implements(&self) -> Language;
 }

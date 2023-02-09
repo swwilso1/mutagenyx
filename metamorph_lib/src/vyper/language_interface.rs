@@ -1,20 +1,21 @@
 //! The `vyper::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
 //! trait and the function `get_vyper_sub_language_interface`.
 
-use crate::config_file::CompilerDetails;
+use crate::compiler_details::*;
 use crate::error::MetamorphError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
 use crate::mutator::*;
 use crate::node_printer::NodePrinterFactory;
-use crate::preferences::{PreferenceValue, Preferences};
+use crate::preferences::Preferences;
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
 use crate::utility::shell_execute;
 use crate::visitor::Visitor;
 use crate::vyper::ast::VyperAST;
+use crate::vyper::compiler_details::ROOT_PATH_KEY;
 use crate::vyper::mutators::VyperMutatorFactory;
 use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use serde_json::Value;
@@ -127,6 +128,12 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     fn get_file_extension(&self) -> &str {
         return "vy";
     }
+
+    fn default_compiler_settings(&self) -> Preferences {
+        let mut preferences = Preferences::new();
+        preferences.set_string_for_key(PATH_KEY, "vyper");
+        preferences
+    }
 }
 
 /// Try to execute the vyper compiler on the command line assuming that the user
@@ -163,30 +170,23 @@ fn file_is_source_file_with_vyper_from_pip(
     // default.
     let mut vyper_compiler = String::from("vyper");
 
-    if let Some(compiler_details) = preferences.get_value_for_key("compiler_details") {
-        match compiler_details {
-            PreferenceValue::CompilerDetails(details) => match details {
-                CompilerDetails::Vyper(vdetails) => {
-                    vyper_compiler = String::from(vdetails.path.to_str().unwrap());
-                    if let Some(root_path) = &vdetails.root_path {
-                        full_compiler_args.push(String::from("-p"));
-                        full_compiler_args.push(String::from(root_path.to_str().unwrap()));
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        };
-    } else if let Some(compiler) = preferences.get_value_for_key("vyper_compiler") {
-        match compiler {
-            PreferenceValue::String(s) => vyper_compiler = s,
-            _ => {}
+    let language_key = format!["{}", Language::Vyper];
+    if let Some(language_prefs) = preferences.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
+                vyper_compiler = path.clone();
+            }
+            if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
+                full_compiler_args.push(String::from("-p"));
+                full_compiler_args.push(root_path.clone());
+            }
         }
     }
 
     let discovered_compiler_version: Versioning;
 
     // Now check the compiler version to see if we support -o.
+    log::debug!("Invoking Vyper compiler {} with --version", vyper_compiler);
     match shell_execute(&vyper_compiler, vec![String::from("--version")]) {
         Ok(output) => {
             if output.status.success() {
@@ -258,6 +258,11 @@ fn file_is_source_file_with_vyper_from_pip(
         full_compiler_args.push(String::from(arg));
     }
 
+    log::debug!(
+        "Invoking Vyper compiler {} with {:?}",
+        vyper_compiler,
+        full_compiler_args
+    );
     match shell_execute(&vyper_compiler, full_compiler_args) {
         Ok(output) => {
             if output.status.success() {
@@ -318,19 +323,14 @@ fn file_is_source_file_with_docker(
     // Here we pause in constructing 'args' to check if the user passed us some compiler_details.
     // In this case the compiler details might contain information about the -p command line flag
     // and if present we need to add that flag to 'args'.
-    if let Some(compiler_details) = preferences.get_value_for_key("compiler_details") {
-        match compiler_details {
-            PreferenceValue::CompilerDetails(details) => match details {
-                CompilerDetails::Vyper(vdetails) => {
-                    if let Some(root_path) = &vdetails.root_path {
-                        args.push(String::from("-p"));
-                        args.push(String::from(root_path.to_str().unwrap()));
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        };
+    let language_key = format!["{}", Language::Vyper];
+    if let Some(language_prefs) = preferences.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
+                args.push(String::from("-p"));
+                args.push(root_path.clone());
+            }
+        }
     }
 
     args.push(String::from(file_name));
@@ -338,6 +338,7 @@ fn file_is_source_file_with_docker(
     // Clone here because we need out_path later.
     args.push(out_path.clone());
 
+    log::debug!("Invoking docker Vyper compiler {:?}", args);
     match shell_execute("docker", args) {
         Ok(output) => {
             if output.status.success() {

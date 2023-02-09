@@ -4,29 +4,26 @@
 use crate::generator_parameters::GeneratorParameters;
 use crate::pretty_printing::pretty_print_ast;
 use crate::MutateCLArgs;
+use metamorph_lib::compiler_details::*;
 use metamorph_lib::config_file::*;
 use metamorph_lib::error::MetamorphError;
+use metamorph_lib::language::Language;
 use metamorph_lib::language_interface::*;
 use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
-use metamorph_lib::preferences::{PreferenceValue, Preferences};
+use metamorph_lib::preferences::Preferences;
 use metamorph_lib::recognizer::{FileType, Recognizer};
-use metamorph_lib::solidity::compiler_details::SolidityCompilerDetails;
 use metamorph_lib::super_ast::SuperAST;
-use metamorph_lib::vyper::compiler_details::VyperCompilerDetails;
 use rand::seq::SliceRandom;
 use rand::RngCore;
 use rand::SeedableRng;
 use rand_pcg::*;
 use std::collections::VecDeque;
-use std::{path::PathBuf, str::FromStr};
 use std::time::{SystemTime, UNIX_EPOCH};
-use metamorph_lib::Language;
+use std::{path::PathBuf, str::FromStr};
 
+/// Convert a vector of [`MutationType`] to a vector of [`String`].
 fn get_mutation_strings_from_types(array: &Vec<MutationType>) -> Vec<String> {
-    array
-        .iter()
-        .map(|t| t.to_string())
-        .collect()
+    array.iter().map(|t| t.to_string()).collect()
 }
 
 /// Run the mutation generator algorithm.
@@ -56,19 +53,26 @@ pub fn generate_mutants(args: MutateCLArgs) {
             .collect();
     }
 
+    let mut solidity_compiler_prefs = Preferences::new();
+    solidity_compiler_prefs.set_string_for_key(PATH_KEY, &args.solidity_compiler);
+
+    let mut solidity_prefs = Preferences::new();
+    solidity_prefs.set_preferences_for_key(COMPILER_KEY, solidity_compiler_prefs);
+
+    let mut vyper_compiler_prefs = Preferences::new();
+    vyper_compiler_prefs.set_string_for_key(PATH_KEY, &args.vyper_compiler);
+
+    let mut vyper_prefs = Preferences::new();
+    vyper_prefs.set_preferences_for_key(COMPILER_KEY, vyper_compiler_prefs);
+
     let mut preferences = Preferences::new();
-    preferences.set_value_for_key(
-        "solidity_compiler",
-        PreferenceValue::String(args.solidity_compiler),
-    );
-    preferences.set_value_for_key(
-        "vyper_compiler",
-        PreferenceValue::String(args.vyper_compiler),
-    );
+    let solidity_key = format!("{}", Language::Solidity);
+    let vyper_key = format!("{}", Language::Vyper);
+    preferences.set_preferences_for_key(&solidity_key, solidity_prefs);
+    preferences.set_preferences_for_key(&vyper_key, vyper_prefs);
 
     // Now, for each input file, generate the requested number and type of mutations.
     for file_name in args.file_names {
-
         // We build a new random number generator for each file.  The file might be a config
         // file and contain a new random number generator seed.  The `generate_mutations` code
         // will handle loading a config file and will create a new rng from a seed from a config
@@ -76,12 +80,11 @@ pub fn generate_mutants(args: MutateCLArgs) {
         // or use the seed from the command line.
         let seed: u64 = if args.rng_seed < 0 {
             let start = SystemTime::now();
-            let since_the_epoch = start
-                .duration_since(UNIX_EPOCH);
+            let since_the_epoch = start.duration_since(UNIX_EPOCH);
             match since_the_epoch {
                 // Todo: This step truncates a u128 to u64.  We probably need those extra bits.
                 Ok(t) => t.as_millis() as u64,
-                _ => 0
+                _ => 0,
             }
         } else {
             args.rng_seed as u64
@@ -120,16 +123,25 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     let recognizer = Recognizer::new(params.preferences);
     let mut recognize_result = recognizer.recognize_file(&params.file_name)?;
 
+    let mut language_object =
+        LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
+
     if recognize_result.file_type == FileType::Config {
         // If we have a config file, then we need to override parameters with details from
         // the config file.
         let configuration_details = ConfigurationFileDetails::new_from_file(&params.file_name)?;
 
         if let Some(compiler_details) = &configuration_details.compiler_details {
-            params.preferences.set_value_for_key(
-                "compiler_details",
-                PreferenceValue::CompilerDetails(compiler_details.clone()),
-            );
+            let language_key = format!["{}", recognize_result.language];
+            if let Some(mut language_preferences) =
+                params.preferences.get_preferences_for_key(&language_key)
+            {
+                language_preferences
+                    .set_preferences_for_key(COMPILER_KEY, compiler_details.clone());
+                params
+                    .preferences
+                    .set_preferences_for_key(&language_key, language_preferences);
+            }
         }
 
         let mut prefs_copy = params.preferences.clone();
@@ -150,7 +162,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             Some(s) => {
                 params.rng_seed = s;
                 params.rng = Pcg64::seed_from_u64(s)
-            },
+            }
             _ => {}
         };
 
@@ -164,13 +176,10 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
     if params.mutations.len() > 0 {
         log::info!(
-                "Generating mutations using algorithms: {:?}",
-                get_mutation_strings_from_types(&params.mutations)
-            );
+            "Generating mutations using algorithms: {:?}",
+            get_mutation_strings_from_types(&params.mutations)
+        );
     }
-
-    let mut language_object =
-        LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
     let ast = language_object.load_ast_from_file(
         &params.file_name,
@@ -201,49 +210,25 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     // Now, see if we need to create a configuration file with the details used to mutate
     // params.file_name.
     if params.save_configuration_file {
-        let compiler_details = if let Some(details) = params.preferences.get_value_for_key("compiler_details") {
-            match details {
-                PreferenceValue::CompilerDetails(cdetails) => Some(cdetails),
-                _ => None
-            }
+        let compiler_details = if let Some(details) = params
+            .preferences
+            .get_preferences_for_key(COMPILER_DETAILS_KEY)
+        {
+            Some(details)
         } else {
-            match recognize_result.language {
-                Language::Solidity => {
-                    if let Some(solidity_compiler) = params.preferences.get_value_for_key("solidity_compiler") {
-                        match solidity_compiler {
-                            PreferenceValue::String(compiler) => {
-                                Some(CompilerDetails::Solidity(
-                                    SolidityCompilerDetails::new_from_args(
-                                        &compiler,
-                                        None,
-                                        None,
-                                        None,
-                                    )
-                                ))
-                            }
-                            _ => Some(CompilerDetails::Solidity(SolidityCompilerDetails::new()))
-                        }
-                    } else {
-                        Some(CompilerDetails::Solidity(SolidityCompilerDetails::new()))
-                    }
-                },
-                Language::Vyper => {
-                    if let Some(vyper_compiler) = params.preferences.get_value_for_key("vyper_compiler") {
-                        match vyper_compiler {
-                            PreferenceValue::String(compiler) => {
-                                Some(CompilerDetails::Vyper(
-                                    VyperCompilerDetails::new_from_args(
-                                        &compiler,
-                                        None,
-                                    )
-                                ))
-                            }
-                            _ => Some(CompilerDetails::Vyper(VyperCompilerDetails::new()))
-                        }
-                    } else {
-                        Some(CompilerDetails::Vyper(VyperCompilerDetails::new()))
-                    }
+            let language_key = format!("{}", language_object.implements());
+            if let Some(language_preferences) =
+                params.preferences.get_preferences_for_key(&language_key)
+            {
+                if let Some(compiler_preferences) =
+                    language_preferences.get_preferences_for_key(COMPILER_KEY)
+                {
+                    Some(compiler_preferences.clone())
+                } else {
+                    None
                 }
+            } else {
+                Some(language_object.default_compiler_settings())
             }
         };
 
@@ -254,12 +239,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             Some(params.rng_seed),
             &params.mutations,
             false,
-            compiler_details
+            compiler_details,
         );
 
         // Build the output file name.
         let input_file_name = PathBuf::from(&params.file_name);
-        let mut base_file_name = String::from(input_file_name.file_name().unwrap().to_str().unwrap());
+        let mut base_file_name =
+            String::from(input_file_name.file_name().unwrap().to_str().unwrap());
         let base_out_file_name: String = if let Some(index) = base_file_name.rfind('.') {
             base_file_name.drain(..index).collect()
         } else {
@@ -269,6 +255,10 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
         let out_file_name = base_out_file_name + file_extension.as_str();
         let out_file_path = params.output_directory.join(out_file_name);
 
+        log::info!(
+            "Writing configuration file {}",
+            out_file_path.to_str().unwrap()
+        );
         details.write_to_file_as_json(out_file_path.to_str().unwrap())?;
     }
 

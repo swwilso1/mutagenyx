@@ -198,6 +198,10 @@ impl MutableLanguage for JSONLanguageInterface {
         false
     }
 
+    fn default_compiler_settings(&self) -> Preferences {
+        self.sub_language_interface.default_compiler_settings()
+    }
+
     fn implements(&self) -> Language {
         self.sub_language_interface.implements()
     }

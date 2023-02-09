@@ -79,4 +79,7 @@ pub trait JSONLanguageDelegate<W: Write> {
 
     /// Return the file extension to use with the generated source file name.
     fn get_file_extension(&self) -> &str;
+
+    /// Return a [`Preferences`] object containing compiler default settings.
+    fn default_compiler_settings(&self) -> Preferences;
 }

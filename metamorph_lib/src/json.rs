@@ -73,6 +73,7 @@ pub trait JSONMutate {
     fn borrow_value_for_key(&self, key: &str) -> Option<&Value>;
     fn set_node_for_key(&mut self, key: &str, node: Value);
     fn set_node_for_key_at_index(&mut self, key: &str, index: usize, node: Value);
+    fn push_node(&mut self, node: Value);
     fn get_array_for_key(&self, key: &str) -> Option<&Vec<Value>>;
     fn get_map_for_key(&self, key: &str) -> Option<&Map<String, Value>>;
     fn get_str_for_key(&self, path: &str) -> Option<&str>;
@@ -173,6 +174,20 @@ impl JSONMutate for Value {
             if let Some(node_map) = self.as_object_mut() {
                 node_map.insert(String::from(key), node);
             }
+        }
+    }
+
+    /// Assume the ['Value'] object represents a JSON array object, append the value of `node`
+    /// to the array.
+    ///
+    /// The caller should use [`Value::is_array`] to check for a JSON array.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The [`Value`] object to append to the array.
+    fn push_node(&mut self, node: Value) {
+        if let Some(array) = self.as_array_mut() {
+            array.push(node);
         }
     }
 
@@ -445,6 +460,22 @@ mod tests {
             }
         } else {
             assert!(false, "Node for key 'one' not found");
+        }
+    }
+
+    #[test]
+    fn test_push_node() {
+        let mut value: Value = from_str("[1, 2]").unwrap();
+
+        value.push_node(Value::from(10));
+
+        if let Some(array) = value.as_array() {
+            assert_eq!(array.len(), 3);
+            assert_eq!(array[0].as_i64().unwrap(), 1);
+            assert_eq!(array[1].as_i64().unwrap(), 2);
+            assert_eq!(array[2].as_i64().unwrap(), 10);
+        } else {
+            assert!(false, "Value was not a JSON array.");
         }
     }
 
