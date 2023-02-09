@@ -268,7 +268,7 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 // Get the operator from the node and see if the operator is in the mutator's
                 // list of supported operators. The mutator can mutate the node if it supports
                 // the node's operator.
-                if let Some(op_node) = node.borrow_value_for_key("op") {
+                if let Some(op_node) = node.get("op") {
                     if let Some(op_type_str) = op_node.get_str_for_key("ast_type") {
                         if let Some(op_form_str) = self.operator_map.get(op_type_str) {
                             return self.operators.contains(op_form_str);
@@ -453,7 +453,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
     fn is_mutable_node(&self, node: &VyperAST) -> bool {
         if let Some(ast_type_str) = node.get_str_for_key("ast_type") {
             if ast_type_str == "FunctionDef" {
-                if let Some(body_node) = node.borrow_value_for_key("body") {
+                if let Some(body_node) = node.get("body") {
                     if let Some(body_array) = body_node.as_array() {
                         if body_array.len() > 0 {
                             return true;
@@ -494,7 +494,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                     // We need to check the return type if it exists.  If a return value is needed
                     // We will try and provide a return value.  Otherwise, we need to add a Pass
                     // node so that the function will still compile.
-                    if let Some(returns_node) = node.borrow_value_for_key("returns") {
+                    if let Some(returns_node) = node.get("returns") {
                         if let Some(ast_type_str) = returns_node.get_str_for_key("ast_type") {
                             if ast_type_str == "Name" {
                                 if let Some(id_str) = returns_node.get_str_for_key("id") {
@@ -572,9 +572,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                 // We already have a pass node, just skip out.
                                 ();
                             } else if ast_type_str == "Tuple" || ast_type_str == "List" {
-                                if let Some(elements_node) =
-                                    returns_node.borrow_value_for_key("elements")
-                                {
+                                if let Some(elements_node) = returns_node.get("elements") {
                                     if let Some(elements_array) = elements_node.as_array() {
                                         let node_type = match ast_type_str {
                                             "Tuple" => ListLikeThing::Tuple,
@@ -631,7 +629,7 @@ impl Mutator<VyperAST> for FunctionCallMutator {
         // First check to see if the node is an `Call` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "Call" {
-                if let Some(args) = node.borrow_value_for_key("args") {
+                if let Some(args) = node.get("args") {
                     if let Some(args_array) = args.as_array() {
                         if args_array.len() > 0 {
                             // We have to have a function call with arguments.
@@ -645,7 +643,7 @@ impl Mutator<VyperAST> for FunctionCallMutator {
     }
 
     fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
-        if let Some(args_node) = node.borrow_value_for_key("args") {
+        if let Some(args_node) = node.get("args") {
             if let Some(args_array) = args_node.as_array() {
                 loop {
                     // Randomly pick an array member, but avoid Int/Str nodes.
@@ -682,7 +680,7 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
         // First check to see if the node is an `Call` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "Call" {
-                if let Some(args) = node.borrow_value_for_key("args") {
+                if let Some(args) = node.get("args") {
                     if args.is_array() {
                         if let Some(args_array) = args.as_array() {
                             if args_array.len() >= 2 {
@@ -747,7 +745,7 @@ impl Mutator<VyperAST> for IfStatementMutator {
     fn is_mutable_node(&self, node: &VyperAST) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "If" {
-                if let Some(_test_node) = node.borrow_value_for_key("test") {
+                if let Some(_test_node) = node.get("test") {
                     return true;
                 }
             }
@@ -820,7 +818,7 @@ impl Mutator<VyperAST> for IntegerMutator {
         match rand.next_u64() % 3 as u64 {
             0 => {
                 // Add one to the integer constant.
-                if let Some(value_node) = node.borrow_value_for_key("value") {
+                if let Some(value_node) = node.get("value") {
                     if let Some(mut value) = value_node.as_i64() {
                         value += 1;
                         let json_value = json![value];
@@ -830,7 +828,7 @@ impl Mutator<VyperAST> for IntegerMutator {
             }
             1 => {
                 // Subtract one from the integer contant.
-                if let Some(value_node) = node.borrow_value_for_key("value") {
+                if let Some(value_node) = node.get("value") {
                     if let Some(mut value) = value_node.as_i64() {
                         value -= 1;
                         let json_value = json![value];
@@ -877,7 +875,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
     fn is_mutable_node(&self, node: &VyperAST) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "BinOp" || ast_type == "BoolOp" || ast_type == "Compare" {
-                if let Some(op_node) = node.borrow_value_for_key("op") {
+                if let Some(op_node) = node.get("op") {
                     if let Some(op_string) = op_node.get_str_for_key("ast_type") {
                         let converted_operator = self.operator_map[&op_string];
                         if self.valid_operators.contains(&converted_operator) {
@@ -929,7 +927,7 @@ impl Mutator<VyperAST> for LinesSwapMutator {
         // We need a function definition with at least two body statements.
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "FunctionDef" || ast_type == "For" || ast_type == "If" {
-                if let Some(body_node) = node.borrow_value_for_key("body") {
+                if let Some(body_node) = node.get("body") {
                     if let Some(body_array) = body_node.as_array() {
                         if body_array.len() >= 2 {
                             let mut found_return_statement = false;

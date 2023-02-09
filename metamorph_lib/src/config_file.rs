@@ -190,9 +190,7 @@ impl ConfigurationFileDetails {
                 details.all_mutations = use_all_algorithms;
             }
 
-            if let Some(compiler_details_node) =
-                json_value.borrow_value_for_key(COMPILER_DETAILS_KEY)
-            {
+            if let Some(compiler_details_node) = json_value.get(COMPILER_DETAILS_KEY) {
                 match Preferences::try_from(compiler_details_node.clone()) {
                     Ok(p) => details.compiler_details = Some(p),
                     Err(e) => return Err(e),

@@ -28,7 +28,7 @@ fn print_documentation_helper<W: Write>(
     factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
     node: &SolidityAST,
 ) {
-    if let Some(docs) = node.borrow_value_for_key("documentation") {
+    if let Some(docs) = node.get("documentation") {
         traverse_sub_node_and_print(printer, stream, factory, docs);
         write_newline(printer, stream);
         write_indent(printer, stream);
@@ -119,7 +119,7 @@ fn print_statements_helper<W: Write>(
     node: &SolidityAST,
     single_element_on_same_line: bool,
 ) {
-    if let Some(statements) = node.borrow_value_for_key("statements") {
+    if let Some(statements) = node.get("statements") {
         if let Some(statements_array) = statements.as_array() {
             if statements_array.len() == 1 && single_element_on_same_line {
                 if let Some(statement) = statements_array.get(0) {
@@ -165,7 +165,7 @@ fn print_arguments_helper<W: Write>(
     factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
     node: &SolidityAST,
 ) {
-    if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+    if let Some(arguments_node) = node.get("arguments") {
         if let Some(arguments_array) = arguments_node.as_array() {
             print_array_helper(printer, stream, factory, arguments_array);
         }
@@ -186,7 +186,7 @@ fn print_return_parameters_helper<W: Write>(
     factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
     node: &SolidityAST,
 ) {
-    if let Some(return_parameters_node) = node.borrow_value_for_key("returnParameters") {
+    if let Some(return_parameters_node) = node.get("returnParameters") {
         if let Some(parameters_array) = return_parameters_node.get_array_for_key("parameters") {
             if parameters_array.len() > 0 {
                 write_space(printer, stream);
@@ -295,7 +295,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(nodes) = node.borrow_value_for_key("nodes") {
+        if let Some(nodes) = node.get("nodes") {
             if let Some(node_array) = nodes.as_array() {
                 let mut i = 0;
                 while i < node_array.len() {
@@ -335,7 +335,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for PragmaDirectivePrinter {
         _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(l) = node.borrow_value_for_key("literals") {
+        if let Some(l) = node.get("literals") {
             if let Some(v) = l.as_array() {
                 write_token(printer, stream, "pragma");
                 write_space(printer, stream);
@@ -385,7 +385,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContractDefinitionPrinter {
             write_token(printer, stream, n);
         }
 
-        if let Some(base_contracts) = node.borrow_value_for_key("baseContracts") {
+        if let Some(base_contracts) = node.get("baseContracts") {
             if let Some(contract_array) = base_contracts.as_array() {
                 if contract_array.len() > 0 {
                     write_space(printer, stream);
@@ -460,7 +460,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructDefinitionPrinter {
         write_newline(printer, stream);
         printer.increase_indent();
 
-        if let Some(members) = node.borrow_value_for_key("members") {
+        if let Some(members) = node.get("members") {
             if let Some(members_array) = members.as_array() {
                 let mut i = 0;
                 while i < members_array.len() {
@@ -523,7 +523,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for MappingPrinter {
         write_token(printer, stream, "mapping");
         write_token(printer, stream, "(");
 
-        if let Some(key) = node.borrow_value_for_key("keyType") {
+        if let Some(key) = node.get("keyType") {
             traverse_sub_node_and_print(printer, stream, factory, key);
         }
 
@@ -531,7 +531,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for MappingPrinter {
         write_token(printer, stream, "=>");
         write_space(printer, stream);
 
-        if let Some(value) = node.borrow_value_for_key("valueType") {
+        if let Some(value) = node.get("valueType") {
             traverse_sub_node_and_print(printer, stream, factory, value);
         }
 
@@ -549,7 +549,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UserDefinedTypeNamePrinter {
         _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(path_node) = node.borrow_value_for_key("pathNode") {
+        if let Some(path_node) = node.get("pathNode") {
             print_name_helper(printer, stream, path_node);
         }
     }
@@ -566,7 +566,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
         node: &SolidityAST,
     ) {
         print_documentation_helper(printer, stream, factory, node);
-        if let Some(type_name_node) = node.borrow_value_for_key("typeName") {
+        if let Some(type_name_node) = node.get("typeName") {
             traverse_sub_node_and_print(printer, stream, factory, type_name_node);
         }
 
@@ -591,7 +591,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
             }
         }
 
-        if let Some(override_node) = node.borrow_value_for_key("overrides") {
+        if let Some(override_node) = node.get("overrides") {
             traverse_sub_node_and_print(printer, stream, factory, override_node);
         }
 
@@ -624,7 +624,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
             }
         }
 
-        if let Some(value) = node.borrow_value_for_key("value") {
+        if let Some(value) = node.get("value") {
             write_space(printer, stream);
             write_token(printer, stream, "=");
             write_space(printer, stream);
@@ -658,7 +658,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(documentation) = node.borrow_value_for_key("documentation") {
+        if let Some(documentation) = node.get("documentation") {
             traverse_sub_node_and_print(printer, stream, factory, documentation);
             write_newline(printer, stream);
             write_indent(printer, stream);
@@ -685,7 +685,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(parameters) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters) = node.get("parameters") {
             traverse_sub_node_and_print(printer, stream, factory, parameters);
         }
 
@@ -720,18 +720,18 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
             }
         }
 
-        if let Some(overrides) = node.borrow_value_for_key("overrides") {
+        if let Some(overrides) = node.get("overrides") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, overrides);
         }
 
-        if let Some(modifiers) = node.borrow_value_for_key("modifiers") {
+        if let Some(modifiers) = node.get("modifiers") {
             print_space_and_array_helper(printer, stream, factory, modifiers);
         }
 
         print_return_parameters_helper(printer, stream, factory, node);
 
-        if let Some(body) = node.borrow_value_for_key("body") {
+        if let Some(body) = node.get("body") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, body);
         }
@@ -764,7 +764,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ParameterListPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(parameters) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters) = node.get("parameters") {
             if let Some(parameters_array) = parameters.as_array() {
                 print_array_helper(printer, stream, factory, parameters_array);
             }
@@ -858,7 +858,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationStatementPrint
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(declarations) = node.borrow_value_for_key("declarations") {
+        if let Some(declarations) = node.get("declarations") {
             if let Some(declarations_array) = declarations.as_array() {
                 if declarations_array.len() > 1 {
                     write_token(printer, stream, "(");
@@ -884,7 +884,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationStatementPrint
             }
         }
 
-        if let Some(initial_value) = node.borrow_value_for_key("initialValue") {
+        if let Some(initial_value) = node.get("initialValue") {
             write_space(printer, stream);
             write_token(printer, stream, "=");
             write_space(printer, stream);
@@ -905,13 +905,13 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BinaryOperationPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(le) = node.borrow_value_for_key("leftExpression") {
+        if let Some(le) = node.get("leftExpression") {
             traverse_sub_node_and_print(printer, stream, factory, le);
         }
 
         print_operator_helper(printer, stream, node);
 
-        if let Some(re) = node.borrow_value_for_key("rightExpression") {
+        if let Some(re) = node.get("rightExpression") {
             traverse_sub_node_and_print(printer, stream, factory, re);
         }
     }
@@ -970,7 +970,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ExpressionStatementPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(expression) = node.borrow_value_for_key("expression") {
+        if let Some(expression) = node.get("expression") {
             traverse_sub_node_and_print(printer, stream, factory, expression);
         }
     }
@@ -998,13 +998,13 @@ impl<W: Write> NodePrinter<W, SolidityAST> for AssignmentPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(lhs) = node.borrow_value_for_key("leftHandSide") {
+        if let Some(lhs) = node.get("leftHandSide") {
             traverse_sub_node_and_print(printer, stream, factory, lhs);
         }
 
         print_operator_helper(printer, stream, node);
 
-        if let Some(rhs) = node.borrow_value_for_key("rightHandSide") {
+        if let Some(rhs) = node.get("rightHandSide") {
             traverse_sub_node_and_print(printer, stream, factory, rhs);
         }
     }
@@ -1036,7 +1036,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(expression) = node.borrow_value_for_key("expression") {
+        if let Some(expression) = node.get("expression") {
             traverse_sub_node_and_print(printer, stream, factory, expression);
             write_token(printer, stream, "(");
         }
@@ -1127,7 +1127,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UnaryOperationPrinter {
                 }
             }
 
-            if let Some(sub_expression) = node.borrow_value_for_key("subExpression") {
+            if let Some(sub_expression) = node.get("subExpression") {
                 traverse_sub_node_and_print(printer, stream, factory, sub_expression);
             }
 
@@ -1150,7 +1150,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for MemberAccessPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(expression) = node.borrow_value_for_key("expression") {
+        if let Some(expression) = node.get("expression") {
             traverse_sub_node_and_print(printer, stream, factory, expression);
         }
 
@@ -1172,13 +1172,13 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IndexAccessPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(base_expression) = node.borrow_value_for_key("baseExpression") {
+        if let Some(base_expression) = node.get("baseExpression") {
             traverse_sub_node_and_print(printer, stream, factory, base_expression);
         }
 
         write_token(printer, stream, "[");
 
-        if let Some(index_expression) = node.borrow_value_for_key("indexExpression") {
+        if let Some(index_expression) = node.get("indexExpression") {
             traverse_sub_node_and_print(printer, stream, factory, index_expression);
         }
 
@@ -1199,14 +1199,14 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IfStatementPrinter {
         write_token(printer, stream, "if");
         write_token(printer, stream, "(");
 
-        if let Some(condition) = node.borrow_value_for_key("condition") {
+        if let Some(condition) = node.get("condition") {
             traverse_sub_node_and_print(printer, stream, factory, condition);
         }
 
         write_token(printer, stream, ")");
         write_space(printer, stream);
 
-        if let Some(true_body) = node.borrow_value_for_key("trueBody") {
+        if let Some(true_body) = node.get("trueBody") {
             if let Some(node_type_str) = true_body.get_str_for_key("nodeType") {
                 if node_type_str == "Block" {
                     traverse_sub_node_and_print(printer, stream, factory, true_body);
@@ -1220,7 +1220,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IfStatementPrinter {
             }
         }
 
-        if let Some(false_body) = node.borrow_value_for_key("falseBody") {
+        if let Some(false_body) = node.get("falseBody") {
             if let Some(node_type_str) = false_body.get_str_for_key("nodeType") {
                 if node_type_str == "Block" {
                     write_space(printer, stream);
@@ -1263,7 +1263,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
         node: &SolidityAST,
     ) {
         let mut wrote_symbol_aliases = false;
-        if let Some(symbol_aliases) = node.borrow_value_for_key("symbolAliases") {
+        if let Some(symbol_aliases) = node.get("symbolAliases") {
             if let Some(aliases_array) = symbol_aliases.as_array() {
                 if aliases_array.len() > 0 {
                     write_space(printer, stream);
@@ -1271,7 +1271,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
                     let mut i = 0;
                     while i < aliases_array.len() {
                         if let Some(alias) = aliases_array.get(i) {
-                            if let Some(foreign_symbol) = alias.borrow_value_for_key("foreign") {
+                            if let Some(foreign_symbol) = alias.get("foreign") {
                                 traverse_sub_node_and_print(
                                     printer,
                                     stream,
@@ -1332,7 +1332,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InheritanceSpecifierPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(base_name) = node.borrow_value_for_key("baseName") {
+        if let Some(base_name) = node.get("baseName") {
             traverse_sub_node_and_print(printer, stream, factory, base_name);
         }
         if let Some(arguments_array) = node.get_array_for_key("arguments") {
@@ -1353,11 +1353,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierInvocationPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(modifier_name) = node.borrow_value_for_key("modifierName") {
+        if let Some(modifier_name) = node.get("modifierName") {
             traverse_sub_node_and_print(printer, stream, factory, modifier_name);
         }
 
-        if let Some(arguments) = node.borrow_value_for_key("arguments") {
+        if let Some(arguments) = node.get("arguments") {
             if let Some(arguments_array) = arguments.as_array() {
                 write_token(printer, stream, "(");
                 if arguments_array.len() > 0 {
@@ -1380,11 +1380,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "using");
-        if let Some(library_name) = node.borrow_value_for_key("libraryName") {
+        if let Some(library_name) = node.get("libraryName") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, library_name);
         }
-        if let Some(function_list_node) = node.borrow_value_for_key("functionList") {
+        if let Some(function_list_node) = node.get("functionList") {
             if let Some(function_list_array) = function_list_node.as_array() {
                 if function_list_array.len() > 0 {
                     write_space(printer, stream);
@@ -1397,7 +1397,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
         write_space(printer, stream);
         write_token(printer, stream, "for");
         write_space(printer, stream);
-        if let Some(type_name) = node.borrow_value_for_key("typeName") {
+        if let Some(type_name) = node.get("typeName") {
             traverse_sub_node_and_print(printer, stream, factory, type_name);
         }
 
@@ -1426,7 +1426,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierDefinitionPrinter {
         write_token(printer, stream, "modifier");
         write_space(printer, stream);
         print_name_helper(printer, stream, node);
-        if let Some(parameters) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters) = node.get("parameters") {
             traverse_sub_node_and_print(printer, stream, factory, parameters);
         }
     }
@@ -1445,11 +1445,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierDefinitionPrinter {
             }
         }
 
-        if let Some(override_node) = node.borrow_value_for_key("overrides") {
+        if let Some(override_node) = node.get("overrides") {
             traverse_sub_node_and_print(printer, stream, factory, override_node);
         }
 
-        if let Some(body) = node.borrow_value_for_key("body") {
+        if let Some(body) = node.get("body") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, body);
         }
@@ -1529,7 +1529,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ReturnPrinter {
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "return");
-        if let Some(expression) = node.borrow_value_for_key("expression") {
+        if let Some(expression) = node.get("expression") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, expression);
         }
@@ -1547,7 +1547,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EmitStatementPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(event_call) = node.borrow_value_for_key("eventCall") {
+        if let Some(event_call) = node.get("eventCall") {
             write_token(printer, stream, "emit");
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, event_call);
@@ -1590,7 +1590,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ElementaryTypeNameExpressionPrint
         // Not sure if this is the correct way to handle this node.
         if let Some(pure) = node.get_bool_for_key("isPure") {
             if pure {
-                if let Some(type_name) = node.borrow_value_for_key("typeName") {
+                if let Some(type_name) = node.get("typeName") {
                     if let Some(mutability) = type_name.get_str_for_key("stateMutability") {
                         write_token(printer, stream, mutability);
                     } else {
@@ -1612,7 +1612,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TupleExpressionPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(components) = node.borrow_value_for_key("components") {
+        if let Some(components) = node.get("components") {
             if let Some(components_array) = components.as_array() {
                 if components_array.len() > 0 {
                     write_token(printer, stream, "(");
@@ -1676,7 +1676,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ErrorDefinitionPrinter {
         if let Some(name_str) = node.get_str_for_key("name") {
             write_token(printer, stream, name_str);
         }
-        if let Some(parameters_node) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters_node) = node.get("parameters") {
             traverse_sub_node_and_print(printer, stream, factory, parameters_node);
         }
         write_token(printer, stream, ";");
@@ -1695,15 +1695,15 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ForStatementPrinter {
     ) {
         // Include the '(' in the token so it doesn't line break to the next line.
         write_token(printer, stream, "for(");
-        if let Some(initialization_node) = node.borrow_value_for_key("initializationExpression") {
+        if let Some(initialization_node) = node.get("initializationExpression") {
             traverse_sub_node_and_print(printer, stream, factory, initialization_node);
         }
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, condition_node);
             write_token(printer, stream, ";");
         }
-        if let Some(loop_expression_node) = node.borrow_value_for_key("loopExpression") {
+        if let Some(loop_expression_node) = node.get("loopExpression") {
             let mut printer_settings = factory.get_settings().clone();
             printer_settings.set_value_for_key(
                 WRITE_EXPRESSION_STATEMENT_SEMICOLON,
@@ -1715,7 +1715,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ForStatementPrinter {
             traverse_sub_node_and_print(printer, stream, &sub_factory, loop_expression_node);
         }
         write_token(printer, stream, ")");
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             if let Some(node_type_str) = body_node.get_str_for_key("nodeType") {
                 if node_type_str == "Block" {
                     write_space(printer, stream);
@@ -1742,11 +1742,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ArrayTypeNamePrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(base_type_node) = node.borrow_value_for_key("baseType") {
+        if let Some(base_type_node) = node.get("baseType") {
             traverse_sub_node_and_print(printer, stream, factory, base_type_node);
         }
         write_token(printer, stream, "[");
-        if let Some(length_node) = node.borrow_value_for_key("length") {
+        if let Some(length_node) = node.get("length") {
             traverse_sub_node_and_print(printer, stream, factory, length_node);
         }
         write_token(printer, stream, "]");
@@ -1781,7 +1781,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
     ) {
         write_token(printer, stream, "assembly");
         write_space(printer, stream);
-        if let Some(flags_node) = node.borrow_value_for_key("flags") {
+        if let Some(flags_node) = node.get("flags") {
             if let Some(flags_array) = flags_node.as_array() {
                 if flags_array.len() > 0 {
                     write_token(printer, stream, "(");
@@ -1805,7 +1805,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
                 }
             }
         }
-        if let Some(ast_node) = node.borrow_value_for_key("AST") {
+        if let Some(ast_node) = node.get("AST") {
             traverse_sub_node_and_print(printer, stream, factory, ast_node);
         }
     }
@@ -1823,7 +1823,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulVariableDeclarationPrinter {
     ) {
         write_token(printer, stream, "let");
         write_space(printer, stream);
-        if let Some(variables_node) = node.borrow_value_for_key("variables") {
+        if let Some(variables_node) = node.get("variables") {
             if let Some(variables_array) = variables_node.as_array() {
                 print_array_helper(printer, stream, factory, variables_array);
                 write_space(printer, stream);
@@ -1831,7 +1831,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulVariableDeclarationPrinter {
         }
         write_token(printer, stream, ":=");
         write_space(printer, stream);
-        if let Some(value_node) = node.borrow_value_for_key("value") {
+        if let Some(value_node) = node.get("value") {
             traverse_sub_node_and_print(printer, stream, factory, value_node);
         }
     }
@@ -1847,7 +1847,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionCallPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(function_name_node) = node.borrow_value_for_key("functionName") {
+        if let Some(function_name_node) = node.get("functionName") {
             traverse_sub_node_and_print(printer, stream, factory, function_name_node);
         }
         write_token(printer, stream, "(");
@@ -1885,7 +1885,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulAssignmentPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(variable_names_node) = node.borrow_value_for_key("variableNames") {
+        if let Some(variable_names_node) = node.get("variableNames") {
             if let Some(variable_names_array) = variable_names_node.as_array() {
                 print_array_helper(printer, stream, factory, variable_names_array);
                 write_space(printer, stream);
@@ -1893,7 +1893,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulAssignmentPrinter {
         }
         write_token(printer, stream, ":=");
         write_space(printer, stream);
-        if let Some(value_node) = node.borrow_value_for_key("value") {
+        if let Some(value_node) = node.get("value") {
             traverse_sub_node_and_print(printer, stream, factory, value_node);
         }
     }
@@ -1944,17 +1944,17 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulForLoopPrinter {
         let sub_factory: Box<dyn NodePrinterFactory<W, SolidityAST>> =
             Box::new(SolidityNodePrinterFactory::new(printing_settings));
 
-        if let Some(pre_node) = node.borrow_value_for_key("pre") {
+        if let Some(pre_node) = node.get("pre") {
             write_newline(printer, stream);
             write_indent(printer, stream);
             traverse_sub_node_and_print(printer, stream, &sub_factory, pre_node);
         }
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             write_newline(printer, stream);
             write_indent(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, condition_node);
         }
-        if let Some(post_node) = node.borrow_value_for_key("post") {
+        if let Some(post_node) = node.get("post") {
             write_newline(printer, stream);
             write_indent(printer, stream);
             traverse_sub_node_and_print(printer, stream, &sub_factory, post_node);
@@ -1962,7 +1962,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulForLoopPrinter {
         printer.decrease_indent();
         write_newline(printer, stream);
         write_indent(printer, stream);
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
     }
@@ -1979,7 +1979,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionTypeNamePrinter {
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "function");
-        if let Some(parameter_types_node) = node.borrow_value_for_key("parameterTypes") {
+        if let Some(parameter_types_node) = node.get("parameterTypes") {
             traverse_sub_node_and_print(printer, stream, factory, parameter_types_node);
         }
         if let Some(visibility_str) = node.get_str_for_key("visibility") {
@@ -2006,7 +2006,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EventDefinitionPrinter {
         write_token(printer, stream, "event");
         write_space(printer, stream);
         print_name_helper(printer, stream, node);
-        if let Some(parameters_node) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters_node) = node.get("parameters") {
             traverse_sub_node_and_print(printer, stream, factory, parameters_node);
         }
         if let Some(anonymous) = node.get_bool_for_key("anonymous") {
@@ -2031,7 +2031,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for RevertStatementPrinter {
     ) {
         write_token(printer, stream, "revert");
         write_space(printer, stream);
-        if let Some(error_call_node) = node.borrow_value_for_key("errorCall") {
+        if let Some(error_call_node) = node.get("errorCall") {
             traverse_sub_node_and_print(printer, stream, factory, error_call_node);
         }
         write_token(printer, stream, ";");
@@ -2051,7 +2051,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EnumDefinitionPrinter {
         write_token(printer, stream, "enum");
         write_space(printer, stream);
         print_name_helper(printer, stream, node);
-        if let Some(members_node) = node.borrow_value_for_key("members") {
+        if let Some(members_node) = node.get("members") {
             if let Some(members_array) = members_node.as_array() {
                 if members_array.len() > 0 {
                     write_space(printer, stream);
@@ -2099,7 +2099,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UserDefinedValueTypeDefinitionPri
         write_space(printer, stream);
         write_token(printer, stream, "is");
         write_space(printer, stream);
-        if let Some(underlying_node) = node.borrow_value_for_key("underlyingType") {
+        if let Some(underlying_node) = node.get("underlyingType") {
             traverse_sub_node_and_print(printer, stream, factory, underlying_node);
         }
         write_token(printer, stream, ";");
@@ -2117,7 +2117,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for NewExpressionPrinter {
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "new");
-        if let Some(type_name_node) = node.borrow_value_for_key("typeName") {
+        if let Some(type_name_node) = node.get("typeName") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, type_name_node);
         }
@@ -2134,14 +2134,14 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ConditionalPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             traverse_sub_node_and_print(printer, stream, factory, condition_node);
         }
         write_space(printer, stream);
         write_token(printer, stream, "?");
         write_space(printer, stream);
 
-        if let Some(true_expr_node) = node.borrow_value_for_key("trueExpression") {
+        if let Some(true_expr_node) = node.get("trueExpression") {
             traverse_sub_node_and_print(printer, stream, factory, true_expr_node);
         }
 
@@ -2149,7 +2149,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ConditionalPrinter {
         write_token(printer, stream, ":");
         write_space(printer, stream);
 
-        if let Some(false_expr_node) = node.borrow_value_for_key("falseExpression") {
+        if let Some(false_expr_node) = node.get("falseExpression") {
             traverse_sub_node_and_print(printer, stream, factory, false_expr_node);
         }
     }
@@ -2165,7 +2165,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallOptionsPrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(expr_node) = node.borrow_value_for_key("expression") {
+        if let Some(expr_node) = node.get("expression") {
             traverse_sub_node_and_print(printer, stream, factory, expr_node);
         }
 
@@ -2215,7 +2215,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryStatementPrinter {
     ) {
         write_token(printer, stream, "try");
         write_space(printer, stream);
-        if let Some(external_call_node) = node.borrow_value_for_key("externalCall") {
+        if let Some(external_call_node) = node.get("externalCall") {
             traverse_sub_node_and_print(printer, stream, factory, external_call_node);
             write_space(printer, stream);
         }
@@ -2253,12 +2253,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryCatchClausePrinter {
             }
         }
 
-        if let Some(parameters_node) = node.borrow_value_for_key("parameters") {
+        if let Some(parameters_node) = node.get("parameters") {
             traverse_sub_node_and_print(printer, stream, factory, parameters_node);
             write_space(printer, stream);
         }
 
-        if let Some(block_node) = node.borrow_value_for_key("block") {
+        if let Some(block_node) = node.get("block") {
             traverse_sub_node_and_print(printer, stream, factory, block_node);
         }
     }
@@ -2276,12 +2276,12 @@ impl<W: Write> NodePrinter<W, SolidityAST> for WhileStatementPrinter {
     ) {
         write_token(printer, stream, "while");
         write_space(printer, stream);
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             write_token(printer, stream, "(");
             traverse_sub_node_and_print(printer, stream, factory, condition_node);
             write_token(printer, stream, ")");
         }
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
@@ -2299,11 +2299,11 @@ impl<W: Write> NodePrinter<W, SolidityAST> for DoWhileStatementPrinter {
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "do");
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             write_space(printer, stream);
             write_token(printer, stream, "while");
             write_space(printer, stream);
@@ -2357,10 +2357,10 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulIfPrinter {
     ) {
         write_token(printer, stream, "if");
         write_space(printer, stream);
-        if let Some(condition_node) = node.borrow_value_for_key("condition") {
+        if let Some(condition_node) = node.get("condition") {
             traverse_sub_node_and_print(printer, stream, factory, condition_node);
         }
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
@@ -2379,7 +2379,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulSwitchPrinter {
     ) {
         write_token(printer, stream, "switch");
         write_space(printer, stream);
-        if let Some(expression_node) = node.borrow_value_for_key("expression") {
+        if let Some(expression_node) = node.get("expression") {
             traverse_sub_node_and_print(printer, stream, factory, expression_node);
             write_space(printer, stream);
         }
@@ -2407,7 +2407,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulCasePrinter {
         factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
         node: &SolidityAST,
     ) {
-        if let Some(value_node) = node.borrow_value_for_key("value") {
+        if let Some(value_node) = node.get("value") {
             if value_node.is_object() {
                 write_token(printer, stream, "case");
                 write_space(printer, stream);
@@ -2420,7 +2420,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulCasePrinter {
                 }
             }
         }
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
     }
@@ -2461,7 +2461,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionDefinitionPrinter {
                 write_space(printer, stream);
             }
         }
-        if let Some(body_node) = node.borrow_value_for_key("body") {
+        if let Some(body_node) = node.get("body") {
             traverse_sub_node_and_print(printer, stream, factory, body_node);
         }
     }

@@ -387,7 +387,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "Assignment" {
                 // Now recover the type information from the node.
-                let type_description_node = match node.borrow_value_for_key("typeDescriptions") {
+                let type_description_node = match node.get("typeDescriptions") {
                     Some(n) => n,
                     _ => {
                         log::info!("Assignment node has no type description object");
@@ -422,7 +422,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
         // Recover the type descriptions for the node.
-        let type_description_node = match node.borrow_value_for_key("typeDescriptions") {
+        let type_description_node = match node.get("typeDescriptions") {
             Some(n) => n,
             _ => {
                 log::info!("Assignment node has no type description object");
@@ -523,7 +523,7 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
         // in the body of the function.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Block" {
-                if let Some(statements_node) = node.borrow_value_for_key("statements") {
+                if let Some(statements_node) = node.get("statements") {
                     if let Some(statements_array) = statements_node.as_array() {
                         if statements_array.len() > 1 {
                             // The array needs to have at least one ExpressionStatement.
@@ -632,7 +632,7 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
         // We may want to ignore require() functions.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "FunctionCall" {
-                if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+                if let Some(arguments_node) = node.get("arguments") {
                     if let Some(arguments_array) = arguments_node.as_array() {
                         if arguments_array.len() > 0 {
                             return true;
@@ -645,7 +645,7 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
-        if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+        if let Some(arguments_node) = node.get("arguments") {
             if let Some(arguments_array) = arguments_node.as_array() {
                 loop {
                     // Randomly pick an array member, but avoid Literal nodes.
@@ -685,15 +685,14 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "FunctionCall" {
-                if let Some(arguments_node) = node.borrow_value_for_key("arguments") {
+                if let Some(arguments_node) = node.get("arguments") {
                     if let Some(arguments_array) = arguments_node.as_array() {
                         if arguments_array.len() > 1 {
                             // Now check to see if we have two nodes of the same type.  If we have
                             // two nodes of the same type then we can swap the arguments.
                             let mut type_map: HashMap<&str, i32> = HashMap::new();
                             for value in arguments_array {
-                                if let Some(type_descriptions_node) =
-                                    value.borrow_value_for_key("typeDescriptions")
+                                if let Some(type_descriptions_node) = value.get("typeDescriptions")
                                 {
                                     if let Some(type_string) =
                                         type_descriptions_node.get_str_for_key("typeString")
@@ -728,9 +727,7 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
             if let Some(arguments_array) = arguments_node.as_array_mut() {
                 let mut arg_map: HashMap<&str, Vec<IndexedNode>> = HashMap::new();
                 for (index, value) in arguments_array.iter().enumerate() {
-                    if let Some(type_descriptions_node) =
-                        value.borrow_value_for_key("typeDescriptions")
-                    {
+                    if let Some(type_descriptions_node) = value.get("typeDescriptions") {
                         if let Some(type_string) =
                             type_descriptions_node.get_str_for_key("typeString")
                         {
@@ -787,7 +784,7 @@ impl Mutator<SolidityAST> for IfStatementMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "IfStatement" {
-                if let Some(condition_node) = node.borrow_value_for_key("condition") {
+                if let Some(condition_node) = node.get("condition") {
                     if !condition_node.is_null() {
                         return true;
                     }
@@ -971,7 +968,7 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
         // We need a function definition with at least two body statements.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Block" {
-                if let Some(statements_node) = node.borrow_value_for_key("statements") {
+                if let Some(statements_node) = node.get("statements") {
                     if let Some(statements_array) = statements_node.as_array() {
                         if statements_array.len() >= 2 {
                             let mut found_return_statement = false;
@@ -1094,7 +1091,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
             || false,
             |n| {
                 n == "FunctionCall"
-                    && (node.borrow_value_for_key("expression").map_or_else(
+                    && (node.get("expression").map_or_else(
                         || false,
                         |n| {
                             n.get_str_for_key("name")
@@ -1193,7 +1190,7 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
     fn is_mutable_node(&self, node: &SolidityAST) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Block" {
-                if let Some(statements_node) = node.borrow_value_for_key("statements") {
+                if let Some(statements_node) = node.get("statements") {
                     if let Some(statements_array) = statements_node.as_array() {
                         if statements_array.len() > 0 {
                             let mut have_return_statement = false;

@@ -195,7 +195,7 @@ mod tests {
 
         ASTTraverser::traverse_mut(&mut simple_ast, &mut visitor);
 
-        if let Some(one_node) = simple_ast.borrow_value_for_key("one") {
+        if let Some(one_node) = simple_ast.get("one") {
             if let Some(i) = one_node.as_i64() {
                 assert_eq!(i, 2);
             }

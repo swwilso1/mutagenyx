@@ -66,11 +66,9 @@ pub fn new_json_node(text: &str) -> Result<Value, MetamorphError> {
 /// Trait for use with [`Value`] type that adds functionality for accessing and
 /// modifying the contents of the JSON node contained in the objects of the type.
 pub trait JSONMutate {
-    fn as_str(&self) -> Option<&str>;
     fn set_string(&mut self, value: &str);
     fn has_value_for_key(&self, key: &str) -> bool;
     fn take_value_for_key(&mut self, key: &str) -> Option<Value>;
-    fn borrow_value_for_key(&self, key: &str) -> Option<&Value>;
     fn set_node_for_key(&mut self, key: &str, node: Value);
     fn set_node_for_key_at_index(&mut self, key: &str, index: usize, node: Value);
     fn push_node(&mut self, node: Value);
@@ -85,12 +83,6 @@ pub trait JSONMutate {
 }
 
 impl JSONMutate for Value {
-    /// If the [`Value`] object contains a string, return a slice referring to the
-    /// string.  If the object does not contain a string, the function returns `None`.
-    fn as_str(&self) -> Option<&str> {
-        self.as_str()
-    }
-
     /// Change the current [`Value`] object so that it now contains a [`String`] copy
     /// of the argument `value`.
     ///
@@ -135,25 +127,6 @@ impl JSONMutate for Value {
     }
 
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
-    /// the function will return a reference to the [`Value`] object stored in the
-    /// dictionary for `key`.  If the dictionary does not contain a value for `key`, the function
-    /// will return `None`.
-    ///
-    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map
-    /// prior to calling this function.
-    ///
-    /// # Arguments
-    ///
-    /// * `key` - The string slice referencing the text comprising the key.
-    fn borrow_value_for_key(&self, key: &str) -> Option<&Value> {
-        let json_key = json_path(key);
-        match self.pointer(&json_key) {
-            Some(v) => Some(v),
-            _ => None,
-        }
-    }
-
-    /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
     /// the function will store the value in `node` for `key` in the dictionary/map object.
     ///
     /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map
@@ -177,26 +150,12 @@ impl JSONMutate for Value {
         }
     }
 
-    /// Assume the ['Value'] object represents a JSON array object, append the value of `node`
-    /// to the array.
-    ///
-    /// The caller should use [`Value::is_array`] to check for a JSON array.
-    ///
-    /// # Arguments
-    ///
-    /// * `node` - The [`Value`] object to append to the array.
-    fn push_node(&mut self, node: Value) {
-        if let Some(array) = self.as_array_mut() {
-            array.push(node);
-        }
-    }
-
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains a JSON array stored for `key`, then insert `node` into the array
     /// at `index`.
     ///
     /// The caller should use [`Value::is_object`] and [`Value::is_array`]
-    /// to check for a JSON dicationary/map that contains a JSON array.
+    /// to check for a JSON dictionary/map that contains a JSON array.
     ///
     /// # Arguments
     ///
@@ -212,12 +171,26 @@ impl JSONMutate for Value {
         }
     }
 
+    /// Assume the ['Value'] object represents a JSON array object, append the value of `node`
+    /// to the array.
+    ///
+    /// The caller should use [`Value::is_array`] to check for a JSON array.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The [`Value`] object to append to the array.
+    fn push_node(&mut self, node: Value) {
+        if let Some(array) = self.as_array_mut() {
+            array.push(node);
+        }
+    }
+
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains an entry for `key` that holds a JSON array, return a reference to
     /// that array.
     ///
     /// The caller should use [`Value::is_object`] and [`Value::is_array`]
-    /// to check for a JSON dicationary/map that contains a JSON array.
+    /// to check for a JSON dictionary/map that contains a JSON array.
     ///
     /// # Arguments
     ///
@@ -348,7 +321,7 @@ impl JSONMutate for Value {
     /// * `key` - The key for which to search.
     fn contains_key(&self, key: &str) -> bool {
         if self.is_object() {
-            if let Some(_node) = self.borrow_value_for_key(key) {
+            if let Some(_node) = self.get(key) {
                 return true;
             }
         }
@@ -397,25 +370,8 @@ mod tests {
             assert_eq!(first_node.as_i64().unwrap(), 1);
         }
 
-        if let Some(first_node) = value.borrow_value_for_key("first") {
+        if let Some(first_node) = value.get("first") {
             assert!(first_node.is_null());
-        }
-    }
-
-    #[test]
-    fn test_json_mutate_borrow_value_for_key() {
-        let value: Value = from_str(
-            "{\
-            \"first\": 1,
-            \"second\": 2
-        }",
-        )
-        .unwrap();
-
-        if let Some(second_node) = value.borrow_value_for_key("second") {
-            assert_eq!(second_node.as_i64().unwrap(), 2);
-        } else {
-            assert!(false, "Failed to get node 'second' from the test JSON.");
         }
     }
 
@@ -430,7 +386,7 @@ mod tests {
 
         value.set_node_for_key("second", Value::from(2));
 
-        match value.borrow_value_for_key("second") {
+        match value.get("second") {
             Some(n) => {
                 assert_eq!(n.as_i64().unwrap(), 2);
             }
@@ -451,7 +407,7 @@ mod tests {
 
         value.set_node_for_key_at_index("one", 1, number);
 
-        if let Some(one_node) = value.borrow_value_for_key("one") {
+        if let Some(one_node) = value.get("one") {
             if let Some(one_array) = one_node.as_array() {
                 assert_eq!(one_array[1].as_i64().unwrap(), 47);
                 assert_eq!(one_array.len(), 3);
