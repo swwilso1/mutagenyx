@@ -110,8 +110,8 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        return file_is_source_file_with_vyper_from_pip(file_name, prefs).is_ok()
-            || file_is_source_file_with_docker(file_name, prefs).is_ok();
+        file_is_source_file_with_vyper_from_pip(file_name, prefs).is_ok()
+            || file_is_source_file_with_docker(file_name, prefs).is_ok()
     }
 
     fn implements(&self) -> Language {
@@ -208,18 +208,12 @@ fn file_is_source_file_with_vyper_from_pip(
                         }
                         Versioning::new(&vstr).unwrap()
                     }
-                    None => {
-                        return Err(MetamorphError::CompilerNoVersion(String::from(
-                            vyper_compiler,
-                        )))
-                    }
+                    None => return Err(MetamorphError::CompilerNoVersion(vyper_compiler)),
                 };
             } else {
                 let command_error = core::str::from_utf8(output.stderr.as_slice()).unwrap();
                 log::error!("Unable to retrieve compiler version: {}", command_error);
-                return Err(MetamorphError::CompilerNoVersion(String::from(
-                    vyper_compiler,
-                )));
+                return Err(MetamorphError::CompilerNoVersion(vyper_compiler));
             }
         }
         Err(e) => {
