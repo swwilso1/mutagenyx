@@ -102,10 +102,12 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        if let Ok(_) = file_is_source_file(file_name, prefs) {
-            return true;
-        }
-        false
+        file_is_source_file(file_name, prefs).is_ok()
+        // if file_is_source_file(file_name, prefs).is_ok() {
+        // // if let Ok(_) = file_is_source_file(file_name, prefs) {
+        //     return true;
+        // }
+        // false
     }
 
     fn implements(&self) -> Language {

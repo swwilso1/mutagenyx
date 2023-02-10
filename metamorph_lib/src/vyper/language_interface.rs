@@ -110,15 +110,8 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        if let Ok(_) = file_is_source_file_with_vyper_from_pip(file_name, prefs) {
-            return true;
-        }
-
-        if let Ok(_) = file_is_source_file_with_docker(file_name, prefs) {
-            return true;
-        }
-
-        false
+        return file_is_source_file_with_vyper_from_pip(file_name, prefs).is_ok()
+            || file_is_source_file_with_docker(file_name, prefs).is_ok();
     }
 
     fn implements(&self) -> Language {
