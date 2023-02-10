@@ -8,7 +8,6 @@ use metamorph_lib::pretty_printer::{
     write_tokens, PrettyPrinter,
 };
 use std::io::{stdout, Write};
-use termsize;
 
 /// Simple struct for keeping track of the width of the mutation algorithm name
 /// and the width of the category heading text.
