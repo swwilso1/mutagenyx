@@ -103,7 +103,7 @@ impl ConfigurationFileDetails {
         let extension = config_path.extension();
 
         // The file must have a .morph extension.
-        if extension == None {
+        if extension.is_none() {
             return Err(MetamorphError::ConfigFileBadExtension(String::from(
                 config_file,
             )));

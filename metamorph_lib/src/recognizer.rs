@@ -134,11 +134,11 @@ impl<'a> Recognizer<'a> {
         // Try to recognize the language of the source file.  The file might be a source code file,
         // an AST file, or a config file.
         let mut recognized_details = self.recognize_config_file(file_name);
-        if recognized_details == None {
+        if recognized_details.is_none() {
             recognized_details = self.recognize_source_file(file_name);
-            if recognized_details == None {
+            if recognized_details.is_none() {
                 recognized_details = self.recognize_ast_file(file_name);
-                if recognized_details == None {
+                if recognized_details.is_none() {
                     return Err(MetamorphError::LanguageNotRecognized);
                 }
             }
