@@ -330,10 +330,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         // Get the original operator that we can use to compare to the new operator that we select.
         // If the operator choice selects the same operator as the original, then we want to keep
         // selecting operators until we have a different operator.
-        let original_operator = match node.get_str_for_key("operator") {
-            Some(o) => o,
-            None => "",
-        };
+        let original_operator = node.get_str_for_key("operator").unwrap_or("");
 
         // Choose a new operator.
         let mut chosen_operator = match operator_list.choose(rand) {
@@ -456,14 +453,14 @@ impl Mutator<SolidityAST> for AssignmentMutator {
                     type_size = 128;
                 }
 
-                let lower_bound = 0 as u128;
-                let upper_bound: u128;
-                if type_size < 128 {
-                    upper_bound = 2_u128.pow(type_size) - 1;
+                let lower_bound = 0_u128;
+                let upper_bound: u128 = if type_size < 128 {
+                    2_u128.pow(type_size) - 1
                 } else {
                     // 2.pow(128) - 1
-                    upper_bound = 340282366920938463463374607431768211455u128;
-                }
+                    340282366920938463463374607431768211455u128
+                };
+
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
                 let new_node = match new_integer_constant_node(replacement_value) {
@@ -476,12 +473,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             "boo" => {
                 assert_eq!(type_string, "bool");
                 let replacement_value = rand.gen_range(0, 1);
-                let bool_literal: bool;
-                if replacement_value == 0 {
-                    bool_literal = false;
-                } else {
-                    bool_literal = true;
-                }
+                let bool_literal: bool = replacement_value != 0;
 
                 let new_node = match new_boolean_literal_node(bool_literal) {
                     Ok(n) => n,
@@ -786,7 +778,7 @@ impl Mutator<SolidityAST> for IfStatementMutator {
         // * Replace condition with true.
         // * Replace condition with false.
         // * Replace condition (called c) with !(c) (ie the negation).
-        match rand.next_u64() % 3 as u64 {
+        match rand.next_u64() % 3_u64 {
             0 => {
                 // Replace the condition with `true`.
                 let bool_node = match new_boolean_literal_node(true) {
@@ -851,7 +843,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
                         if let Some(value) = node.get_str_for_key("value") {
                             let text = String::from(value);
                             // Search for a . in the string which indicates a floating point number.
-                            let find_result = text.find(".");
+                            let find_result = text.find('.');
                             if find_result.is_none() {
                                 return true;
                             }
@@ -864,7 +856,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
     }
 
     fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
-        match rand.next_u64() % 3 as u64 {
+        match rand.next_u64() % 3_u64 {
             0 => {
                 // Add one to the integer constant.
                 if let Some(value) = node.get_str_for_key("value") {
@@ -972,9 +964,7 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
                             // must be at least 3 statements in the body in order to swap (but not
                             // swap a return statement) statements.  If there are no return statements
                             // then we can just go ahead and swap.
-                            if (found_return_statement && statements_array.len() >= 3)
-                                || (!found_return_statement)
-                            {
+                            if !found_return_statement || statements_array.len() >= 3 {
                                 return true;
                             }
                         }
@@ -1193,9 +1183,7 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
                             // If the Block node has a return statement, we need at least two statements
                             // in order for the algorithm to work.  We do not wrap a return statement
                             // in unchecked{}.
-                            if (have_return_statement && statements_array.len() >= 2)
-                                || (!have_return_statement)
-                            {
+                            if !have_return_statement || statements_array.len() >= 2 {
                                 return true;
                             }
                         }
