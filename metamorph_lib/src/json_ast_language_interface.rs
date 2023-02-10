@@ -94,8 +94,7 @@ impl MutableLanguage for JSONLanguageInterface {
             // Try to convert the mutation type to a mutator
             .map(|t| mutator_factory.mutator_for(t))
             // Only use the results that have an actual mutator
-            .filter(|m| m.is_some())
-            .map(|o| o.unwrap())
+            .flatten()
             .collect();
 
         // Now fill the mutator map
