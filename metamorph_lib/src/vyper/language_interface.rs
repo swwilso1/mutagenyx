@@ -167,11 +167,11 @@ fn file_is_source_file_with_vyper_from_pip(
     if let Some(language_prefs) = preferences.get_preferences_for_key(&language_key) {
         if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
             if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
-                vyper_compiler = path.clone();
+                vyper_compiler = path;
             }
             if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
                 full_compiler_args.push(String::from("-p"));
-                full_compiler_args.push(root_path.clone());
+                full_compiler_args.push(root_path);
             }
         }
     }
@@ -321,7 +321,7 @@ fn file_is_source_file_with_docker(
         if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
             if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
                 args.push(String::from("-p"));
-                args.push(root_path.clone());
+                args.push(root_path);
             }
         }
     }

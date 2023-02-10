@@ -220,9 +220,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             if let Some(language_preferences) =
                 params.preferences.get_preferences_for_key(&language_key)
             {
-                language_preferences
-                    .get_preferences_for_key(COMPILER_KEY)
-                    .map(|compiler_preferences| compiler_preferences.clone())
+                language_preferences.get_preferences_for_key(COMPILER_KEY)
             } else {
                 Some(language_object.default_compiler_settings())
             }

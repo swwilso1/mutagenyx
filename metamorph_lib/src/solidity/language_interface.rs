@@ -156,7 +156,7 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
             }
             if let Some(base_path) = compiler_prefs.get_string_for_key(BASE_PATH_KEY) {
                 full_compiler_args.push(String::from("--base-path"));
-                full_compiler_args.push(base_path.clone());
+                full_compiler_args.push(base_path);
             }
             if let Some(include_path_array) = compiler_prefs.get_array_for_key(INCLUDE_PATHS_KEY) {
                 for path in &include_path_array {
