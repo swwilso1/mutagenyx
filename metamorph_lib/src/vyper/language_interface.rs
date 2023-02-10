@@ -1,4 +1,4 @@
-//! The `vyper::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
+//! The `vyper::language_interface` module provides the implementation for the [`JSONLanguageDelegate d`]
 //! trait and the function `get_vyper_sub_language_interface`.
 
 use crate::compiler_details::*;
@@ -25,26 +25,26 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use versions::{Mess, Versioning};
 
-/// Return the object conforming to [`JSONLanguageDelegate<W>`]
-pub fn get_vyper_delegate<W: Write + 'static>() -> Box<dyn JSONLanguageDelegate<W>> {
+/// Return the object conforming to [`JSONLanguageDelegate`]
+pub fn get_vyper_delegate() -> Box<dyn JSONLanguageDelegate> {
     Box::new(VyperLanguageDelegate::new())
 }
 
-/// The type that implements [`JSONLanguageDelegate<W>`]
-pub struct VyperLanguageDelegate<W: Write> {
-    node_printer_factory: Box<dyn NodePrinterFactory<W, VyperAST>>,
+/// The type that implements [`JSONLanguageDelegate`]
+pub struct VyperLanguageDelegate {
+    node_printer_factory: Box<dyn NodePrinterFactory<VyperAST>>,
 }
 
-impl<W: Write> VyperLanguageDelegate<W> {
+impl VyperLanguageDelegate {
     /// Create a new Vyper language delegate
-    fn new() -> VyperLanguageDelegate<W> {
+    fn new() -> VyperLanguageDelegate {
         VyperLanguageDelegate {
             node_printer_factory: Box::new(VyperNodePrinterFactory::default()),
         }
     }
 }
 
-impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
+impl JSONLanguageDelegate for VyperLanguageDelegate {
     fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         let vyper_ast = match super_ast {
             SuperAST::Vyper(sast) => sast,
@@ -54,9 +54,8 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     }
 
     fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, MetamorphError> {
-        if <VyperLanguageDelegate<W> as JSONLanguageDelegate<W>>::json_is_language_ast_json(
-            self, &value,
-        ) {
+        if <VyperLanguageDelegate as JSONLanguageDelegate>::json_is_language_ast_json(self, &value)
+        {
             return Ok(SuperAST::Vyper(value));
         }
         Err(MetamorphError::LanguageNotRecognized)
@@ -68,11 +67,11 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
 
     fn get_pretty_print_visitor<'a>(
         &'a self,
-        w: &'a mut W,
+        stream: &'a mut dyn Write,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a> {
         return Box::new(PrettyPrintVisitor::new(
-            w,
+            stream,
             printer,
             self.node_printer_factory.as_ref(),
         ));
@@ -92,14 +91,14 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     ) -> Result<SuperAST, MetamorphError> {
         if let Ok(s) = file_is_source_file_with_vyper_from_pip(file_name, prefs) {
             let value = load_json_from_file_with_name(&s)?;
-            return <VyperLanguageDelegate<W> as JSONLanguageDelegate<W>>::get_value_as_super_ast(
+            return <VyperLanguageDelegate as JSONLanguageDelegate>::get_value_as_super_ast(
                 self, value,
             );
         }
 
         if let Ok(s) = file_is_source_file_with_docker(file_name, prefs) {
             let value = load_json_from_file_with_name(&s)?;
-            return <VyperLanguageDelegate<W> as JSONLanguageDelegate<W>>::get_value_as_super_ast(
+            return <VyperLanguageDelegate as JSONLanguageDelegate>::get_value_as_super_ast(
                 self, value,
             );
         }

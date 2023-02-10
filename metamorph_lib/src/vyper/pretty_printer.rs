@@ -20,13 +20,13 @@ use std::io::Write;
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_simple_value<W: Write>(
+fn write_simple_value(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(value_node) = node.get("value") {
@@ -40,13 +40,13 @@ fn write_simple_value<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_elements_array<W: Write>(
+fn write_elements_array(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(elements_node) = node.get("elements") {
@@ -62,14 +62,14 @@ fn write_elements_array<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `key` - The key string.
 /// * `node` - The node in the Vyper AST.
-fn write_key_of_node_as_array<W: Write>(
+fn write_key_of_node_as_array(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     key: &str,
     node: &VyperAST,
 ) {
@@ -86,13 +86,13 @@ fn write_key_of_node_as_array<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_args_as_array<W: Write>(
+fn write_args_as_array(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     write_key_of_node_as_array(printer, stream, factory, "args", node);
@@ -104,13 +104,13 @@ fn write_args_as_array<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_value_assignment<W: Write>(
+fn write_value_assignment(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(value_node) = node.get("value") {
@@ -127,13 +127,13 @@ fn write_value_assignment<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] trait object that will generate printers for
+/// * `factory` - The [`NodePrinterFactory<AST>`] trait object that will generate printers for
 /// AST nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_body_as_nodes<W: Write>(
+fn write_body_as_nodes(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(body_node) = node.get("body") {
@@ -154,13 +154,13 @@ fn write_body_as_nodes<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The node in the Vyper AST.
-fn write_indented_body_array<W: Write>(
+fn write_indented_body_array(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(body_node) = node.get("body") {
@@ -177,13 +177,13 @@ fn write_indented_body_array<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `array` - The array of [`VyperAST`] nodes.
-fn write_indented_array<W: Write>(
+fn write_indented_array(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     array: &Vec<VyperAST>,
 ) {
     let mut i = 0;
@@ -205,13 +205,13 @@ fn write_indented_array<W: Write>(
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the text.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object that generates node printers for AST
+/// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The Vyper AST node.
-fn write_node_with_parens_maybe<W: Write>(
+fn write_node_with_parens_maybe(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, VyperAST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<VyperAST>,
     node: &VyperAST,
 ) {
     if let Some(ast_type) = node.get_str_for_key("ast_type") {
@@ -235,9 +235,9 @@ fn write_node_with_parens_maybe<W: Write>(
 /// * `printer` - The [`PrettyPrinter`] object that will format the text.
 /// * `stream` - The [`Write`] object that will receive the formatted text.
 /// * `node` - The Vyper AST node.
-fn write_value_string_as_token<W: Write>(
+fn write_value_string_as_token(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
+    stream: &mut dyn Write,
     node: &VyperAST,
 ) {
     if let Some(value_str) = node.get_str_for_key("value") {
@@ -247,7 +247,7 @@ fn write_value_string_as_token<W: Write>(
 
 struct DummyNodePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for DummyNodePrinter {
+impl NodePrinter<VyperAST> for DummyNodePrinter {
     fn visit_children(&mut self) -> bool {
         true
     }
@@ -255,12 +255,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for DummyNodePrinter {
 
 struct NamePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for NamePrinter {
+impl NodePrinter<VyperAST> for NamePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(name) = node.get_str_for_key("id") {
@@ -271,12 +271,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for NamePrinter {
 
 struct VariableDeclPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for VariableDeclPrinter {
+impl NodePrinter<VyperAST> for VariableDeclPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(target_node) = node.get("target") {
@@ -330,12 +330,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for VariableDeclPrinter {
 
 struct SubscriptPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for SubscriptPrinter {
+impl NodePrinter<VyperAST> for SubscriptPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_node) = node.get("value") {
@@ -350,12 +350,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for SubscriptPrinter {
 
 struct IndexPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for IndexPrinter {
+impl NodePrinter<VyperAST> for IndexPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "[");
@@ -368,12 +368,12 @@ struct TuplePrinter {
     pub use_parentheses: bool,
 }
 
-impl<W: Write> NodePrinter<W, VyperAST> for TuplePrinter {
+impl NodePrinter<VyperAST> for TuplePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if self.use_parentheses {
@@ -400,12 +400,12 @@ impl FunctionDefPrinter {
     }
 }
 
-impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
+impl NodePrinter<VyperAST> for FunctionDefPrinter {
     fn on_entry(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         // Process the decorator list.
@@ -436,8 +436,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if self.has_decorators {
@@ -460,7 +460,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
                     TUPLES_SHOULD_USE_PARENTHESES,
                     PreferenceValue::Boolean(true),
                 );
-                // let sub_factory: Box<dyn NodePrinterFactory<W, VyperAST>> =
+                // let sub_factory: Box<dyn NodePrinterFactory<VyperAST>> =
                 //     Box::new(VyperNodePrinterFactory::new(printer_settings));
                 let sub_factory = VyperNodePrinterFactory::new(printer_settings);
                 write_space(printer, stream);
@@ -506,12 +506,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
 
 struct ArgumentsPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
+impl NodePrinter<VyperAST> for ArgumentsPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         // Writing the function arguments is a little complicated because of the way the Vyper AST
@@ -551,12 +551,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
 
 struct ArgPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ArgPrinter {
+impl NodePrinter<VyperAST> for ArgPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(arg_str) = node.get_str_for_key("arg") {
@@ -575,12 +575,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgPrinter {
 
 struct AssignPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for AssignPrinter {
+impl NodePrinter<VyperAST> for AssignPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(target_node) = node.get("target") {
@@ -595,12 +595,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for AssignPrinter {
 
 struct AttributePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for AttributePrinter {
+impl NodePrinter<VyperAST> for AttributePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_node) = node.get("value") {
@@ -625,12 +625,12 @@ impl AugAssignPrinter {
     }
 }
 
-impl<W: Write> NodePrinter<W, VyperAST> for AugAssignPrinter {
+impl NodePrinter<VyperAST> for AugAssignPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(target_node) = node.get("target") {
@@ -654,12 +654,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for AugAssignPrinter {
 
 struct IntPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for IntPrinter {
+impl NodePrinter<VyperAST> for IntPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value) = node.get_int_for_key("value") {
@@ -673,12 +673,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for IntPrinter {
 /// Used to print Hex and Decimal nodes.
 struct ValuePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ValuePrinter {
+impl NodePrinter<VyperAST> for ValuePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_value_string_as_token(printer, stream, node);
@@ -697,12 +697,12 @@ impl BinOpPrinter {
     }
 }
 
-impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
+impl NodePrinter<VyperAST> for BinOpPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(left_node) = node.get("left") {
@@ -725,12 +725,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
 
 struct BoolOpPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
+impl NodePrinter<VyperAST> for BoolOpPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(values_node) = node.get("values") {
@@ -758,12 +758,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for BoolOpPrinter {
 
 struct AssertPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for AssertPrinter {
+impl NodePrinter<VyperAST> for AssertPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "assert");
@@ -783,12 +783,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for AssertPrinter {
 
 struct StrPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for StrPrinter {
+impl NodePrinter<VyperAST> for StrPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_str) = node.get_str_for_key("value") {
@@ -799,12 +799,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for StrPrinter {
 
 struct ModulePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ModulePrinter {
+impl NodePrinter<VyperAST> for ModulePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(doc_string_node) = node.get("doc_string") {
@@ -835,12 +835,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ModulePrinter {
 
 struct AnnAssignPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for AnnAssignPrinter {
+impl NodePrinter<VyperAST> for AnnAssignPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(target_node) = node.get("target") {
@@ -857,12 +857,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for AnnAssignPrinter {
 
 struct ExprPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ExprPrinter {
+impl NodePrinter<VyperAST> for ExprPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_node) = node.get("value") {
@@ -873,12 +873,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ExprPrinter {
 
 struct CallPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for CallPrinter {
+impl NodePrinter<VyperAST> for CallPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(func_node) = node.get("func") {
@@ -901,12 +901,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for CallPrinter {
 
 struct NameConstantPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for NameConstantPrinter {
+impl NodePrinter<VyperAST> for NameConstantPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_node) = node.get("value") {
@@ -926,12 +926,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for NameConstantPrinter {
 
 struct UnaryOpPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for UnaryOpPrinter {
+impl NodePrinter<VyperAST> for UnaryOpPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         let mut needs_space = false;
@@ -956,12 +956,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for UnaryOpPrinter {
 
 struct InterfaceDefPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for InterfaceDefPrinter {
+impl NodePrinter<VyperAST> for InterfaceDefPrinter {
     fn on_entry(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "interface");
@@ -977,8 +977,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for InterfaceDefPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         let mut printer_settings = factory.get_settings().clone();
@@ -993,8 +993,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for InterfaceDefPrinter {
     fn on_exit(
         &mut self,
         printer: &mut PrettyPrinter,
-        _stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        _stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         printer.decrease_indent();
@@ -1003,12 +1003,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for InterfaceDefPrinter {
 
 struct StructDefPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for StructDefPrinter {
+impl NodePrinter<VyperAST> for StructDefPrinter {
     fn on_entry(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "struct");
@@ -1024,8 +1024,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for StructDefPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_body_as_nodes(printer, stream, factory, node);
@@ -1034,8 +1034,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for StructDefPrinter {
     fn on_exit(
         &mut self,
         printer: &mut PrettyPrinter,
-        _stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        _stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         printer.decrease_indent();
@@ -1044,12 +1044,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for StructDefPrinter {
 
 struct ForPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ForPrinter {
+impl NodePrinter<VyperAST> for ForPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "for");
@@ -1073,12 +1073,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ForPrinter {
 
 struct ListPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ListPrinter {
+impl NodePrinter<VyperAST> for ListPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "[");
@@ -1089,12 +1089,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ListPrinter {
 
 struct IfPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for IfPrinter {
+impl NodePrinter<VyperAST> for IfPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "if");
@@ -1125,12 +1125,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for IfPrinter {
 
 struct BreakPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for BreakPrinter {
+impl NodePrinter<VyperAST> for BreakPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         write_token(printer, stream, "break");
@@ -1139,12 +1139,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for BreakPrinter {
 
 struct ContinuePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ContinuePrinter {
+impl NodePrinter<VyperAST> for ContinuePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         write_token(printer, stream, "continue")
@@ -1153,12 +1153,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ContinuePrinter {
 
 struct PassPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for PassPrinter {
+impl NodePrinter<VyperAST> for PassPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         write_token(printer, stream, "pass");
@@ -1167,12 +1167,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for PassPrinter {
 
 struct ReturnPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ReturnPrinter {
+impl NodePrinter<VyperAST> for ReturnPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "return");
@@ -1187,12 +1187,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ReturnPrinter {
 
 struct RaisePrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for RaisePrinter {
+impl NodePrinter<VyperAST> for RaisePrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "raise");
@@ -1205,12 +1205,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for RaisePrinter {
 
 struct ImportPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ImportPrinter {
+impl NodePrinter<VyperAST> for ImportPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "import");
@@ -1229,12 +1229,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ImportPrinter {
 
 struct ImportFromPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for ImportFromPrinter {
+impl NodePrinter<VyperAST> for ImportFromPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "from");
@@ -1269,12 +1269,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for ImportFromPrinter {
 
 struct EventDefPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for EventDefPrinter {
+impl NodePrinter<VyperAST> for EventDefPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "event");
@@ -1292,12 +1292,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for EventDefPrinter {
 
 struct LogPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for LogPrinter {
+impl NodePrinter<VyperAST> for LogPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "log");
@@ -1317,12 +1317,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for LogPrinter {
 /// Vyper AST standard (good luck finding that thought).
 struct CommentPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for CommentPrinter {
+impl NodePrinter<VyperAST> for CommentPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_str) = node.get_str_for_key("value") {
@@ -1337,12 +1337,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for CommentPrinter {
 
 struct AndPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for AndPrinter {
+impl NodePrinter<VyperAST> for AndPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
@@ -1357,12 +1357,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for AndPrinter {
 
 struct KeywordPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for KeywordPrinter {
+impl NodePrinter<VyperAST> for KeywordPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(arg_str) = node.get_str_for_key("arg") {
@@ -1377,12 +1377,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for KeywordPrinter {
 
 struct BytesPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for BytesPrinter {
+impl NodePrinter<VyperAST> for BytesPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(value_str) = node.get_str_for_key("value") {
@@ -1403,12 +1403,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for BytesPrinter {
 
 struct DictPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
+impl NodePrinter<VyperAST> for DictPrinter {
     fn on_entry(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         write_token(printer, stream, "{");
@@ -1417,8 +1417,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         if let Some(keys_node) = node.get("keys") {
@@ -1460,8 +1460,8 @@ impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
     fn on_exit(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        _factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        _factory: &dyn NodePrinterFactory<VyperAST>,
         _node: &VyperAST,
     ) {
         write_token(printer, stream, "}");
@@ -1470,12 +1470,12 @@ impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
 
 struct EnumDefPrinter {}
 
-impl<W: Write> NodePrinter<W, VyperAST> for EnumDefPrinter {
+impl NodePrinter<VyperAST> for EnumDefPrinter {
     fn print_node(
         &mut self,
         printer: &mut PrettyPrinter,
-        stream: &mut W,
-        factory: &dyn NodePrinterFactory<W, VyperAST>,
+        stream: &mut dyn Write,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
         write_token(printer, stream, "enum");
@@ -1496,9 +1496,9 @@ impl<W: Write> NodePrinter<W, VyperAST> for EnumDefPrinter {
 static TUPLES_SHOULD_USE_PARENTHESES: &str = "tuples_should_use_parentheses";
 static FUNCTION_DEF_USES_STRUCT_DECL_FORM: &str = "function_def_uses_struct_decl_form";
 
-/// Type that implements [`NodePrinterFactory<W,AST>`] for Vyper AST nodes.
+/// Type that implements [`NodePrinterFactory<AST>`] for Vyper AST nodes.
 ///
-/// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<W,AST>`] object.
+/// Use this factory object with the [`crate::pretty_print_visitor::PrettyPrintVisitor<AST>`] object.
 #[derive(Clone)]
 pub struct VyperNodePrinterFactory {
     settings: Preferences,
@@ -1532,8 +1532,8 @@ impl VyperNodePrinterFactory {
     }
 }
 
-impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
-    fn printer_for(&self, node: &VyperAST) -> Box<dyn NodePrinter<W, VyperAST>> {
+impl NodePrinterFactory<VyperAST> for VyperNodePrinterFactory {
+    fn printer_for(&self, node: &VyperAST) -> Box<dyn NodePrinter<VyperAST>> {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             match ast_type {
                 "Name" => Box::new(NamePrinter {}),
@@ -1543,7 +1543,6 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 "Tuple" => {
                     Box::new(TuplePrinter {
                         use_parentheses: <VyperNodePrinterFactory as NodePrinterFactory<
-                            W,
                             VyperAST,
                         >>::get_preference_value_for_key(
                             self, TUPLES_SHOULD_USE_PARENTHESES
@@ -1552,7 +1551,6 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
                 }
                 "FunctionDef" => Box::new(
                     FunctionDefPrinter::new(<VyperNodePrinterFactory as NodePrinterFactory<
-                        W,
                         VyperAST,
                     >>::get_preference_value_for_key(
                         self, FUNCTION_DEF_USES_STRUCT_DECL_FORM

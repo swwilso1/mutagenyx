@@ -1,6 +1,6 @@
 //! The `json_ast_language_interface` module abstracts the language interface code that is
 //! generic for languages that have a JSON encoded AST. The interface code relies on
-//! a trait object for [`JSONLanguageDelegate<W>`] to provide the behavior that will differ from
+//! a trait object for [`JSONLanguageDelegate`] to provide the behavior that will differ from
 //! language to language.
 
 use crate::ast::ASTTraverser;
@@ -19,6 +19,7 @@ use crate::super_ast::SuperAST;
 use rand_pcg::Pcg64;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::io::Write;
 
 /// The interface object for the programming languages with JSON encoded ASTs.
 pub struct JSONLanguageInterface {
@@ -27,7 +28,7 @@ pub struct JSONLanguageInterface {
     mutators: HashMap<MutationType, Box<dyn Mutator<Value>>>,
 
     /// The language specific delegate to use for invoking language-specific behavior.
-    sub_language_interface: Box<dyn JSONLanguageDelegate<std::fs::File>>,
+    delegate: Box<dyn JSONLanguageDelegate>,
 }
 
 impl JSONLanguageInterface {
@@ -37,11 +38,11 @@ impl JSONLanguageInterface {
     ///
     /// * `sub_interface` - The language specific delegate to use for language-specific behavior.
     pub fn new(
-        sub_interface: Box<dyn JSONLanguageDelegate<std::fs::File>>,
+        delegate: Box<dyn JSONLanguageDelegate>,
     ) -> JSONLanguageInterface {
         JSONLanguageInterface {
             mutators: HashMap::new(),
-            sub_language_interface: sub_interface,
+            delegate,
         }
     }
 
@@ -51,9 +52,9 @@ impl JSONLanguageInterface {
     /// # Arguments
     ///
     /// * `ast` - A reference to the SuperAST object that might contain a JSON base AST.
-    fn recover_json_ast<'a>(&self, ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
+    fn recover_json_ast<'b>(&self, ast: &'b SuperAST) -> Result<&'b Value, MetamorphError> {
         // Defer the recovery of the AST to the language-specific delegate.
-        self.sub_language_interface.recover_ast(ast)
+        self.delegate.recover_ast(ast)
     }
 }
 
@@ -65,14 +66,12 @@ impl MutableLanguage for JSONLanguageInterface {
         prefs: &Preferences,
     ) -> Result<SuperAST, MetamorphError> {
         match file_type {
-            FileType::Source => self
-                .sub_language_interface
-                .convert_source_file_to_ast(file_name, prefs),
+            FileType::Source => self.delegate.convert_source_file_to_ast(file_name, prefs),
             FileType::AST => {
                 let ast = load_json_from_file_with_name(file_name)?;
 
                 // Defer the conversion of the JSON to the AST to the delegate.
-                self.sub_language_interface.get_value_as_super_ast(ast)
+                self.delegate.get_value_as_super_ast(ast)
             }
             FileType::Config => Err(MetamorphError::ConfigFileNotSupported(String::from(
                 file_name,
@@ -85,7 +84,7 @@ impl MutableLanguage for JSONLanguageInterface {
         mutation_types: &[MutationType],
     ) -> Result<(), MetamorphError> {
         // Get the mutator factory
-        let mutator_factory = self.sub_language_interface.get_mutator_factory();
+        let mutator_factory = self.delegate.get_mutator_factory();
 
         // Walk through the list of mutation types and convert the list into
         // a list of mutators that implement the mutation type.
@@ -144,8 +143,7 @@ impl MutableLanguage for JSONLanguageInterface {
         // maker can mutate for `mutation_type`.
         ASTTraverser::traverse_mut(&mut mutated_ast, &mut mutation_maker);
 
-        self.sub_language_interface
-            .get_value_as_super_ast(mutated_ast)
+        self.delegate.get_value_as_super_ast(mutated_ast)
     }
 
     fn pretty_print_ast_to_file(
@@ -158,7 +156,7 @@ impl MutableLanguage for JSONLanguageInterface {
         let mut f = std::fs::File::create(file_name)?;
 
         let mut pretty_print_visitor = self
-            .sub_language_interface
+            .delegate
             .get_pretty_print_visitor(&mut f, pretty_printer);
 
         // Traverse each node of the tree, process the node, and recover the original program.
@@ -167,13 +165,30 @@ impl MutableLanguage for JSONLanguageInterface {
         Ok(())
     }
 
+    fn pretty_print_ast_to_stream(
+        &mut self,
+        ast: &SuperAST,
+        stream: &mut dyn Write,
+        pretty_printer: &mut PrettyPrinter,
+    ) -> Result<(), MetamorphError> {
+        let actual_ast = self.recover_json_ast(ast)?;
+
+        let mut pretty_print_visitor = self
+            .delegate
+            .get_pretty_print_visitor(stream, pretty_printer);
+
+        // Traverse each node of the tree, process the node, and recover the original program.
+        ASTTraverser::traverse(actual_ast, &mut *pretty_print_visitor);
+
+        Ok(())
+    }
+
     fn get_extension_for_output_file(&self) -> &str {
-        self.sub_language_interface.get_file_extension()
+        self.delegate.get_file_extension()
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        self.sub_language_interface
-            .file_is_language_source_file(file_name, prefs)
+        self.delegate.file_is_language_source_file(file_name, prefs)
     }
 
     fn convert_source_file_to_ast(
@@ -181,24 +196,21 @@ impl MutableLanguage for JSONLanguageInterface {
         file_name: &str,
         prefs: &Preferences,
     ) -> Result<SuperAST, MetamorphError> {
-        self.sub_language_interface
-            .convert_source_file_to_ast(file_name, prefs)
+        self.delegate.convert_source_file_to_ast(file_name, prefs)
     }
 
     fn file_is_language_ast_file(&self, file_name: &str) -> bool {
         if let Ok(ast_candidate) = load_json_from_file_with_name(file_name) {
-            return self
-                .sub_language_interface
-                .json_is_language_ast_json(&ast_candidate);
+            return self.delegate.json_is_language_ast_json(&ast_candidate);
         }
         false
     }
 
     fn default_compiler_settings(&self) -> Preferences {
-        self.sub_language_interface.default_compiler_settings()
+        self.delegate.default_compiler_settings()
     }
 
     fn implements(&self) -> Language {
-        self.sub_language_interface.implements()
+        self.delegate.implements()
     }
 }

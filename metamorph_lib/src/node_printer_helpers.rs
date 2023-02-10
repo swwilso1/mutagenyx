@@ -13,14 +13,14 @@ use std::io::Write;
 /// * `node` - The node in the AST to traverse.
 /// * `stream` - The [`Write`] object that will receive formatted output
 /// * `printer` - The [`PrettyPrinter`] object that will write to `stream`.
-/// * `factory` - The [`NodePrinterFactory<W,AST>`] object for generating node printers.
-pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>>(
+/// * `factory` - The [`NodePrinterFactory<AST>`] object for generating node printers.
+pub fn traverse_sub_node_and_print<AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, AST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<AST>,
     node: &AST,
 ) {
-    let mut visitor = PrettyPrintVisitor::<W, AST>::new(stream, printer, factory);
+    let mut visitor = PrettyPrintVisitor::<AST>::new(stream, printer, factory);
     ASTTraverser::traverse(node, &mut visitor);
 }
 
@@ -30,13 +30,13 @@ pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>>(
 ///
 /// * `printer` - The [`PrettyPrinter`] that will send formatted output to `stream`.
 /// * `stream` - The [`Write`] object that will receive the formatted output.
-/// * `factory` - The reference to a [`NodePrinterFactory<W, AST>`] trait object to use for generating
-/// [`crate::node_printer::NodePrinter<W, AST>`] trait objects to print AST nodes.
+/// * `factory` - The reference to a [`NodePrinterFactory<AST>`] trait object to use for generating
+/// [`crate::node_printer::NodePrinter<AST>`] trait objects to print AST nodes.
 /// * `array` - The [`Vec`] of nodes
-pub fn print_array_helper<W: Write, AST: SimpleAST<AST>>(
+pub fn print_array_helper<AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
-    factory: &dyn NodePrinterFactory<W, AST>,
+    stream: &mut dyn Write,
+    factory: &dyn NodePrinterFactory<AST>,
     array: &Vec<AST>,
 ) {
     let mut i = 0;

@@ -10,6 +10,7 @@ use metamorph_lib::pretty_printer::PrettyPrinter;
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::language_for_ast;
 use metamorph_lib::SuperAST;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -137,4 +138,15 @@ pub fn pretty_print_ast(
     language_object.pretty_print_ast_to_file(ast, &outfile, &mut pretty_printer)?;
 
     Ok(outfile_name)
+}
+
+pub fn pretty_print_ast_to_stream(
+    ast: &SuperAST,
+    stream: &mut dyn Write,
+) -> Result<(), MetamorphError> {
+    let language = language_for_ast(ast);
+    let mut language_object = LanguageInterface::get_language_object_for_language(&language)?;
+    let mut pretty_printer = PrettyPrinter::new(4, 150);
+    language_object.pretty_print_ast_to_stream(ast, stream, &mut pretty_printer)?;
+    Ok(())
 }

@@ -132,7 +132,7 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
+    pub fn write_indent(&mut self, stream: &mut dyn Write) -> Result<(), MetamorphError> {
         let indention = self.indent_string();
         if !indention.is_empty() {
             self.write_basic_string(stream, &indention)?;
@@ -145,7 +145,7 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_newline<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
+    pub fn write_newline(&mut self, stream: &mut dyn Write) -> Result<(), MetamorphError> {
         if let Err(e) = write!(stream, "{}", self.newline) {
             return Err(MetamorphError::from(e));
         }
@@ -159,7 +159,7 @@ impl PrettyPrinter {
     /// # Arguments
     ///
     /// * `stream` - The object that implements the [`Write`] trait.
-    pub fn write_space<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
+    pub fn write_space(&mut self, stream: &mut dyn Write) -> Result<(), MetamorphError> {
         if self.column == self.page_width {
             self.write_newline(stream)?;
             self.write_indent(stream)?;
@@ -168,9 +168,9 @@ impl PrettyPrinter {
         Ok(())
     }
 
-    pub fn write_spaces<W: Write>(
+    pub fn write_spaces(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         spaces: usize,
     ) -> Result<(), MetamorphError> {
         for _ in 0..spaces {
@@ -185,9 +185,9 @@ impl PrettyPrinter {
     ///
     /// * `stream` - The [`Write`] object that receives the token.
     /// * `token` - The string slice to write to `stream`.
-    pub fn write_token<W: Write>(
+    pub fn write_token(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         token: &str,
     ) -> Result<(), MetamorphError> {
         if self.column > self.page_width {
@@ -223,9 +223,9 @@ impl PrettyPrinter {
     /// * `stream` - The [`Write`] object that will receive the tokens.
     /// * `token` - The token text to write to `stream`.
     /// * `count` - The number of copies of `token` to write to the stream.
-    pub fn write_tokens<W: Write>(
+    pub fn write_tokens(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         token: &str,
         count: usize,
     ) -> Result<(), MetamorphError> {
@@ -251,11 +251,7 @@ impl PrettyPrinter {
     /// will output:
     ///
     /// "The quick brown dog..."
-    pub fn write_string<W: Write>(
-        &mut self,
-        stream: &mut W,
-        s: &str,
-    ) -> Result<(), MetamorphError> {
+    pub fn write_string(&mut self, stream: &mut dyn Write, s: &str) -> Result<(), MetamorphError> {
         let composed_string = String::from("\"") + s + "\"";
         self.write_token(stream, &composed_string)?;
         Ok(())
@@ -277,9 +273,9 @@ impl PrettyPrinter {
     /// will output:
     ///
     /// """The quick brown dog..."""
-    pub fn write_triple_string<W: Write>(
+    pub fn write_triple_string(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         s: &str,
     ) -> Result<(), MetamorphError> {
         let composed_string = String::from("\"\"\"") + s + "\"\"\"";
@@ -314,9 +310,9 @@ impl PrettyPrinter {
     ///  * Cras fermentum hendrerit mi,
     ///  * sit amet finibus ante pulvinar
     ///  * eget.
-    pub fn write_flowable_text<W: Write>(
+    pub fn write_flowable_text(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         s: &str,
         next_line_text: &str,
     ) -> Result<(), MetamorphError> {
@@ -425,9 +421,9 @@ impl PrettyPrinter {
     ///
     /// * `stream` - The [`Write`] object that will receive the text.
     /// * `s` - The string slice referring to the text to write to `stream`.
-    fn write_basic_string<W: Write>(
+    fn write_basic_string(
         &mut self,
-        stream: &mut W,
+        stream: &mut dyn Write,
         s: &str,
     ) -> Result<(), MetamorphError> {
         if let Err(e) = write!(stream, "{s}") {
@@ -445,7 +441,7 @@ impl PrettyPrinter {
 ///
 /// * `printer` - The pretty printer that will write the indent to `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
-pub fn write_indent<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
+pub fn write_indent(printer: &mut PrettyPrinter, stream: &mut dyn Write) {
     if let Err(e) = printer.write_indent(stream) {
         log::info!("Unable to write indentation: {e}");
     }
@@ -458,7 +454,7 @@ pub fn write_indent<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
 ///
 /// * `printer` - The pretty-printer that will write the space to `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
-pub fn write_space<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
+pub fn write_space(printer: &mut PrettyPrinter, stream: &mut dyn Write) {
     if let Err(e) = printer.write_space(stream) {
         log::info!("Unable to write space character: {e}");
     }
@@ -472,7 +468,7 @@ pub fn write_space<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
 /// * `printer` - The [`PrettyPrinter`] that will write the spaces to the stream.
 /// * `stream` - The [`Write`] object that will receive the spaces.
 /// * `amount` - The number of spaces to write to `stream`.
-pub fn write_spaces<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, amount: usize) {
+pub fn write_spaces(printer: &mut PrettyPrinter, stream: &mut dyn Write, amount: usize) {
     if let Err(e) = printer.write_spaces(stream, amount) {
         log::info!("Unable to write space characters: {e}");
     }
@@ -485,7 +481,7 @@ pub fn write_spaces<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, amoun
 ///
 /// * `printer` - The pretty-printer that will write the newline to the `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
-pub fn write_newline<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
+pub fn write_newline(printer: &mut PrettyPrinter, stream: &mut dyn Write) {
     if let Err(e) = printer.write_newline(stream) {
         log::info!("Unable to write newline: {e}");
     }
@@ -499,7 +495,7 @@ pub fn write_newline<W: Write>(printer: &mut PrettyPrinter, stream: &mut W) {
 /// * `printer` - The pretty-printer that will write the token to the `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
 /// * `token` - The token text to write to the stream.
-pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token: &str) {
+pub fn write_token(printer: &mut PrettyPrinter, stream: &mut dyn Write, token: &str) {
     if let Err(e) = printer.write_token(stream, token) {
         log::info!("Unable to write token: {e}");
     }
@@ -514,9 +510,9 @@ pub fn write_token<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, token:
 /// * `stream` - The [`Write`] object that will receive the text.
 /// * `token` - The token text to write to the stream.
 /// * `count` - The number of copies of `token` to write to the stream.
-pub fn write_tokens<W: Write>(
+pub fn write_tokens(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
+    stream: &mut dyn Write,
     token: &str,
     count: usize,
 ) {
@@ -535,7 +531,7 @@ pub fn write_tokens<W: Write>(
 /// * `printer` - The pretty-printer that will write the token to the `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
 /// * `s` - The string slice containing the text to send to `stream`.
-pub fn write_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &str) {
+pub fn write_string(printer: &mut PrettyPrinter, stream: &mut dyn Write, s: &str) {
     if let Err(e) = printer.write_string(stream, s) {
         log::info!("Unable to write string: {e}");
     }
@@ -551,7 +547,7 @@ pub fn write_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &s
 /// * `printer` - The pretty-printer that will write the string to `stream`.
 /// * `stream` - The [`Write`] object that will receive the text.
 /// * `s` - The string slice containing the text to send to `stream`.
-pub fn write_triple_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W, s: &str) {
+pub fn write_triple_string(printer: &mut PrettyPrinter, stream: &mut dyn Write, s: &str) {
     if let Err(e) = printer.write_triple_string(stream, s) {
         log::info!("Unable to write string: {e}");
     }
@@ -568,9 +564,9 @@ pub fn write_triple_string<W: Write>(printer: &mut PrettyPrinter, stream: &mut W
 /// * `stream` - The [`Write`] object that will receive the text.
 /// * `s` - The flowable text.
 /// * `next_line_text` - Text to write if the pretty-printer needs to break `s` into multiple lines.
-pub fn write_flowable_text<W: Write>(
+pub fn write_flowable_text(
     printer: &mut PrettyPrinter,
-    stream: &mut W,
+    stream: &mut dyn Write,
     s: &str,
     next_line_text: &str,
 ) {

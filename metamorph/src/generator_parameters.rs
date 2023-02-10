@@ -24,6 +24,9 @@ pub struct GeneratorParameters<'a> {
     /// The directory in the file system to put the generated mutations.
     pub output_directory: PathBuf,
 
+    /// Instead of `output_directory` use stdout to write output.
+    pub use_stdout: bool,
+
     /// The mutation algorithms to use to generate the mutants.
     pub mutations: Vec<MutationType>,
 

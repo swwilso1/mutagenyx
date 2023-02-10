@@ -33,7 +33,7 @@ pub struct MutateCLArgs {
     pub rng_seed: i64,
 
     /// Number of mutants
-    #[clap(long, default_value = "5")]
+    #[clap(long, default_value = "1")]
     pub num_mutants: usize,
 
     /// Mutation algorithms to enable
@@ -60,6 +60,10 @@ pub struct MutateCLArgs {
     /// in the output directory
     #[clap(long)]
     pub save_config_files: bool,
+
+    /// Write output to stdout instead of the directory given in `output_directory`.
+    #[clap(long)]
+    pub stdout: bool,
 }
 
 /// Pretty-print sub-command command line arguments.

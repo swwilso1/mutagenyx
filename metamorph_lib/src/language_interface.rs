@@ -14,6 +14,7 @@ use crate::super_ast::SuperAST;
 use crate::vyper::language_interface::get_vyper_delegate;
 use rand_pcg::*;
 use std::collections::HashMap;
+use std::io::Write;
 
 /// Trait that defines the interface to a programming language module.
 pub trait MutableLanguage {
@@ -96,6 +97,21 @@ pub trait MutableLanguage {
         &mut self,
         ast: &SuperAST,
         file_name: &str,
+        pretty_printer: &mut PrettyPrinter,
+    ) -> Result<(), MetamorphError>;
+
+    /// Pretty-print the contents of `ast` to `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ast` - A [`SuperAST`] object encapsulating the concrete language AST.
+    /// * `stream` - The [`Write`] object that will receive the printed output.
+    /// * `pretty_printer` - the [`PrettyPrinter`] object used to help write structured output to
+    /// `stream`.
+    fn pretty_print_ast_to_stream(
+        &mut self,
+        ast: &SuperAST,
+        handle: &mut dyn Write,
         pretty_printer: &mut PrettyPrinter,
     ) -> Result<(), MetamorphError>;
 

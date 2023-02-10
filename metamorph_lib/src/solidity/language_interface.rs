@@ -1,4 +1,4 @@
-//! The `solidity::language_interface` module provides the implementation for the [`JSONLanguageDelegate<W>`]
+//! The `solidity::language_interface` module provides the implementation for the [`JSONLanguageDelegate`]
 //! trait and the function `get_solidity_sub_language_interface`.
 
 use crate::compiler_details::*;
@@ -24,26 +24,26 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-/// Return the object that conforms to [`JSONLanguageDelegate<W>`].
-pub fn get_solidity_delegate<W: Write + 'static>() -> Box<dyn JSONLanguageDelegate<W>> {
+/// Return the object that conforms to [`JSONLanguageDelegate`].
+pub fn get_solidity_delegate() -> Box<dyn JSONLanguageDelegate> {
     Box::new(SolidityLanguageSubDelegate::new())
 }
 
-/// The type that implements [`JSONLanguageDelegate<W>`].
-pub struct SolidityLanguageSubDelegate<W: Write> {
-    node_printer_factory: Box<dyn NodePrinterFactory<W, SolidityAST>>,
+/// The type that implements [`JSONLanguageDelegate`].
+pub struct SolidityLanguageSubDelegate {
+    node_printer_factory: Box<dyn NodePrinterFactory<SolidityAST>>,
 }
 
-impl<W: Write> SolidityLanguageSubDelegate<W> {
+impl SolidityLanguageSubDelegate {
     // Create a new Solidity language delegate.
-    fn new() -> SolidityLanguageSubDelegate<W> {
+    fn new() -> SolidityLanguageSubDelegate {
         SolidityLanguageSubDelegate {
             node_printer_factory: Box::new(SolidityNodePrinterFactory::default()),
         }
     }
 }
 
-impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
+impl JSONLanguageDelegate for SolidityLanguageSubDelegate {
     fn recover_ast<'a>(&self, super_ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         let solidity_ast = match super_ast {
             SuperAST::Solidity(sast) => sast,
@@ -53,7 +53,7 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     }
 
     fn get_value_as_super_ast(&self, value: Value) -> Result<SuperAST, MetamorphError> {
-        if <SolidityLanguageSubDelegate<W> as JSONLanguageDelegate<W>>::json_is_language_ast_json(
+        if <SolidityLanguageSubDelegate as JSONLanguageDelegate>::json_is_language_ast_json(
             self, &value,
         ) {
             return Ok(SuperAST::Solidity(value));
@@ -67,7 +67,7 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
 
     fn get_pretty_print_visitor<'a>(
         &'a self,
-        w: &'a mut W,
+        w: &'a mut dyn Write,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a> {
         return Box::new(PrettyPrintVisitor::new(
@@ -93,7 +93,9 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     ) -> Result<SuperAST, MetamorphError> {
         if let Ok(s) = file_is_source_file(file_name, prefs) {
             let value = load_json_from_file_with_name(&s)?;
-            return <SolidityLanguageSubDelegate<W> as JSONLanguageDelegate<W>>::get_value_as_super_ast(self, value);
+            return <SolidityLanguageSubDelegate as JSONLanguageDelegate>::get_value_as_super_ast(
+                self, value,
+            );
         }
 
         Err(MetamorphError::SourceDoesNotCompile(String::from(
@@ -103,11 +105,6 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
         file_is_source_file(file_name, prefs).is_ok()
-        // if file_is_source_file(file_name, prefs).is_ok() {
-        // // if let Ok(_) = file_is_source_file(file_name, prefs) {
-        //     return true;
-        // }
-        // false
     }
 
     fn implements(&self) -> Language {

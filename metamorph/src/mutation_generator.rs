@@ -2,7 +2,7 @@
 //! the mutation generation algorithm.
 
 use crate::generator_parameters::GeneratorParameters;
-use crate::pretty_printing::pretty_print_ast;
+use crate::pretty_printing::{pretty_print_ast, pretty_print_ast_to_stream};
 use crate::MutateCLArgs;
 use metamorph_lib::compiler_details::*;
 use metamorph_lib::config_file::*;
@@ -94,6 +94,7 @@ pub fn generate_mutants(args: MutateCLArgs) {
             rng_seed: seed,
             rng: Pcg64::seed_from_u64(seed),
             output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
+            use_stdout: args.stdout,
             mutations: mutations.clone(),
             verify_mutant_viability: false,
             print_original: args.print_original,
@@ -193,13 +194,18 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     // Only pretty-print the original file after verifying that we can load the AST, and that
     // we have valid mutators for the AST.
     if params.print_original {
-        let original_file = PathBuf::from_str(&params.file_name).unwrap();
-        pretty_print_ast(&ast, &params.file_name, &params.output_directory)?;
-        log::info!(
-            "Pretty-printing original file {:?} to {}",
-            original_file.file_name().unwrap(),
-            &params.output_directory.to_str().unwrap()
-        );
+        if params.use_stdout {
+            let mut stdout = std::io::stdout();
+            pretty_print_ast_to_stream(&ast, &mut stdout)?;
+        } else {
+            let original_file = PathBuf::from_str(&params.file_name).unwrap();
+            pretty_print_ast(&ast, &params.file_name, &params.output_directory)?;
+            log::info!(
+                "Pretty-printing original file {:?} to {}",
+                original_file.file_name().unwrap(),
+                &params.output_directory.to_str().unwrap()
+            );
+        }
     }
 
     // Now, see if we need to create a configuration file with the details used to mutate
@@ -244,11 +250,16 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
         let out_file_name = base_out_file_name + file_extension.as_str();
         let out_file_path = params.output_directory.join(out_file_name);
 
-        log::info!(
-            "Writing configuration file {}",
-            out_file_path.to_str().unwrap()
-        );
-        details.write_to_file_as_json(out_file_path.to_str().unwrap())?;
+        if params.use_stdout {
+            let mut stdout = std::io::stdout();
+            details.write_to_stream_as_json(&mut stdout)?;
+        } else {
+            log::info!(
+                "Writing configuration file {}",
+                out_file_path.to_str().unwrap()
+            );
+            details.write_to_file_as_json(out_file_path.to_str().unwrap())?;
+        }
     }
 
     // This list now holds the mutation types for which the AST has nodes to mutate.
@@ -299,22 +310,30 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
                 continue;
             }
 
-            // Calculate the name of the output file.
-            let input_file_path = PathBuf::from(&params.file_name);
-            let base_file_name = input_file_path.file_name().unwrap();
-            let outfile_name = params.output_directory.join(
-                String::from(base_file_name.to_str().unwrap()) + "_" + &files_written.to_string(),
-            );
+            if params.use_stdout {
+                let mut stdout = std::io::stdout();
+                pretty_print_ast_to_stream(&mutated_ast, &mut stdout)?;
+            } else {
+                // Calculate the name of the output file.
+                let input_file_path = PathBuf::from(&params.file_name);
+                let base_file_name = input_file_path.file_name().unwrap();
+                let outfile_name = params.output_directory.join(
+                    String::from(base_file_name.to_str().unwrap())
+                        + "_"
+                        + &files_written.to_string(),
+                );
 
-            let outfile = String::from(outfile_name.to_str().unwrap());
+                let outfile = String::from(outfile_name.to_str().unwrap());
 
-            let final_file = pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
+                let final_file =
+                    pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
 
-            log::info!(
-                "{} used to create mutant written to {}",
-                mutation_type,
-                final_file.to_str().unwrap()
-            );
+                log::info!(
+                    "{} used to create mutant written to {}",
+                    mutation_type,
+                    final_file.to_str().unwrap()
+                );
+            }
 
             // Remove the item from the top of the VecDeque.
             mutation_kinds_todo.remove(0);

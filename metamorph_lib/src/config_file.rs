@@ -199,12 +199,8 @@ impl ConfigurationFileDetails {
         Ok(details)
     }
 
-    /// Create a configuration file in JSON form and write it to the path at `config_file`.
-    ///
-    /// # Arguments
-    ///
-    /// * `config_file` - The path in the file system to write the configuration file.
-    pub fn write_to_file_as_json(&self, config_file: &str) -> Result<(), MetamorphError> {
+    /// Helper function to get the configuration as a JSON object.
+    fn convert_to_json(&self) -> Result<Value, MetamorphError> {
         let json_text = String::from("{}");
 
         let mut json_value: Value = from_str(&json_text).unwrap();
@@ -239,6 +235,17 @@ impl ConfigurationFileDetails {
             json_value.set_node_for_key(COMPILER_DETAILS_KEY, details_value);
         }
 
+        Ok(json_value)
+    }
+
+    /// Create a configuration file in JSON form and write it to the path at `config_file`.
+    ///
+    /// # Arguments
+    ///
+    /// * `config_file` - The path in the file system to write the configuration file.
+    pub fn write_to_file_as_json(&self, config_file: &str) -> Result<(), MetamorphError> {
+        let json_value: Value = self.convert_to_json()?;
+
         let config_file_path = PathBuf::from_str(config_file).unwrap();
 
         // Try to create the parent directory if it does not exist.
@@ -251,6 +258,23 @@ impl ConfigurationFileDetails {
         let pretty_json = jsonxf::pretty_print(&standard_json).unwrap();
 
         writeln!(f, "{pretty_json}")?;
+
+        Ok(())
+    }
+
+    /// Convert a configuration to JSON and write the JSON to `stream`.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The stream that will receive the JSON.
+    pub fn write_to_stream_as_json(&self, stream: &mut dyn Write) -> Result<(), MetamorphError> {
+        let json_value = self.convert_to_json()?;
+
+        // Now pretty print the JSON
+        let standard_json = format!("{json_value}");
+        let pretty_json = jsonxf::pretty_print(&standard_json).unwrap();
+
+        writeln!(stream, "{pretty_json}")?;
 
         Ok(())
     }

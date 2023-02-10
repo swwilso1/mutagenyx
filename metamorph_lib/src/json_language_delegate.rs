@@ -12,11 +12,7 @@ use serde_json::Value;
 use std::io::Write;
 
 /// Trait that defines a delegate interface for engaging language specific behavior.
-///
-/// # Trait Argument
-///
-/// * `W` - a type bounded by the Write trait.
-pub trait JSONLanguageDelegate<W: Write> {
+pub trait JSONLanguageDelegate {
     /// Given a SuperAST enumeration, return the JSON Value object carried by the SuperAST object.
     ///
     /// # Arguments
@@ -45,7 +41,7 @@ pub trait JSONLanguageDelegate<W: Write> {
     /// * `printer` - The [`PrettyPrinter`] object that will produce the formatted output.
     fn get_pretty_print_visitor<'a>(
         &'a self,
-        w: &'a mut W,
+        w: &'a mut dyn Write,
         printer: &'a mut PrettyPrinter,
     ) -> Box<dyn Visitor<Value> + 'a>;
 
