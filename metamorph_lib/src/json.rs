@@ -117,10 +117,7 @@ impl JSONMutate for Value {
     /// * `key` - The string slice referencing the text comprising the key.
     fn take_value_for_key(&mut self, key: &str) -> Option<Value> {
         let json_key = json_path(key);
-        match self.pointer_mut(&json_key) {
-            Some(v) => Some(v.take()),
-            _ => None,
-        }
+        self.pointer_mut(&json_key).map(|v| v.take())
     }
 
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, then
