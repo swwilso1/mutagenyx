@@ -158,12 +158,9 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
         // Here we update the random number generator from the configuration details seed if the
         // details have a new seed.
-        match configuration_details.seed {
-            Some(s) => {
-                params.rng_seed = s;
-                params.rng = Pcg64::seed_from_u64(s)
-            }
-            _ => {}
+        if let Some(s) = configuration_details.seed {
+            params.rng_seed = s;
+            params.rng = Pcg64::seed_from_u64(s)
         };
 
         // Check to see if the configuration file requested a different set of mutation algorithms.

@@ -160,22 +160,16 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
             }
             if let Some(include_path_array) = compiler_prefs.get_array_for_key(INCLUDE_PATHS_KEY) {
                 for path in &include_path_array {
-                    match path {
-                        PreferenceValue::String(s) => {
-                            full_compiler_args.push(String::from("--include-path"));
-                            full_compiler_args.push(s.clone());
-                        }
-                        _ => {}
+                    if let PreferenceValue::String(s) = path {
+                        full_compiler_args.push(String::from("--include-path"));
+                        full_compiler_args.push(s.clone());
                     }
                 }
             }
             if let Some(remappings_array) = compiler_prefs.get_array_for_key(REMAPPINGS_KEY) {
                 for mapping in &remappings_array {
-                    match mapping {
-                        PreferenceValue::String(s) => {
-                            full_compiler_args.push(s.clone());
-                        }
-                        _ => {}
+                    if let PreferenceValue::String(s) = mapping {
+                        full_compiler_args.push(s.clone());
                     }
                 }
             }
