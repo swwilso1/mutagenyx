@@ -246,7 +246,7 @@ fn unencode_string(s: &str) -> String {
                     unencoded_s += converted_char.as_str();
                 }
             }
-        } else if c_code >= 32 && c_code < 127 {
+        } else if (32..127).contains(&c_code) {
             unencoded_s.push(c);
         } else {
             let converted_char = format!("\\u{:x}", c_code);
@@ -705,13 +705,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
 
         if let Some(state_mutability) = node.get_str_for_key("stateMutability") {
             let do_mutability: bool = match state_mutability {
-                "nonpayable" => {
-                    if self.write_nonpayable_state_mutability {
-                        true
-                    } else {
-                        false
-                    }
-                }
+                "nonpayable" => self.write_nonpayable_state_mutability,
                 _ => true,
             };
             if do_mutability {
@@ -1477,7 +1471,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructuredDocumentationPrinter {
         node: &SolidityAST,
     ) {
         if let Some(text) = node.get_str_for_key("text") {
-            let text_array: Vec<&str> = text.split("\n").collect();
+            let text_array: Vec<&str> = text.split('\n').collect();
             for sub_text in text_array {
                 write_newline(printer, stream);
                 write_indent(printer, stream);
