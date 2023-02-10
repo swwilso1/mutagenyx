@@ -308,6 +308,12 @@ impl Preferences {
     }
 }
 
+impl Default for Preferences {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TryFrom<Value> for Preferences {
     type Error = MetamorphError;
 
