@@ -135,9 +135,7 @@ impl PrettyPrinter {
     pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
         let indention = self.indent_string();
         if !indention.is_empty() {
-            if let Err(e) = self.write_basic_string(stream, &indention) {
-                return Err(e);
-            }
+            self.write_basic_string(stream, &indention)?;
         }
         Ok(())
     }
