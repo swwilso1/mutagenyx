@@ -195,7 +195,7 @@ fn display_algorithm_descriptions() {
             false,
         );
 
-        if ! description.extra_details.is_empty() {
+        if !description.extra_details.is_empty() {
             // Start the next line.
             write_newline(&mut printer, &mut stream);
             write_newline(&mut printer, &mut stream);
@@ -210,7 +210,7 @@ fn display_algorithm_descriptions() {
             );
         }
 
-        if ! description.operators.is_empty() {
+        if !description.operators.is_empty() {
             // Start the next line.
             write_newline(&mut printer, &mut stream);
             write_newline(&mut printer, &mut stream);
@@ -226,7 +226,7 @@ fn display_algorithm_descriptions() {
             );
         }
 
-        if ! description.examples.is_empty() {
+        if !description.examples.is_empty() {
             // Start the next line.
             write_newline(&mut printer, &mut stream);
             write_newline(&mut printer, &mut stream);
@@ -277,7 +277,7 @@ fn write_lines<W: Write>(
         write_space(printer, stream);
     }
 
-    if ! category_text.is_empty() {
+    if !category_text.is_empty() {
         write_token(printer, stream, category_text);
 
         write_newline(printer, stream);

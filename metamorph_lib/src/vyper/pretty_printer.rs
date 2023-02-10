@@ -534,12 +534,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
                                 let default_index = i - first_default_index;
                                 let default_node = defaults_array.get(default_index).unwrap();
                                 write_token(printer, stream, "=");
-                                traverse_sub_node_and_print(
-                                    printer,
-                                    stream,
-                                    factory,
-                                    default_node,
-                                );
+                                traverse_sub_node_and_print(printer, stream, factory, default_node);
                             }
                             if i < (args_array.len() - 1) {
                                 write_token(printer, stream, ",");
@@ -893,7 +888,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for CallPrinter {
         write_args_as_array(printer, stream, factory, node);
         if let Some(keywords_node) = node.get("keywords") {
             if let Some(keywords_array) = keywords_node.as_array() {
-                if ! keywords_array.is_empty() {
+                if !keywords_array.is_empty() {
                     write_token(printer, stream, ",");
                     write_space(printer, stream);
                     write_key_of_node_as_array(printer, stream, factory, "keywords", node);
@@ -1115,7 +1110,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for IfPrinter {
         printer.decrease_indent();
         if let Some(orelse_node) = node.get("orelse") {
             if let Some(orelse_array) = orelse_node.as_array() {
-                if ! orelse_array.is_empty() {
+                if !orelse_array.is_empty() {
                     write_newline(printer, stream);
                     write_indent(printer, stream);
                     write_token(printer, stream, "else:");
@@ -1332,7 +1327,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for CommentPrinter {
         node: &VyperAST,
     ) {
         if let Some(value_str) = node.get_str_for_key("value") {
-            if ! value_str.is_empty() {
+            if !value_str.is_empty() {
                 write_token(printer, stream, "#");
                 write_space(printer, stream);
                 write_flowable_text(printer, stream, value_str, "# ");
@@ -1433,7 +1428,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for DictPrinter {
                     if let Some(values_array) = values_node.as_array() {
                         assert_eq!(keys_array.len(), values_array.len());
 
-                        if ! keys_array.is_empty() {
+                        if !keys_array.is_empty() {
                             write_newline(printer, stream);
                             printer.increase_indent();
                             let mut i: usize = 0;

@@ -137,7 +137,7 @@ impl ConfigurationFileDetails {
                 missing_keys.push(String::from(FILENAME_KEY));
             }
 
-            if ! missing_keys.is_empty() {
+            if !missing_keys.is_empty() {
                 return Err(MetamorphError::ConfigFileMissingRequiredKey(
                     String::from(config_file),
                     missing_keys,
@@ -227,7 +227,7 @@ impl ConfigurationFileDetails {
             json_value.set_node_for_key(SEED_KEY, json![seed]);
         }
 
-        if ! self.mutations.is_empty() {
+        if !self.mutations.is_empty() {
             let mut mutation_algorithm_names_array: Vec<String> = Vec::new();
 
             for mutation in &self.mutations {

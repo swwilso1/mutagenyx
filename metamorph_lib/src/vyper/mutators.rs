@@ -455,7 +455,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
             if ast_type_str == "FunctionDef" {
                 if let Some(body_node) = node.get("body") {
                     if let Some(body_array) = body_node.as_array() {
-                        if ! body_array.is_empty() {
+                        if !body_array.is_empty() {
                             return true;
                         }
                     }
@@ -631,7 +631,7 @@ impl Mutator<VyperAST> for FunctionCallMutator {
             if n == "Call" {
                 if let Some(args) = node.get("args") {
                     if let Some(args_array) = args.as_array() {
-                        if ! args_array.is_empty() {
+                        if !args_array.is_empty() {
                             // We have to have a function call with arguments.
                             return true;
                         }

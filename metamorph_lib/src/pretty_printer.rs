@@ -134,7 +134,7 @@ impl PrettyPrinter {
     /// * `stream` - The object that implements the [`Write`] trait.
     pub fn write_indent<W: Write>(&mut self, stream: &mut W) -> Result<(), MetamorphError> {
         let indention = self.indent_string();
-        if ! indention.is_empty() {
+        if !indention.is_empty() {
             if let Err(e) = self.write_basic_string(stream, &indention) {
                 return Err(e);
             }
@@ -396,14 +396,14 @@ impl PrettyPrinter {
                     };
                 }
 
-                if ! first_part.is_empty() {
+                if !first_part.is_empty() {
                     self.write_basic_string(stream, first_part)?;
                 }
                 self.write_newline(stream)?;
                 self.write_indent(stream)?;
                 self.write_token(stream, next_line_text)?;
 
-                if ! rest.is_empty() {
+                if !rest.is_empty() {
                     self.write_flowable_text(stream, rest, next_line_text)?;
                 }
             }

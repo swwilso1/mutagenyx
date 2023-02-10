@@ -24,8 +24,7 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the node that the visitor has started visiting.
-    fn on_enter(&mut self, _node: &N) {
-    }
+    fn on_enter(&mut self, _node: &N) {}
 
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal
@@ -57,8 +56,7 @@ pub trait Visitor<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the current node.
-    fn on_exit(&mut self, _node: &N) {
-    }
+    fn on_exit(&mut self, _node: &N) {}
 }
 
 /// Trait that describes the behavior required from objects that traverse an abstract syntax
@@ -72,8 +70,7 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A mutable reference to the node that the visitor has started visiting.
-    fn on_enter(&mut self, _node: &mut N) {
-    }
+    fn on_enter(&mut self, _node: &mut N) {}
 
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal
@@ -105,6 +102,5 @@ pub trait VisitorMut<N: ?Sized> {
     /// # Arguments
     ///
     /// * `node` - A reference to the current node.
-    fn on_exit(&mut self, _node: &mut N) {
-    }
+    fn on_exit(&mut self, _node: &mut N) {}
 }

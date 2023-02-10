@@ -175,7 +175,8 @@ impl MutableLanguage for JSONLanguageInterface {
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        self.sub_language_interface.file_is_language_source_file(file_name, prefs)
+        self.sub_language_interface
+            .file_is_language_source_file(file_name, prefs)
     }
 
     fn convert_source_file_to_ast(

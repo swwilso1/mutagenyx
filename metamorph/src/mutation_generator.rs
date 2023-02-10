@@ -169,12 +169,12 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
         // Check to see if the configuration file requested a different set of mutation algorithms.
         if configuration_details.all_mutations {
             params.mutations = get_all_mutation_algorithms();
-        } else if ! configuration_details.mutations.is_empty() {
+        } else if !configuration_details.mutations.is_empty() {
             params.mutations = configuration_details.mutations;
         }
     }
 
-    if ! params.mutations.is_empty() {
+    if !params.mutations.is_empty() {
         log::info!(
             "Generating mutations using algorithms: {:?}",
             get_mutation_strings_from_types(&params.mutations)

@@ -34,8 +34,7 @@ impl<'a, AST> MutableNodesCounter<'a, AST> {
 }
 
 impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
-    fn on_enter(&mut self, _node: &AST) {
-    }
+    fn on_enter(&mut self, _node: &AST) {}
 
     fn visit(&mut self, node: &AST) -> bool {
         for (key, value) in self.mutator_map {
@@ -55,8 +54,7 @@ impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
         true
     }
 
-    fn on_exit(&mut self, _node: &AST) {
-    }
+    fn on_exit(&mut self, _node: &AST) {}
 }
 
 /// The struct for traversing an AST and mutating nodes. The type conforms/adopts the [`VisitorMut`]
@@ -103,8 +101,7 @@ impl<'a, AST> MutationMaker<'a, AST> {
 }
 
 impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
-    fn on_enter(&mut self, _node: &mut AST) {
-    }
+    fn on_enter(&mut self, _node: &mut AST) {}
 
     fn visit_mut(&mut self, node: &mut AST) -> bool {
         if self.mutator.is_mutable_node(node) {
@@ -121,6 +118,5 @@ impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
         true
     }
 
-    fn on_exit(&mut self, _node: &mut AST) {
-    }
+    fn on_exit(&mut self, _node: &mut AST) {}
 }
