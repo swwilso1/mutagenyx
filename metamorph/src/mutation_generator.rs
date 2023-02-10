@@ -34,13 +34,11 @@ fn get_mutation_strings_from_types(array: &[MutationType]) -> Vec<String> {
 pub fn generate_mutants(args: MutateCLArgs) {
     // Select the mutation algorithms to use while generating mutations.  Args.all_mutations takes
     // precedence over individual algorithms selected in args.mutations.
-    let mutations: Vec<MutationType>;
-    if args.all_mutations {
-        mutations = get_all_mutation_algorithms();
+    let mutations: Vec<MutationType> = if args.all_mutations {
+        get_all_mutation_algorithms()
     } else {
         // Change the algorithm strings from the command line into actual MutationType values.
-        mutations = args
-            .mutations
+        args.mutations
             .iter()
             .filter(|m| match MutationType::from_str(m) {
                 Ok(_) => true,
@@ -50,8 +48,8 @@ pub fn generate_mutants(args: MutateCLArgs) {
                 }
             })
             .map(|m| MutationType::from_str(m).unwrap())
-            .collect();
-    }
+            .collect()
+    };
 
     let mut solidity_compiler_prefs = Preferences::new();
     solidity_compiler_prefs.set_string_for_key(PATH_KEY, &args.solidity_compiler);
@@ -92,13 +90,13 @@ pub fn generate_mutants(args: MutateCLArgs) {
 
         let mut generator_params = GeneratorParameters {
             file_name,
-            number_of_mutants: args.num_mutants.clone(),
+            number_of_mutants: args.num_mutants,
             rng_seed: seed,
             rng: Pcg64::seed_from_u64(seed),
             output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
             mutations: mutations.clone(),
             verify_mutant_viability: false,
-            print_original: args.print_original.clone(),
+            print_original: args.print_original,
             save_configuration_file: args.save_config_files,
             preferences: &mut preferences,
         };
