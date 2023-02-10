@@ -634,7 +634,7 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
             if node_type == "FunctionCall" {
                 if let Some(arguments_node) = node.get("arguments") {
                     if let Some(arguments_array) = arguments_node.as_array() {
-                        if arguments_array.len() > 0 {
+                        if ! arguments_array.is_empty() {
                             return true;
                         }
                     }
@@ -1192,7 +1192,7 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
             if node_type == "Block" {
                 if let Some(statements_node) = node.get("statements") {
                     if let Some(statements_array) = statements_node.as_array() {
-                        if statements_array.len() > 0 {
+                        if ! statements_array.is_empty() {
                             let mut have_return_statement = false;
                             for value in statements_array {
                                 if let Some(value_node_type) = value.get_str_for_key("nodeType") {

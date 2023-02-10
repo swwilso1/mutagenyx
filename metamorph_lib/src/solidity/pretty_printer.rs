@@ -95,7 +95,7 @@ fn print_space_and_array_helper<W: Write>(
     node: &SolidityAST,
 ) {
     if let Some(array) = node.as_array() {
-        if array.len() > 0 {
+        if ! array.is_empty() {
             write_space(printer, stream);
             print_array_helper(printer, stream, factory, array);
         }
@@ -127,7 +127,7 @@ fn print_statements_helper<W: Write>(
                     traverse_sub_node_and_print(printer, stream, factory, statement);
                     write_space(printer, stream);
                 }
-            } else if statements_array.len() > 0 {
+            } else if ! statements_array.is_empty() {
                 printer.increase_indent();
                 write_newline(printer, stream);
 
@@ -188,7 +188,7 @@ fn print_return_parameters_helper<W: Write>(
 ) {
     if let Some(return_parameters_node) = node.get("returnParameters") {
         if let Some(parameters_array) = return_parameters_node.get_array_for_key("parameters") {
-            if parameters_array.len() > 0 {
+            if ! parameters_array.is_empty() {
                 write_space(printer, stream);
                 write_token(printer, stream, "returns");
                 write_space(printer, stream);
@@ -387,7 +387,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContractDefinitionPrinter {
 
         if let Some(base_contracts) = node.get("baseContracts") {
             if let Some(contract_array) = base_contracts.as_array() {
-                if contract_array.len() > 0 {
+                if ! contract_array.is_empty() {
                     write_space(printer, stream);
                     write_token(printer, stream, "is");
                     write_space(printer, stream);
@@ -407,7 +407,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContractDefinitionPrinter {
         write_space(printer, stream);
         write_token(printer, stream, "{");
         if let Some(node_array) = node.get_array_for_key("nodes") {
-            if node_array.len() > 0 {
+            if ! node_array.is_empty() {
                 printer.increase_indent();
                 write_newline(printer, stream);
 
@@ -618,7 +618,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
         }
 
         if let Some(name) = node.get_str_for_key("name") {
-            if name.len() > 0 {
+            if ! name.is_empty() {
                 write_space(printer, stream);
                 write_token(printer, stream, name);
             }
@@ -1050,7 +1050,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
         node: &SolidityAST,
     ) {
         if let Some(names_array) = node.get_array_for_key("names") {
-            if names_array.len() > 0 {
+            if ! names_array.is_empty() {
                 if let Some(arguments_array) = node.get_array_for_key("arguments") {
                     assert_eq!(
                         names_array.len(),
@@ -1265,7 +1265,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
         let mut wrote_symbol_aliases = false;
         if let Some(symbol_aliases) = node.get("symbolAliases") {
             if let Some(aliases_array) = symbol_aliases.as_array() {
-                if aliases_array.len() > 0 {
+                if ! aliases_array.is_empty() {
                     write_space(printer, stream);
                     write_token(printer, stream, "{");
                     let mut i = 0;
@@ -1310,7 +1310,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
         }
 
         if let Some(unit_alias_str) = node.get_str_for_key("unitAlias") {
-            if unit_alias_str.len() > 0 {
+            if ! unit_alias_str.is_empty() {
                 write_space(printer, stream);
                 write_token(printer, stream, "as");
                 write_space(printer, stream);
@@ -1360,7 +1360,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierInvocationPrinter {
         if let Some(arguments) = node.get("arguments") {
             if let Some(arguments_array) = arguments.as_array() {
                 write_token(printer, stream, "(");
-                if arguments_array.len() > 0 {
+                if ! arguments_array.is_empty() {
                     print_array_helper(printer, stream, factory, arguments_array);
                 }
                 write_token(printer, stream, ")");
@@ -1386,7 +1386,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
         }
         if let Some(function_list_node) = node.get("functionList") {
             if let Some(function_list_array) = function_list_node.as_array() {
-                if function_list_array.len() > 0 {
+                if ! function_list_array.is_empty() {
                     write_space(printer, stream);
                     write_token(printer, stream, "{");
                     print_array_helper(printer, stream, factory, function_list_array);
@@ -1568,7 +1568,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for OverrideSpecifierPrinter {
     ) {
         write_token(printer, stream, "override");
         if let Some(overrides_array) = node.get_array_for_key("overrides") {
-            if overrides_array.len() > 0 {
+            if ! overrides_array.is_empty() {
                 write_token(printer, stream, "(");
                 print_array_helper(printer, stream, factory, overrides_array);
                 write_token(printer, stream, ")");
@@ -1614,7 +1614,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TupleExpressionPrinter {
     ) {
         if let Some(components) = node.get("components") {
             if let Some(components_array) = components.as_array() {
-                if components_array.len() > 0 {
+                if ! components_array.is_empty() {
                     write_token(printer, stream, "(");
                     let mut i: usize = 0;
                     while i < components_array.len() {
@@ -1652,7 +1652,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for CommentPrinter {
         node: &SolidityAST,
     ) {
         if let Some(comment_text) = node.get_str_for_key("text") {
-            if comment_text.len() > 0 {
+            if ! comment_text.is_empty() {
                 write_token(printer, stream, "//");
                 write_space(printer, stream);
                 write_flowable_text(printer, stream, comment_text, "// ");
@@ -1783,7 +1783,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
         write_space(printer, stream);
         if let Some(flags_node) = node.get("flags") {
             if let Some(flags_array) = flags_node.as_array() {
-                if flags_array.len() > 0 {
+                if ! flags_array.is_empty() {
                     write_token(printer, stream, "(");
                     let mut i: usize = 0;
                     while i < flags_array.len() {
@@ -2053,7 +2053,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EnumDefinitionPrinter {
         print_name_helper(printer, stream, node);
         if let Some(members_node) = node.get("members") {
             if let Some(members_array) = members_node.as_array() {
-                if members_array.len() > 0 {
+                if ! members_array.is_empty() {
                     write_space(printer, stream);
                     write_token(printer, stream, "{");
                     printer.increase_indent();
@@ -2177,7 +2177,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallOptionsPrinter {
                     "names and options array lengths differ in FunctionCallOptionsPrinter"
                 );
 
-                if names_array.len() > 0 {
+                if ! names_array.is_empty() {
                     write_token(printer, stream, "{");
                     let mut i: usize = 0;
                     while i < names_array.len() {
@@ -2248,7 +2248,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryCatchClausePrinter {
         node: &SolidityAST,
     ) {
         if let Some(error_name_str) = node.get_str_for_key("errorName") {
-            if error_name_str.len() > 0 {
+            if ! error_name_str.is_empty() {
                 write_token(printer, stream, error_name_str);
             }
         }
@@ -2384,7 +2384,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulSwitchPrinter {
             write_space(printer, stream);
         }
         if let Some(cases_array) = node.get_array_for_key("cases") {
-            if cases_array.len() > 0 {
+            if ! cases_array.is_empty() {
                 printer.increase_indent();
                 for value in cases_array {
                     write_newline(printer, stream);
@@ -2446,7 +2446,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionDefinitionPrinter {
         write_token(printer, stream, ")");
         write_space(printer, stream);
         if let Some(return_vars_array) = node.get_array_for_key("returnVariables") {
-            if return_vars_array.len() > 0 {
+            if ! return_vars_array.is_empty() {
                 write_token(printer, stream, "->");
                 write_space(printer, stream);
                 if return_vars_array.len() > 1 {
