@@ -1,0 +1,8 @@
+[alias]
+metamorph = ["run", "--quiet", "--release", "--", "mutate", "--stdout", "-a", "-f"]
+metamorph-help = ["run", "--quiet", "--release", "--", "--help"]
+metamorph-mutate-help = ["run", "--quiet", "--release", "--", "mutate", "--help"]
+metamorph-algorithms-help = ["run", "--quiet", "--release", "--", "algorithms", "--help"]
+metamorph-pretty-print-help = ["run", "--quiet", "--release", "--", "pretty-print", "--help"]
+metamorph-algorithms-list = ["run", "--quiet", "--release", "--", "algorithms", "--list"]
+metamorph-algorithms-describe = ["run", "--quiet", "--release", "--", "algorithms", "--describe"]
