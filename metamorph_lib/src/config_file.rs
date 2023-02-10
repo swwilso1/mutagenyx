@@ -76,7 +76,7 @@ impl ConfigurationFileDetails {
         filename: String,
         number_of_mutants: i64,
         seed: Option<u64>,
-        mutations: &Vec<MutationType>,
+        mutations: &[MutationType],
         all_mutations: bool,
         compiler_details: Option<Preferences>,
     ) -> ConfigurationFileDetails {
@@ -86,7 +86,7 @@ impl ConfigurationFileDetails {
             filename: filename_pathbuf,
             number_of_mutants,
             seed,
-            mutations: mutations.clone(),
+            mutations: mutations.to_owned(),
             all_mutations,
             compiler_details,
         }
