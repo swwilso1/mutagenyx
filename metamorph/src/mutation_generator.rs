@@ -22,7 +22,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::{path::PathBuf, str::FromStr};
 
 /// Convert a vector of [`MutationType`] to a vector of [`String`].
-fn get_mutation_strings_from_types(array: &Vec<MutationType>) -> Vec<String> {
+fn get_mutation_strings_from_types(array: &[MutationType]) -> Vec<String> {
     array.iter().map(|t| t.to_string()).collect()
 }
 

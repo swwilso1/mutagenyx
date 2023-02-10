@@ -82,7 +82,7 @@ impl MutableLanguage for JSONLanguageInterface {
 
     fn select_mutators_for_mutation_types(
         &mut self,
-        mutation_types: &Vec<MutationType>,
+        mutation_types: &[MutationType],
     ) -> Result<(), MetamorphError> {
         // Get the mutator factory
         let mutator_factory = self.sub_language_interface.get_mutator_factory();

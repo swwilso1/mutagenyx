@@ -45,7 +45,7 @@ pub trait MutableLanguage {
     /// corresponds to a requested mutation algorithm.
     fn select_mutators_for_mutation_types(
         &mut self,
-        mutation_types: &Vec<MutationType>,
+        mutation_types: &[MutationType],
     ) -> Result<(), MetamorphError>;
 
     /// Traverse the abstract syntax tree `ast` to count the number of nodes in the tree that
