@@ -101,10 +101,7 @@ impl JSONMutate for Value {
     /// * `key` - A string slice referring to the text of the key.
     fn has_value_for_key(&self, key: &str) -> bool {
         let json_key = json_path(key);
-        match self.pointer(&json_key) {
-            Some(_) => true,
-            _ => false,
-        }
+        matches!(self.pointer(&json_key), Some(_))
     }
 
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, then

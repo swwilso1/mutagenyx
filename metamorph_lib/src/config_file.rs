@@ -175,13 +175,7 @@ impl ConfigurationFileDetails {
                     .iter()
                     .filter(|v| v.is_string())
                     .map(|v| v.as_str().unwrap())
-                    .filter(|v| {
-                        if let Ok(_l) = MutationType::from_str(v) {
-                            true
-                        } else {
-                            false
-                        }
-                    })
+                    .filter(|v| matches!(MutationType::from_str(v), Ok(_l)))
                     .map(|v| MutationType::from_str(v).unwrap())
                     .collect();
             }

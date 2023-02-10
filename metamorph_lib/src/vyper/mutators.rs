@@ -377,10 +377,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
             2 => {
                 // Generate a boolean
                 let random_boolean = rand.next_u64() % 2 as u64;
-                let actual_boolean = match random_boolean {
-                    1 => true,
-                    _ => false,
-                };
+                let actual_boolean = matches!(random_boolean, 1);
 
                 let new_node = match new_boolean_constant_node(actual_boolean) {
                     Ok(n) => n,
@@ -501,10 +498,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                     match &id_str[..3] {
                                         "boo" => {
                                             let random_boolean = rand.next_u64() % 2 as u64;
-                                            let actual_boolean = match random_boolean {
-                                                1 => true,
-                                                _ => false,
-                                            };
+                                            let actual_boolean = matches!(random_boolean, 1);
 
                                             let new_node =
                                                 match new_boolean_constant_node(actual_boolean) {

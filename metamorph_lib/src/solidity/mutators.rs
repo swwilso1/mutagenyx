@@ -409,12 +409,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let first_three_chars = &type_string[..3];
 
-                return match first_three_chars {
-                    "uin" => true,
-                    "int" => true,
-                    "boo" => true,
-                    _ => false,
-                };
+                return matches!(first_three_chars, "uin" | "int" | "boo");
             }
         }
         false
