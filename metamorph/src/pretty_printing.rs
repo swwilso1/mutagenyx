@@ -10,7 +10,8 @@ use metamorph_lib::pretty_printer::PrettyPrinter;
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::language_for_ast;
 use metamorph_lib::SuperAST;
-use std::{path::PathBuf, str::FromStr};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 /// Iterate through the files in the args.file_names vector and pretty-print each file.
 ///
@@ -51,7 +52,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 /// * `preferences` - [`Preferences`] object.
 pub fn pretty_print_file(
     file_name: &String,
-    output_directory: &String,
+    output_directory: &str,
     preferences: &mut Preferences,
 ) -> Result<PathBuf, MetamorphError> {
     // Convert the output_directory to a PathBuf
@@ -90,8 +91,7 @@ pub fn pretty_print_file(
 
     // Create a pretty printer for printing this AST.
     let mut pretty_printer = PrettyPrinter::new(4, 150);
-    let _write_result =
-        language_object.pretty_print_ast_to_file(&ast, &outfile, &mut pretty_printer)?;
+    language_object.pretty_print_ast_to_file(&ast, &outfile, &mut pretty_printer)?;
 
     Ok(outfile_name)
 }
@@ -109,7 +109,7 @@ pub fn pretty_print_file(
 pub fn pretty_print_ast(
     ast: &SuperAST,
     file_name: &str,
-    output_dir: &PathBuf,
+    output_dir: &Path,
 ) -> Result<PathBuf, MetamorphError> {
     let language = language_for_ast(ast);
 
@@ -134,8 +134,7 @@ pub fn pretty_print_ast(
 
     // Create a pretty printer for printing this AST.
     let mut pretty_printer = PrettyPrinter::new(4, 150);
-    let _write_result =
-        language_object.pretty_print_ast_to_file(ast, &outfile, &mut pretty_printer)?;
+    language_object.pretty_print_ast_to_file(ast, &outfile, &mut pretty_printer)?;
 
     Ok(outfile_name)
 }
