@@ -90,18 +90,18 @@ pub fn generate_mutants(args: MutateCLArgs) {
             args.rng_seed as u64
         };
 
-        let mut generator_params = GeneratorParameters::new_from_parameters(
-            &file_name,
-            args.num_mutants,
-            seed,
-            Pcg64::seed_from_u64(seed),
-            PathBuf::from_str(&args.output_directory).unwrap(),
-            mutations.clone(),
-            false,
-            args.print_original,
-            args.save_config_files,
-            &mut preferences,
-        );
+        let mut generator_params = GeneratorParameters {
+            file_name,
+            number_of_mutants: args.num_mutants.clone(),
+            rng_seed: seed,
+            rng: Pcg64::seed_from_u64(seed),
+            output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
+            mutations: mutations.clone(),
+            verify_mutant_viability: false,
+            print_original: args.print_original.clone(),
+            save_configuration_file: args.save_config_files,
+            preferences: &mut preferences,
+        };
 
         if let Err(e) = generate_mutations(&mut generator_params) {
             println!("Unable to generate mutations: {}", e);
