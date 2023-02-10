@@ -13,7 +13,7 @@ pub trait MetamorphString {
 impl MetamorphString for String {
     fn remove_all(&mut self, s: &str) {
         let mut find_result = self.find(s);
-        while find_result != None {
+        while find_result.is_some() {
             let index = match find_result {
                 Some(i) => i,
                 None => return,

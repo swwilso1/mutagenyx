@@ -112,7 +112,7 @@ impl<'a> Recognizer<'a> {
     pub fn recognize_config_file(&self, file_name: &str) -> Option<RecognizeResult> {
         let file_path = PathBuf::from_str(file_name).unwrap();
         let extension = file_path.extension();
-        if extension != None && extension.unwrap() == OsStr::new(CONFIG_FILE_EXTENSION) {
+        if extension.is_some() && extension.unwrap() == OsStr::new(CONFIG_FILE_EXTENSION) {
             if let Ok(json_node) = load_json_from_file_with_name(file_name) {
                 if let Some(language_str) = json_node.get_str_for_key(LANGUAGE_KEY) {
                     if let Ok(language) = Language::from_str(language_str) {

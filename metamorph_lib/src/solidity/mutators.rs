@@ -858,7 +858,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
                             let text = String::from(value);
                             // Search for a . in the string which indicates a floating point number.
                             let find_result = text.find(".");
-                            if find_result == None {
+                            if find_result.is_none() {
                                 return true;
                             }
                         }
