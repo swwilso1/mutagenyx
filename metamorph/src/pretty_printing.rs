@@ -69,7 +69,7 @@ pub fn pretty_print_file(
     // TODO: We need to have the module that loads either source or AST.
     // Load the ast.
     let ast =
-        language_object.load_ast_from_file(file_name, &recognize_result.file_type, &preferences)?;
+        language_object.load_ast_from_file(file_name, &recognize_result.file_type, preferences)?;
 
     // Calculate the name of the output file.
     let input_file_path = PathBuf::from(file_name);
