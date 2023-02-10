@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 /// Enumeration of possible file types that a [`Recognizer`] can identify.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum FileType {
     Source,
     AST,
@@ -21,7 +21,7 @@ pub enum FileType {
 }
 
 /// Result type to use for results from [`Recognizer`] functions.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct RecognizeResult {
     pub language: Language,
     pub file_type: FileType,
