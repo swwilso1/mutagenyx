@@ -163,11 +163,10 @@ impl LanguageInterface {
     /// one object for each language supported by the library.
     pub fn get_list_of_all_language_objects(
     ) -> Result<Vec<Box<dyn MutableLanguage>>, MetamorphError> {
-        let mut language_list: Vec<Box<dyn MutableLanguage>> = vec![];
-        language_list.push(Box::new(
-            JSONLanguageInterface::new(get_solidity_delegate()),
-        ));
-        language_list.push(Box::new(JSONLanguageInterface::new(get_vyper_delegate())));
+        let language_list: Vec<Box<dyn MutableLanguage>> = vec![
+            Box::new(JSONLanguageInterface::new(get_solidity_delegate())),
+            Box::new(JSONLanguageInterface::new(get_vyper_delegate())),
+        ];
         Ok(language_list)
     }
 }
