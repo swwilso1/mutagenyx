@@ -92,9 +92,7 @@ impl MutableLanguage for JSONLanguageInterface {
         let mutators: Vec<Box<dyn Mutator<Value>>> = mutation_types
             .iter()
             // Try to convert the mutation type to a mutator
-            .map(|t| mutator_factory.mutator_for(t))
-            // Only use the results that have an actual mutator
-            .flatten()
+            .filter_map(|t| mutator_factory.mutator_for(t))
             .collect();
 
         // Now fill the mutator map
