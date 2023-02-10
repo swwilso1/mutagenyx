@@ -92,11 +92,8 @@ pub trait NodePrinterFactory<W: Write, AST> {
     ///
     /// * `key` - The string for the key.
     fn get_preference_value_for_key(&self, key: &str) -> bool {
-        if let Some(preference) = self.get_settings().get_value_for_key(key) {
-            match preference {
-                PreferenceValue::Boolean(b) => b,
-                _ => false,
-            }
+        if let Some(PreferenceValue::Boolean(b)) = self.get_settings().get_value_for_key(key) {
+            b
         } else {
             false
         }

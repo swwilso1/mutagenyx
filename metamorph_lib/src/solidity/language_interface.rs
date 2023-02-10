@@ -178,11 +178,8 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
                 }
             }
         }
-    } else if let Some(compiler) = prefs.get_value_for_key("solidity_compiler") {
-        match compiler {
-            PreferenceValue::String(s) => solidity_compiler = s,
-            _ => {}
-        }
+    } else if let Some(PreferenceValue::String(s)) = prefs.get_value_for_key("solidity_compiler") {
+        solidity_compiler = s;
     }
 
     for arg in &args {
