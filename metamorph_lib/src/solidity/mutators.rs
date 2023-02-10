@@ -99,7 +99,7 @@ fn new_comment_node(text: &str) -> Result<SolidityAST, MetamorphError> {
             \"text\": null
         }";
 
-    let mut node = new_json_node(&node_string)?;
+    let mut node = new_json_node(node_string)?;
     node.set_node_for_key("text", text_node);
     Ok(node)
 }
@@ -154,7 +154,7 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Met
             \"components\": null
         }";
 
-    let mut tuple_node = new_json_node(&node_str)?;
+    let mut tuple_node = new_json_node(node_str)?;
     tuple_node.set_node_for_key("components", node_array);
     Ok(tuple_node)
 }
@@ -173,7 +173,7 @@ fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Meta
             \"statements\": null
         }";
 
-    let mut unchecked_node = new_json_node(&node_str)?;
+    let mut unchecked_node = new_json_node(node_str)?;
     unchecked_node.set_node_for_key("statements", node_array);
     Ok(unchecked_node)
 }

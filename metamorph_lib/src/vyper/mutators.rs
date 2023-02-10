@@ -89,7 +89,7 @@ fn new_comment_node(text: &str) -> Result<VyperAST, MetamorphError> {
             \"value\": null
         }";
 
-    let mut node = new_json_node(&node_str)?;
+    let mut node = new_json_node(node_str)?;
     node.set_node_for_key("value", text_node);
     Ok(node)
 }
@@ -100,7 +100,7 @@ fn new_pass_node() -> Result<VyperAST, MetamorphError> {
             \"node_id\": 9999995,
             \"ast_type\": \"Pass\"
         }";
-    new_json_node(&node_str)
+    new_json_node(node_str)
 }
 
 /// Return a new Str node.
@@ -131,7 +131,7 @@ fn new_return_node(node: VyperAST) -> Result<VyperAST, MetamorphError> {
             \"value\": null
         }";
 
-    let mut return_node = new_json_node(&node_str)?;
+    let mut return_node = new_json_node(node_str)?;
     return_node.set_node_for_key("value", node);
     Ok(return_node)
 }
@@ -190,7 +190,7 @@ fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, 
                 \"value\": null
             }";
 
-        let node = new_json_node(&node_str)?;
+        let node = new_json_node(node_str)?;
         none_array.push(node);
     }
 
