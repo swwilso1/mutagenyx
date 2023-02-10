@@ -17,6 +17,7 @@ use rand::Rng;
 use rand::RngCore;
 use rand_pcg::*;
 use serde_json::json;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
@@ -355,7 +356,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
             }
             1 => {
                 // Generate and unsigned integer
-                let lower_bound = 0 as u128;
+                let lower_bound = 0_u128;
                 let upper_bound = 340282366920938463463374607431768211455u128;
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
@@ -368,7 +369,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
             }
             2 => {
                 // Generate a boolean
-                let random_boolean = rand.next_u64() % 2 as u64;
+                let random_boolean = rand.next_u64() % 2_u64;
                 let actual_boolean = matches!(random_boolean, 1);
 
                 let new_node = match new_boolean_constant_node(actual_boolean) {
@@ -488,7 +489,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                 if let Some(id_str) = returns_node.get_str_for_key("id") {
                                     match &id_str[..3] {
                                         "boo" => {
-                                            let random_boolean = rand.next_u64() % 2 as u64;
+                                            let random_boolean = rand.next_u64() % 2_u64;
                                             let actual_boolean = matches!(random_boolean, 1);
 
                                             let new_node =
@@ -507,7 +508,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                         "uin" => {
                                             // We could figure out the numeric range, but instead
                                             // we just return a random value between 0-10.
-                                            let number = rand.next_u64() % 10 as u64;
+                                            let number = rand.next_u64() % 10_u64;
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
                                                 Err(_e) => return,
@@ -522,7 +523,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                         "int" => {
                                             // We just pick a number between -10 and 10.  Nothing
                                             // complicated.
-                                            let mut number = (rand.next_u64() & 20 as u64) as i64;
+                                            let mut number = (rand.next_u64() & 20_u64) as i64;
                                             number -= 10;
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
@@ -555,7 +556,6 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                 }
                             } else if ast_type_str == "Pass" {
                                 // We already have a pass node, just skip out.
-                                ();
                             } else if ast_type_str == "Tuple" || ast_type_str == "List" {
                                 if let Some(elements_node) = returns_node.get("elements") {
                                     if let Some(elements_array) = elements_node.as_array() {
@@ -684,30 +684,36 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
     fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
         if let Some(args) = node.take_value_for_key("args") {
             if let Some(args_array) = node.as_array_mut() {
-                if args_array.len() == 2 {
-                    // Just swap the two arguments
-                    let arg1 = args_array[0].clone();
-                    let arg2 = args_array[1].clone();
-                    args_array[0] = arg2;
-                    args_array[1] = arg1;
+                let bound: usize = 2;
+                match args_array.len().cmp(&bound) {
+                    Ordering::Equal => {
+                        // Just swap the two arguments
+                        let arg1 = args_array[0].clone();
+                        let arg2 = args_array[1].clone();
+                        args_array[0] = arg2;
+                        args_array[1] = arg1;
 
-                    node.set_node_for_key("args", args);
-                } else if args_array.len() > 2 {
-                    // Pick two arguments randomly and swap them.
-                    let random_index1 = (rand.next_u64() % args_array.len() as u64) as usize;
-                    let mut random_index2 = (rand.next_u64() % args_array.len() as u64) as usize;
-
-                    // The indexes may be the same, so just iterate until we get a different index.
-                    while random_index1 == random_index2 {
-                        random_index2 = (rand.next_u64() % args_array.len() as u64) as usize;
+                        node.set_node_for_key("args", args);
                     }
+                    Ordering::Greater => {
+                        // Pick two arguments randomly and swap them.
+                        let random_index1 = (rand.next_u64() % args_array.len() as u64) as usize;
+                        let mut random_index2 =
+                            (rand.next_u64() % args_array.len() as u64) as usize;
 
-                    let arg1 = args_array[random_index1].clone();
-                    let arg2 = args_array[random_index2].clone();
-                    args_array[random_index1] = arg2;
-                    args_array[random_index2] = arg1;
+                        // The indexes may be the same, so just iterate until we get a different index.
+                        while random_index1 == random_index2 {
+                            random_index2 = (rand.next_u64() % args_array.len() as u64) as usize;
+                        }
 
-                    node.set_node_for_key("args", args);
+                        let arg1 = args_array[random_index1].clone();
+                        let arg2 = args_array[random_index2].clone();
+                        args_array[random_index1] = arg2;
+                        args_array[random_index2] = arg1;
+
+                        node.set_node_for_key("args", args);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -743,7 +749,7 @@ impl Mutator<VyperAST> for IfStatementMutator {
         // * Replace condition with true.
         // * Replace condition with false.
         // * Replace condition (called c) with !(c) (ie the negation).
-        match rand.next_u64() % 3 as u64 {
+        match rand.next_u64() % 3_u64 {
             0 => {
                 // Replace the condition with 'True'
                 let new_node = match new_boolean_constant_node(true) {
@@ -800,7 +806,7 @@ impl Mutator<VyperAST> for IntegerMutator {
     }
 
     fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
-        match rand.next_u64() % 3 as u64 {
+        match rand.next_u64() % 3_u64 {
             0 => {
                 // Add one to the integer constant.
                 if let Some(value_node) = node.get("value") {
@@ -929,9 +935,7 @@ impl Mutator<VyperAST> for LinesSwapMutator {
                             // must be at least 3 statements in the body in order to swap (but not
                             // swap a return statement) statements.  If there are no return statements
                             // then we can just go ahead and swap.
-                            if (found_return_statement && body_array.len() >= 3)
-                                || (!found_return_statement)
-                            {
+                            if !found_return_statement || body_array.len() >= 3 {
                                 return true;
                             }
                         }
