@@ -404,7 +404,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 node.set_node_for_key("value", new_node);
             }
-            _ => return,
+            _ => (),
         }
     }
 
@@ -787,7 +787,7 @@ impl Mutator<VyperAST> for IfStatementMutator {
                     node.set_node_for_key("test", new_node);
                 }
             }
-            _ => return,
+            _ => (),
         }
     }
 
@@ -842,7 +842,7 @@ impl Mutator<VyperAST> for IntegerMutator {
                 let json_value = json![value as i64];
                 node.set_node_for_key("value", json_value);
             }
-            _ => return,
+            _ => (),
         }
     }
 

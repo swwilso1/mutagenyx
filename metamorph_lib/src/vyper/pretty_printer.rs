@@ -1612,6 +1612,6 @@ impl<W: Write> NodePrinterFactory<W, VyperAST> for VyperNodePrinterFactory {
     }
 
     fn get_settings(&self) -> &Preferences {
-        return &self.settings;
+        &self.settings
     }
 }

@@ -27,7 +27,7 @@ use versions::{Mess, Versioning};
 
 /// Return the object conforming to [`JSONLanguageDelegate<W>`]
 pub fn get_vyper_delegate<W: Write + 'static>() -> Box<dyn JSONLanguageDelegate<W>> {
-    return Box::new(VyperLanguageDelegate::new());
+    Box::new(VyperLanguageDelegate::new())
 }
 
 /// The type that implements [`JSONLanguageDelegate<W>`]
@@ -63,7 +63,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     }
 
     fn get_mutator_factory(&self) -> Box<dyn MutatorFactory<Value>> {
-        return Box::new(VyperMutatorFactory {});
+        Box::new(VyperMutatorFactory {})
     }
 
     fn get_pretty_print_visitor<'a>(
@@ -126,7 +126,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
     }
 
     fn get_file_extension(&self) -> &str {
-        return "vy";
+        "vy"
     }
 
     fn default_compiler_settings(&self) -> Preferences {

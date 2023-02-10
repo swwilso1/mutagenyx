@@ -26,7 +26,7 @@ use std::str::FromStr;
 
 /// Return the object that conforms to [`JSONLanguageDelegate<W>`].
 pub fn get_solidity_delegate<W: Write + 'static>() -> Box<dyn JSONLanguageDelegate<W>> {
-    return Box::new(SolidityLanguageSubDelegate::new());
+    Box::new(SolidityLanguageSubDelegate::new())
 }
 
 /// The type that implements [`JSONLanguageDelegate<W>`].
@@ -62,7 +62,7 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     }
 
     fn get_mutator_factory(&self) -> Box<dyn MutatorFactory<Value>> {
-        return Box::new(SolidityMutatorFactory {});
+        Box::new(SolidityMutatorFactory {})
     }
 
     fn get_pretty_print_visitor<'a>(
@@ -113,7 +113,7 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
     }
 
     fn get_file_extension(&self) -> &str {
-        return "sol";
+        "sol"
     }
 
     fn default_compiler_settings(&self) -> Preferences {

@@ -177,7 +177,7 @@ impl ConfigurationFileDetails {
                     .map(|v| v.as_str().unwrap())
                     .filter(|v| {
                         if let Ok(_l) = MutationType::from_str(v) {
-                            return true;
+                            true
                         } else {
                             false
                         }

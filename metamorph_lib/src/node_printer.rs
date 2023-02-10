@@ -31,7 +31,6 @@ pub trait NodePrinter<W: Write, AST> {
         _factory: &Box<dyn NodePrinterFactory<W, AST>>,
         _node: &AST,
     ) {
-        return;
     }
 
     /// Called when the node printing object should write out the bulk of the node.
@@ -52,7 +51,6 @@ pub trait NodePrinter<W: Write, AST> {
         _factory: &Box<dyn NodePrinterFactory<W, AST>>,
         _node: &AST,
     ) {
-        return;
     }
 
     /// Called when the node traversal algorithm leaves the node.
@@ -71,7 +69,6 @@ pub trait NodePrinter<W: Write, AST> {
         _factory: &Box<dyn NodePrinterFactory<W, AST>>,
         _node: &AST,
     ) {
-        return;
     }
 
     /// Return true if the traversal should traverse and print children nodes.

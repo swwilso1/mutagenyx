@@ -50,7 +50,7 @@ impl TryFrom<Value> for PreferenceValue {
             return Ok(PreferenceValue::Null);
         }
         let json_text = format!("{value}");
-        return Err(MetamorphError::UnrecognizedJSON(json_text));
+        Err(MetamorphError::UnrecognizedJSON(json_text))
     }
 }
 
@@ -135,7 +135,7 @@ impl Preferences {
     ///
     /// * `key` - The string value containing the key.
     pub fn contains_key(&self, key: &str) -> bool {
-        return self.map.contains_key(key);
+        self.map.contains_key(key)
     }
 
     /// Return an integer for the value stored for `key` if the value is an integer.

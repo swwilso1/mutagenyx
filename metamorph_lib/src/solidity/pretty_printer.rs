@@ -2647,6 +2647,6 @@ impl<W: Write> NodePrinterFactory<W, SolidityAST> for SolidityNodePrinterFactory
     }
 
     fn get_settings(&self) -> &Preferences {
-        return &self.settings;
+        &self.settings
     }
 }

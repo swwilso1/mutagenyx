@@ -524,7 +524,6 @@ pub fn write_tokens<W: Write>(
 ) {
     if let Err(e) = printer.write_tokens(stream, token, count) {
         log::info!("Unable to write multiple tokens: {e}");
-        return;
     }
 }
 

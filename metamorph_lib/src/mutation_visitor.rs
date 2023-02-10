@@ -35,7 +35,6 @@ impl<'a, AST> MutableNodesCounter<'a, AST> {
 
 impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
     fn on_enter(&mut self, _node: &AST) {
-        return;
     }
 
     fn visit(&mut self, node: &AST) -> bool {
@@ -57,7 +56,6 @@ impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
     }
 
     fn on_exit(&mut self, _node: &AST) {
-        return;
     }
 }
 
@@ -106,7 +104,6 @@ impl<'a, AST> MutationMaker<'a, AST> {
 
 impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
     fn on_enter(&mut self, _node: &mut AST) {
-        return;
     }
 
     fn visit_mut(&mut self, node: &mut AST) -> bool {
@@ -125,6 +122,5 @@ impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
     }
 
     fn on_exit(&mut self, _node: &mut AST) {
-        return;
     }
 }

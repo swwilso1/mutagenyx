@@ -53,7 +53,7 @@ impl JSONLanguageInterface {
     /// * `ast` - A reference to the SuperAST object that might contain a JSON base AST.
     fn recover_json_ast<'a>(&self, ast: &'a SuperAST) -> Result<&'a Value, MetamorphError> {
         // Defer the recovery of the AST to the language-specific delegate.
-        return self.sub_language_interface.recover_ast(ast);
+        self.sub_language_interface.recover_ast(ast)
     }
 }
 
@@ -171,13 +171,11 @@ impl MutableLanguage for JSONLanguageInterface {
     }
 
     fn get_extension_for_output_file(&self) -> &str {
-        return self.sub_language_interface.get_file_extension();
+        self.sub_language_interface.get_file_extension()
     }
 
     fn file_is_language_source_file(&self, file_name: &str, prefs: &Preferences) -> bool {
-        return self
-            .sub_language_interface
-            .file_is_language_source_file(file_name, prefs);
+        self.sub_language_interface.file_is_language_source_file(file_name, prefs)
     }
 
     fn convert_source_file_to_ast(

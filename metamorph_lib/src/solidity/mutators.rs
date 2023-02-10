@@ -502,7 +502,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 node.set_node_for_key("rightHandSide", new_node);
             }
-            _ => return,
+            _ => (),
         }
     }
 
@@ -837,7 +837,7 @@ impl Mutator<SolidityAST> for IfStatementMutator {
                     node.set_node_for_key("condition", not_node);
                 }
             }
-            _ => return,
+            _ => (),
         }
     }
 
@@ -901,7 +901,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
                 let value = rand.next_u64();
                 node.set_str_for_key("value", value.to_string().as_str());
             }
-            _ => return,
+            _ => (),
         }
     }
 
