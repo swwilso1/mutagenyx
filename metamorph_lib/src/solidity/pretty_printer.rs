@@ -283,7 +283,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
             write_token(printer, stream, ":");
             write_space(printer, stream);
 
-            write_token(printer, stream, &license);
+            write_token(printer, stream, license);
             write_newline(printer, stream);
         }
     }

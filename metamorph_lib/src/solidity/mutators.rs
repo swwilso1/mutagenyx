@@ -251,7 +251,7 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
             }
 
             // Insert the new operator into the node.
-            node.set_str_for_key("operator", &chosen_operator);
+            node.set_str_for_key("operator", chosen_operator);
         }
     }
 
@@ -355,7 +355,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
             };
         }
 
-        node.set_str_for_key("operator", &chosen_operator);
+        node.set_str_for_key("operator", chosen_operator);
     }
 
     fn implements(&self) -> MutationType {

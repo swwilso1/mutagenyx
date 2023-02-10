@@ -135,7 +135,7 @@ pub fn pretty_print_ast(
     // Create a pretty printer for printing this AST.
     let mut pretty_printer = PrettyPrinter::new(4, 150);
     let _write_result =
-        language_object.pretty_print_ast_to_file(&ast, &outfile, &mut pretty_printer)?;
+        language_object.pretty_print_ast_to_file(ast, &outfile, &mut pretty_printer)?;
 
     Ok(outfile_name)
 }

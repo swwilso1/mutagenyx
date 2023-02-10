@@ -63,7 +63,7 @@ impl<'a, W: Write, AST> Visitor<AST> for PrettyPrintVisitor<'a, W, AST> {
         if let Some(p) = self.stack.last_mut() {
             p.print_node(
                 self.pretty_printer,
-                &mut self.out_stream,
+                self.out_stream,
                 self.node_printer_factory,
                 node,
             );
@@ -82,7 +82,7 @@ impl<'a, W: Write, AST> Visitor<AST> for PrettyPrintVisitor<'a, W, AST> {
         if let Some(p) = self.stack.last_mut() {
             p.on_exit(
                 self.pretty_printer,
-                &mut self.out_stream,
+                self.out_stream,
                 self.node_printer_factory,
                 node,
             );

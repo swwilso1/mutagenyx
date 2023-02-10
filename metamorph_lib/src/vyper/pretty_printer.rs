@@ -640,7 +640,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for AugAssignPrinter {
         if let Some(op_node) = node.get("op") {
             if let Some(ast_type_str) = op_node.get_str_for_key("ast_type") {
                 if self.operator_map.contains_key(ast_type_str) {
-                    write_token(printer, stream, &self.operator_map[ast_type_str]);
+                    write_token(printer, stream, self.operator_map[ast_type_str]);
                 }
             }
         }
@@ -712,7 +712,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for BinOpPrinter {
             if let Some(ast_type_str) = op_node.get_str_for_key("ast_type") {
                 if self.operator_map.contains_key(ast_type_str) {
                     write_space(printer, stream);
-                    write_token(printer, stream, &self.operator_map[ast_type_str]);
+                    write_token(printer, stream, self.operator_map[ast_type_str]);
                     write_space(printer, stream);
                 }
             }

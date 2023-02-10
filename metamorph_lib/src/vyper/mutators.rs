@@ -305,7 +305,7 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 let vyper_chosen_operator = self.reverse_operator_map.get(chosen_operator).unwrap();
 
                 // Insert the new operator into the node.
-                op.set_str_for_key("ast_type", &vyper_chosen_operator);
+                op.set_str_for_key("ast_type", vyper_chosen_operator);
 
                 node.set_node_for_key("op", op);
             }
