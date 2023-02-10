@@ -17,7 +17,7 @@ use std::io::Write;
 pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, AST>>,
+    factory: &dyn NodePrinterFactory<W, AST>,
     node: &AST,
 ) {
     let mut visitor = PrettyPrintVisitor::<W, AST>::new(stream, printer, factory);
@@ -36,7 +36,7 @@ pub fn traverse_sub_node_and_print<W: Write, AST: SimpleAST<AST>>(
 pub fn print_array_helper<W: Write, AST: SimpleAST<AST>>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, AST>>,
+    factory: &dyn NodePrinterFactory<W, AST>,
     array: &Vec<AST>,
 ) {
     let mut i = 0;

@@ -25,7 +25,7 @@ use std::io::Write;
 fn print_documentation_helper<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    factory: &dyn NodePrinterFactory<W, SolidityAST>,
     node: &SolidityAST,
 ) {
     if let Some(docs) = node.get("documentation") {
@@ -91,7 +91,7 @@ fn print_operator_helper<W: Write>(
 fn print_space_and_array_helper<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    factory: &dyn NodePrinterFactory<W, SolidityAST>,
     node: &SolidityAST,
 ) {
     if let Some(array) = node.as_array() {
@@ -115,7 +115,7 @@ fn print_space_and_array_helper<W: Write>(
 fn print_statements_helper<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    factory: &dyn NodePrinterFactory<W, SolidityAST>,
     node: &SolidityAST,
     single_element_on_same_line: bool,
 ) {
@@ -162,7 +162,7 @@ fn print_statements_helper<W: Write>(
 fn print_arguments_helper<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    factory: &dyn NodePrinterFactory<W, SolidityAST>,
     node: &SolidityAST,
 ) {
     if let Some(arguments_node) = node.get("arguments") {
@@ -183,7 +183,7 @@ fn print_arguments_helper<W: Write>(
 fn print_return_parameters_helper<W: Write>(
     printer: &mut PrettyPrinter,
     stream: &mut W,
-    factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+    factory: &dyn NodePrinterFactory<W, SolidityAST>,
     node: &SolidityAST,
 ) {
     if let Some(return_parameters_node) = node.get("returnParameters") {
@@ -273,7 +273,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(license) = node.get_str_for_key("license") {
@@ -292,7 +292,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(nodes) = node.get("nodes") {
@@ -318,7 +318,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for SourceUnitPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_newline(printer, stream);
@@ -332,7 +332,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for PragmaDirectivePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(l) = node.get("literals") {
@@ -361,7 +361,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContractDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_documentation_helper(printer, stream, factory, node);
@@ -401,7 +401,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContractDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_space(printer, stream);
@@ -444,7 +444,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "struct");
@@ -482,7 +482,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         close_block_exit_helper(printer, stream);
@@ -496,7 +496,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ElementaryTypeNamePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_name_helper(printer, stream, node);
@@ -517,7 +517,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for MappingPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "mapping");
@@ -546,7 +546,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UserDefinedTypeNamePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(path_node) = node.get("pathNode") {
@@ -562,7 +562,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_documentation_helper(printer, stream, factory, node);
@@ -607,7 +607,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(location) = node.get_str_for_key("storageLocation") {
@@ -655,7 +655,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(documentation) = node.get("documentation") {
@@ -682,7 +682,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(parameters) = node.get("parameters") {
@@ -751,7 +751,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ParameterListPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "(");
@@ -761,7 +761,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ParameterListPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(parameters) = node.get("parameters") {
@@ -775,7 +775,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ParameterListPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, ")");
@@ -809,7 +809,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BlockPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(node_type_str) = node.get_str_for_key("nodeType") {
@@ -825,7 +825,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BlockPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_statements_helper(
@@ -841,7 +841,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BlockPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "}");
@@ -855,7 +855,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for VariableDeclarationStatementPrint
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(declarations) = node.get("declarations") {
@@ -902,7 +902,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BinaryOperationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(le) = node.get("leftExpression") {
@@ -924,7 +924,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for LiteralPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(value) = node.get_str_for_key("value") {
@@ -967,7 +967,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ExpressionStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(expression) = node.get("expression") {
@@ -979,7 +979,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ExpressionStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         if self.write_statement_semicolon {
@@ -995,7 +995,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for AssignmentPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(lhs) = node.get("leftHandSide") {
@@ -1017,7 +1017,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IdentifierPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(name) = node.get_str_for_key("name") {
@@ -1033,7 +1033,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(expression) = node.get("expression") {
@@ -1046,7 +1046,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(names_array) = node.get_array_for_key("names") {
@@ -1091,7 +1091,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, ")");
@@ -1112,7 +1112,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UnaryOperationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(prefix) = node.get_bool_for_key("prefix") {
@@ -1147,7 +1147,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for MemberAccessPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(expression) = node.get("expression") {
@@ -1169,7 +1169,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IndexAccessPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(base_expression) = node.get("baseExpression") {
@@ -1193,7 +1193,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for IfStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "if");
@@ -1249,7 +1249,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "import");
@@ -1259,7 +1259,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ImportDirectivePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         let mut wrote_symbol_aliases = false;
@@ -1329,7 +1329,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InheritanceSpecifierPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(base_name) = node.get("baseName") {
@@ -1350,7 +1350,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierInvocationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(modifier_name) = node.get("modifierName") {
@@ -1376,7 +1376,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UsingForDirectivePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "using");
@@ -1419,7 +1419,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_documentation_helper(printer, stream, factory, node);
@@ -1435,7 +1435,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ModifierDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(virtual_bool) = node.get_bool_for_key("virtual") {
@@ -1463,7 +1463,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructuredDocumentationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "/**");
@@ -1473,7 +1473,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructuredDocumentationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(text) = node.get_str_for_key("text") {
@@ -1493,7 +1493,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for StructuredDocumentationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_newline(printer, stream);
@@ -1510,7 +1510,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for PlaceholderStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "_");
@@ -1525,7 +1525,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ReturnPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "return");
@@ -1544,7 +1544,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EmitStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(event_call) = node.get("eventCall") {
@@ -1563,7 +1563,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for OverrideSpecifierPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "override");
@@ -1584,7 +1584,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ElementaryTypeNameExpressionPrint
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         // Not sure if this is the correct way to handle this node.
@@ -1609,7 +1609,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TupleExpressionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(components) = node.get("components") {
@@ -1648,7 +1648,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for CommentPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(comment_text) = node.get_str_for_key("text") {
@@ -1668,7 +1668,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ErrorDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "error");
@@ -1690,7 +1690,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ForStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         // Include the '(' in the token so it doesn't line break to the next line.
@@ -1709,8 +1709,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ForStatementPrinter {
                 WRITE_EXPRESSION_STATEMENT_SEMICOLON,
                 PreferenceValue::Boolean(false),
             );
-            let sub_factory: Box<dyn NodePrinterFactory<W, SolidityAST>> =
-                Box::new(SolidityNodePrinterFactory::new(printer_settings));
+            let sub_factory = SolidityNodePrinterFactory::new(printer_settings);
             write_space(printer, stream);
             traverse_sub_node_and_print(printer, stream, &sub_factory, loop_expression_node);
         }
@@ -1739,7 +1738,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ArrayTypeNamePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(base_type_node) = node.get("baseType") {
@@ -1760,7 +1759,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(documentation_str) = node.get_str_for_key("documentation") {
@@ -1776,7 +1775,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for InlineAssemblyPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "assembly");
@@ -1818,7 +1817,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulVariableDeclarationPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "let");
@@ -1844,7 +1843,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionCallPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(function_name_node) = node.get("functionName") {
@@ -1868,7 +1867,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for NamePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         print_name_helper(printer, stream, node);
@@ -1882,7 +1881,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulAssignmentPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(variable_names_node) = node.get("variableNames") {
@@ -1906,7 +1905,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulLiteralPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(kind_str) = node.get_str_for_key("kind") {
@@ -1930,7 +1929,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulForLoopPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "for");
@@ -1941,8 +1940,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulForLoopPrinter {
             SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE,
             PreferenceValue::Boolean(true),
         );
-        let sub_factory: Box<dyn NodePrinterFactory<W, SolidityAST>> =
-            Box::new(SolidityNodePrinterFactory::new(printing_settings));
+        let sub_factory = SolidityNodePrinterFactory::new(printing_settings);
 
         if let Some(pre_node) = node.get("pre") {
             write_newline(printer, stream);
@@ -1975,7 +1973,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionTypeNamePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "function");
@@ -2000,7 +1998,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EventDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "event");
@@ -2026,7 +2024,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for RevertStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "revert");
@@ -2045,7 +2043,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for EnumDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "enum");
@@ -2090,7 +2088,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for UserDefinedValueTypeDefinitionPri
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "type");
@@ -2113,7 +2111,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for NewExpressionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "new");
@@ -2131,7 +2129,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ConditionalPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(condition_node) = node.get("condition") {
@@ -2162,7 +2160,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for FunctionCallOptionsPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(expr_node) = node.get("expression") {
@@ -2210,7 +2208,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "try");
@@ -2244,7 +2242,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for TryCatchClausePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(error_name_str) = node.get_str_for_key("errorName") {
@@ -2271,7 +2269,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for WhileStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "while");
@@ -2295,7 +2293,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for DoWhileStatementPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "do");
@@ -2322,7 +2320,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for ContinuePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "continue");
@@ -2337,7 +2335,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for BreakPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "break");
@@ -2352,7 +2350,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulIfPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "if");
@@ -2374,7 +2372,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulSwitchPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "switch");
@@ -2404,7 +2402,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulCasePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         if let Some(value_node) = node.get("value") {
@@ -2433,7 +2431,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulFunctionDefinitionPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        factory: &dyn NodePrinterFactory<W, SolidityAST>,
         node: &SolidityAST,
     ) {
         write_token(printer, stream, "function");
@@ -2474,7 +2472,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulBreakPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "break");
@@ -2488,7 +2486,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulContinuePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "continue");
@@ -2501,7 +2499,7 @@ impl<W: Write> NodePrinter<W, SolidityAST> for YulLeavePrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, SolidityAST>>,
+        _factory: &dyn NodePrinterFactory<W, SolidityAST>,
         _node: &SolidityAST,
     ) {
         write_token(printer, stream, "leave");

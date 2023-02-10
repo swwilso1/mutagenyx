@@ -18,7 +18,7 @@ pub struct PrettyPrintVisitor<'a, W: Write, AST> {
     out_stream: &'a mut W,
     /// A [`NodePrinterFactory<W,AST>`] object that will produce [`NodePrinter<W,AST>`] trait
     /// objects
-    node_printer_factory: &'a Box<dyn NodePrinterFactory<W, AST>>,
+    node_printer_factory: &'a dyn NodePrinterFactory<W, AST>,
 }
 
 impl<'a, W: Write, AST> PrettyPrintVisitor<'a, W, AST> {
@@ -33,7 +33,7 @@ impl<'a, W: Write, AST> PrettyPrintVisitor<'a, W, AST> {
     pub fn new(
         stream: &'a mut W,
         printer: &'a mut PrettyPrinter,
-        factory: &'a Box<dyn NodePrinterFactory<W, AST>>,
+        factory: &'a dyn NodePrinterFactory<W, AST>,
     ) -> PrettyPrintVisitor<'a, W, AST> {
         PrettyPrintVisitor {
             stack: vec![],

@@ -28,7 +28,7 @@ pub trait NodePrinter<W: Write, AST> {
         &mut self,
         _printer: &mut PrettyPrinter,
         _stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _factory: &dyn NodePrinterFactory<W, AST>,
         _node: &AST,
     ) {
     }
@@ -48,7 +48,7 @@ pub trait NodePrinter<W: Write, AST> {
         &mut self,
         _printer: &mut PrettyPrinter,
         _stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _factory: &dyn NodePrinterFactory<W, AST>,
         _node: &AST,
     ) {
     }
@@ -66,7 +66,7 @@ pub trait NodePrinter<W: Write, AST> {
         &mut self,
         _printer: &mut PrettyPrinter,
         _stream: &mut W,
-        _factory: &Box<dyn NodePrinterFactory<W, AST>>,
+        _factory: &dyn NodePrinterFactory<W, AST>,
         _node: &AST,
     ) {
     }

@@ -73,7 +73,7 @@ impl<W: Write> JSONLanguageDelegate<W> for SolidityLanguageSubDelegate<W> {
         return Box::new(PrettyPrintVisitor::new(
             w,
             printer,
-            &self.node_printer_factory,
+            self.node_printer_factory.as_ref(),
         ));
     }
 

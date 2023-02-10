@@ -66,7 +66,7 @@ impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
 /// and mutates that node.
 pub struct MutationMaker<'a, AST> {
     /// A reference to a [`Mutator<T>`] that can mutate a node in the AST.
-    mutator: &'a Box<dyn Mutator<AST>>,
+    mutator: &'a dyn Mutator<AST>,
 
     /// A reference to the random number given to the mutator to use for mutating the node.
     rng: &'a mut Pcg64,
@@ -87,7 +87,7 @@ impl<'a, AST> MutationMaker<'a, AST> {
     /// * `rng` - The reference to the random number generator.
     /// * `index` - The index of the node in the AST to mutate.
     pub fn new(
-        mutator: &'a Box<dyn Mutator<AST>>,
+        mutator: &'a dyn Mutator<AST>,
         rng: &'a mut Pcg64,
         index: usize,
     ) -> MutationMaker<'a, AST> {

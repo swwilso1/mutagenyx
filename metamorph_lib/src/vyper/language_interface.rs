@@ -74,7 +74,7 @@ impl<W: Write> JSONLanguageDelegate<W> for VyperLanguageDelegate<W> {
         return Box::new(PrettyPrintVisitor::new(
             w,
             printer,
-            &self.node_printer_factory,
+            self.node_printer_factory.as_ref(),
         ));
     }
 
