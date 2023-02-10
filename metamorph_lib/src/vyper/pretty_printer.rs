@@ -523,31 +523,29 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
             if let Some(defaults_array) = defaults_node.as_array() {
                 if defaults_array.len() == 0 {
                     write_args_as_array(printer, stream, factory, node);
-                } else {
-                    if let Some(args_node) = node.get("args") {
-                        if let Some(args_array) = args_node.as_array() {
-                            let first_default_index = args_array.len() - defaults_array.len();
-                            let mut i: usize = 0;
-                            while i < args_array.len() {
-                                let arg = args_array.get(i).unwrap();
-                                traverse_sub_node_and_print(printer, stream, factory, arg);
-                                if i >= first_default_index {
-                                    let default_index = i - first_default_index;
-                                    let default_node = defaults_array.get(default_index).unwrap();
-                                    write_token(printer, stream, "=");
-                                    traverse_sub_node_and_print(
-                                        printer,
-                                        stream,
-                                        factory,
-                                        default_node,
-                                    );
-                                }
-                                if i < (args_array.len() - 1) {
-                                    write_token(printer, stream, ",");
-                                    write_space(printer, stream);
-                                }
-                                i += 1;
+                } else if let Some(args_node) = node.get("args") {
+                    if let Some(args_array) = args_node.as_array() {
+                        let first_default_index = args_array.len() - defaults_array.len();
+                        let mut i: usize = 0;
+                        while i < args_array.len() {
+                            let arg = args_array.get(i).unwrap();
+                            traverse_sub_node_and_print(printer, stream, factory, arg);
+                            if i >= first_default_index {
+                                let default_index = i - first_default_index;
+                                let default_node = defaults_array.get(default_index).unwrap();
+                                write_token(printer, stream, "=");
+                                traverse_sub_node_and_print(
+                                    printer,
+                                    stream,
+                                    factory,
+                                    default_node,
+                                );
                             }
+                            if i < (args_array.len() - 1) {
+                                write_token(printer, stream, ",");
+                                write_space(printer, stream);
+                            }
+                            i += 1;
                         }
                     }
                 }
