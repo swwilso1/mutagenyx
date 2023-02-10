@@ -411,7 +411,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
         // Process the decorator list.
         if let Some(decorator_list_node) = node.get("decorator_list") {
             if let Some(decorator_array) = decorator_list_node.as_array() {
-                if decorator_array.len() >= 1 {
+                if !decorator_array.is_empty() {
                     self.has_decorators = true;
                     write_token(printer, stream, "@");
                     let value = &decorator_array[0];
@@ -477,7 +477,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for FunctionDefPrinter {
                     write_newline(printer, stream);
                     write_indent(printer, stream);
                     let doc_string_text = String::from(doc_string);
-                    if let Some(_newline_index) = doc_string_text.find("\n") {
+                    if let Some(_newline_index) = doc_string_text.find('\n') {
                         write_triple_string(printer, stream, doc_string);
                     } else {
                         write_token(printer, stream, "\"\"\"");
@@ -521,7 +521,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ArgumentsPrinter {
         // array of say length N apply only to the last N arguments of the function.
         if let Some(defaults_node) = node.get("defaults") {
             if let Some(defaults_array) = defaults_node.as_array() {
-                if defaults_array.len() == 0 {
+                if defaults_array.is_empty() {
                     write_args_as_array(printer, stream, factory, node);
                 } else if let Some(args_node) = node.get("args") {
                     if let Some(args_array) = args_node.as_array() {
@@ -810,7 +810,7 @@ impl<W: Write> NodePrinter<W, VyperAST> for ModulePrinter {
         if let Some(doc_string_node) = node.get("doc_string") {
             if let Some(doc_string) = doc_string_node.get_str_for_key("value") {
                 let doc_text = String::from(doc_string);
-                if let Some(_newline_index) = doc_text.find("\n") {
+                if let Some(_newline_index) = doc_text.find('\n') {
                     write_triple_string(printer, stream, doc_string)
                 } else {
                     write_token(printer, stream, "\"\"\"");
