@@ -89,8 +89,7 @@ fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, MetamorphError> 
 fn new_comment_node(text: &str) -> Result<SolidityAST, MetamorphError> {
     let text_node = json![text];
 
-    let node_string = format!(
-        "{{\
+    let node_string = "{\
             \"id\": 9999997,
             \"isConstant\": false,
             \"isLValue\": false,
@@ -98,8 +97,7 @@ fn new_comment_node(text: &str) -> Result<SolidityAST, MetamorphError> {
             \"lValueRequested\": false,
             \"nodeType\": \"Comment\",
             \"text\": null
-        }}"
-    );
+        }";
 
     let mut node = new_json_node(&node_string)?;
     node.set_node_for_key("text", text_node);
@@ -145,8 +143,7 @@ fn new_unary_op_node(
 fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, MetamorphError> {
     let node_array = json![array];
 
-    let node_str = format!(
-        "{{\
+    let node_str = "{\
             \"id\": 9999995,
             \"isConstant\": false,
             \"IsInlineArray\": false,
@@ -155,8 +152,7 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Met
             \"lValueRequested\": false,
             \"nodeType\": \"TupleExpression\",
             \"components\": null
-        }}"
-    );
+        }";
 
     let mut tuple_node = new_json_node(&node_str)?;
     tuple_node.set_node_for_key("components", node_array);
@@ -171,13 +167,11 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Met
 fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, MetamorphError> {
     let node_array = json![array];
 
-    let node_str = format!(
-        "{{\
+    let node_str = "{\
             \"id\": 9999994,
             \"nodeType\": \"UncheckedBlock\",
             \"statements\": null
-        }}"
-    );
+        }";
 
     let mut unchecked_node = new_json_node(&node_str)?;
     unchecked_node.set_node_for_key("statements", node_array);

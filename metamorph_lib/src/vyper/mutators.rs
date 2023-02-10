@@ -83,13 +83,12 @@ fn new_boolean_constant_node(value: bool) -> Result<VyperAST, MetamorphError> {
 fn new_comment_node(text: &str) -> Result<VyperAST, MetamorphError> {
     let text_node = json![text];
 
-    let node_str = format!(
-        "{{\
+    let node_str = "{\
             \"node_id\": 9999996,
             \"ast_type\": \"Comment\",
             \"value\": null
-        }}"
-    );
+        }";
+
     let mut node = new_json_node(&node_str)?;
     node.set_node_for_key("value", text_node);
     Ok(node)
@@ -97,12 +96,10 @@ fn new_comment_node(text: &str) -> Result<VyperAST, MetamorphError> {
 
 /// Return a new Pass node.
 fn new_pass_node() -> Result<VyperAST, MetamorphError> {
-    let node_str = format!(
-        "{{\
+    let node_str = "{\
             \"node_id\": 9999995,
             \"ast_type\": \"Pass\"
-        }}"
-    );
+        }";
     new_json_node(&node_str)
 }
 
@@ -128,13 +125,11 @@ fn new_string_node(text: &str) -> Result<VyperAST, MetamorphError> {
 ///
 /// * `node` - The node to use in the return.
 fn new_return_node(node: VyperAST) -> Result<VyperAST, MetamorphError> {
-    let node_str = format! {
-        "{{\
+    let node_str = "{\
             \"node_id\": 9999993,
             \"ast_type\": \"Return\",
             \"value\": null
-        }}"
-    };
+        }";
 
     let mut return_node = new_json_node(&node_str)?;
     return_node.set_node_for_key("value", node);
@@ -189,13 +184,11 @@ impl fmt::Display for ListLikeThing {
 fn new_list_like_thing_node(size: u32, kind: ListLikeThing) -> Result<VyperAST, MetamorphError> {
     let mut none_array: Vec<VyperAST> = vec![];
     for _i in 0..size {
-        let node_str = format!(
-            "{{\
+        let node_str = "{\
                 \"node_id\": 9999992,
                 \"ast_type\": \"NameConstant\",
                 \"value\": null
-            }}"
-        );
+            }";
 
         let node = new_json_node(&node_str)?;
         none_array.push(node);
