@@ -16,10 +16,10 @@ pub trait SimpleAST<N> {
     fn get_node_mut(&mut self) -> &mut N;
 
     /// Return a list of references to the children of the node.
-    fn get_children(&self) -> Vec<Box<&dyn SimpleAST<N>>>;
+    fn get_children(&self) -> Vec<&dyn SimpleAST<N>>;
 
     /// Return a list of mutable references to the children of the node.
-    fn get_children_mut(&mut self) -> Vec<Box<&mut dyn SimpleAST<N>>>;
+    fn get_children_mut(&mut self) -> Vec<&mut dyn SimpleAST<N>>;
 }
 
 /// Type used to traverse an abstract syntax tree of a language.
@@ -66,7 +66,7 @@ impl ASTTraverser {
             let children = tree_node.get_children();
             for child in children {
                 // Traverse each child of the node.
-                let should_stop = ASTTraverser::traverse(*child, visitor);
+                let should_stop = ASTTraverser::traverse(child, visitor);
                 if should_stop {
                     // Inform the visitor that we will leave this node.
                     visitor.on_exit(node);
@@ -121,7 +121,7 @@ impl ASTTraverser {
             let children = tree_node.get_children_mut();
             for child in children {
                 // Traverse each child node.
-                should_stop = ASTTraverser::traverse_mut(*child, visitor);
+                should_stop = ASTTraverser::traverse_mut(child, visitor);
                 if should_stop {
                     // We do not call visitor.on_exit() here because that would involve a second
                     // mutable borrow from tree_node in this scope.

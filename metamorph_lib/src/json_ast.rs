@@ -12,19 +12,19 @@ impl SimpleAST<Value> for Value {
         self
     }
 
-    fn get_children(&self) -> Vec<Box<&dyn SimpleAST<Value>>> {
+    fn get_children(&self) -> Vec<&dyn SimpleAST<Value>> {
         return if self.is_object() {
-            let mut list: Vec<Box<&dyn SimpleAST<Value>>> = vec![];
+            let mut list: Vec<&dyn SimpleAST<Value>> = vec![];
             let object = self.as_object().unwrap();
             for value in object.values() {
-                list.push(Box::new(value));
+                list.push(value);
             }
             list
         } else if self.is_array() {
-            let mut node_list: Vec<Box<&dyn SimpleAST<Value>>> = vec![];
+            let mut node_list: Vec<&dyn SimpleAST<Value>> = vec![];
             let array = self.as_array().unwrap();
             for value in array {
-                node_list.push(Box::new(value));
+                node_list.push(value);
             }
             node_list
         } else {
@@ -32,19 +32,19 @@ impl SimpleAST<Value> for Value {
         };
     }
 
-    fn get_children_mut(&mut self) -> Vec<Box<&mut dyn SimpleAST<Value>>> {
+    fn get_children_mut(&mut self) -> Vec<&mut dyn SimpleAST<Value>> {
         return if self.is_object() {
-            let mut list: Vec<Box<&mut dyn SimpleAST<Value>>> = vec![];
+            let mut list: Vec<&mut dyn SimpleAST<Value>> = vec![];
             let object = self.as_object_mut().unwrap();
             for value in object.values_mut() {
-                list.push(Box::new(value));
+                list.push(value);
             }
             list
         } else if self.is_array() {
-            let mut list: Vec<Box<&mut dyn SimpleAST<Value>>> = vec![];
+            let mut list: Vec<&mut dyn SimpleAST<Value>> = vec![];
             let array = self.as_array_mut().unwrap();
             for value in array {
-                list.push(Box::new(value));
+                list.push(value);
             }
             list
         } else {
