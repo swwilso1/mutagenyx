@@ -26,6 +26,19 @@ pub trait Visitor<N: ?Sized> {
     /// * `node` - A reference to the node that the visitor has started visiting.
     fn on_enter(&mut self, _node: &N) {}
 
+    /// Return true if the visitor can visit a node.
+    ///
+    /// During traversal, the traversal algorithm will enter the node.  Then, prior to calling
+    /// visit, the algorithm will see if the visitor has permission to enter the node.  If it does
+    /// not have permission, the traversal algorithm will skip directly to the node exit call.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node that the visitor wants to visit.
+    fn have_permission_to_visit(&self, _node: &N) -> bool {
+        true
+    }
+
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal
     /// of the syntax tree.
@@ -71,6 +84,19 @@ pub trait VisitorMut<N: ?Sized> {
     ///
     /// * `node` - A mutable reference to the node that the visitor has started visiting.
     fn on_enter(&mut self, _node: &mut N) {}
+
+    /// Return true if the visitor can visit a node.
+    ///
+    /// During traversal, the traversal algorithm will enter the node.  Then, prior to calling
+    /// visit, the algorithm will see if the visitor has permission to enter the node.  If it does
+    /// not have permission, the traversal algorithm will skip directly to the node exit call.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node that the visitor wants to visit.
+    fn have_permission_to_visit(&self, _node: &N) -> bool {
+        true
+    }
 
     /// The traversal algorithm calls this function when the visitor should fully process `node`.
     /// This function should return true if the visitor needs to prematurely terminate the traversal

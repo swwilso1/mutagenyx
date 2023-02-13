@@ -35,6 +35,9 @@ pub static MUTATIONS_KEY: &str = "mutations";
 /// The key for the boolean value to use all mutation algorithms.
 pub static ALL_MUTATIONS_KEY: &str = "all-mutations";
 
+/// The key for the list of functions to mutate.
+pub static FUNCTIONS_KEY: &str = "functions";
+
 /// Configuration details loaded from a .morph configuration file.
 pub struct ConfigurationFileDetails {
     /// Language specified in configuration file.
@@ -57,41 +60,12 @@ pub struct ConfigurationFileDetails {
 
     /// Details for compiler invocation.
     pub compiler_details: Option<Preferences>,
+
+    /// List of names of functions to mutate.  If the list is empty, all functions can be mutated.
+    pub functions: Vec<String>,
 }
 
 impl ConfigurationFileDetails {
-    /// Create a new configuration details object
-    ///
-    /// # Arguments
-    ///
-    /// * `language` - The language for the file.
-    /// * `filename` - The path to the file to mutate.
-    /// * `number_of_mutants` - The number of mutants to attempt to generate.
-    /// * `seed` - The random number generator seed.
-    /// * `mutations` - The array of mutation algorithms.
-    /// * `all_mutations` - True if the tool should use all mutation algorithms to generate mutants.
-    /// * `compiler_details` - The information needed to properly invoke the compiler.
-    pub fn new(
-        language: Option<Language>,
-        filename: String,
-        number_of_mutants: i64,
-        seed: Option<u64>,
-        mutations: &[MutationType],
-        all_mutations: bool,
-        compiler_details: Option<Preferences>,
-    ) -> ConfigurationFileDetails {
-        let filename_pathbuf = PathBuf::from(filename);
-        ConfigurationFileDetails {
-            language,
-            filename: filename_pathbuf,
-            number_of_mutants,
-            seed,
-            mutations: mutations.to_owned(),
-            all_mutations,
-            compiler_details,
-        }
-    }
-
     /// Create a new configuration details object by loading the configuration from a JSON
     /// file.  The file must have the extension ".morph".
     ///
@@ -124,6 +98,7 @@ impl ConfigurationFileDetails {
             seed: None,
             mutations: Vec::new(),
             all_mutations: false,
+            functions: Vec::new(),
         };
 
         if let Ok(json_value) = load_json_from_file_with_name(config_file) {
@@ -190,6 +165,14 @@ impl ConfigurationFileDetails {
                     Err(e) => return Err(e),
                 }
             }
+
+            if let Some(functions_array) = json_value.get_array_for_key(FUNCTIONS_KEY) {
+                details.functions = functions_array
+                    .iter()
+                    .filter(|v| v.is_string())
+                    .map(|v| String::from(v.as_str().unwrap()))
+                    .collect();
+            }
         } else {
             return Err(MetamorphError::ConfigFileNotSupported(String::from(
                 config_file,
@@ -233,6 +216,10 @@ impl ConfigurationFileDetails {
         if let Some(compiler_details) = &self.compiler_details {
             let details_value = Value::try_from(compiler_details.clone())?;
             json_value.set_node_for_key(COMPILER_DETAILS_KEY, details_value);
+        }
+
+        if !self.functions.is_empty() {
+            json_value.set_node_for_key(FUNCTIONS_KEY, json![self.functions]);
         }
 
         Ok(json_value)

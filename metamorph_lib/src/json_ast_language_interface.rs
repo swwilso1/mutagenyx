@@ -12,6 +12,7 @@ use crate::language_interface::MutableLanguage;
 use crate::mutation::MutationType;
 use crate::mutation_visitor::*;
 use crate::mutator::*;
+use crate::permissions::Permissions;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::recognizer::FileType;
@@ -37,9 +38,7 @@ impl JSONLanguageInterface {
     /// # Arguments
     ///
     /// * `sub_interface` - The language specific delegate to use for language-specific behavior.
-    pub fn new(
-        delegate: Box<dyn JSONLanguageDelegate>,
-    ) -> JSONLanguageInterface {
+    pub fn new(delegate: Box<dyn JSONLanguageDelegate>) -> JSONLanguageInterface {
         JSONLanguageInterface {
             mutators: HashMap::new(),
             delegate,
@@ -104,8 +103,10 @@ impl MutableLanguage for JSONLanguageInterface {
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
+        permissions: &Permissions,
     ) -> Result<HashMap<MutationType, usize>, MetamorphError> {
-        let mut counter_visitor = MutableNodesCounter::<Value>::new(&self.mutators);
+        let permitter = self.delegate.get_node_permitter(permissions);
+        let mut counter_visitor = MutableNodesCounter::<Value>::new(&self.mutators, permitter);
         let actual_ast = self.recover_json_ast(ast)?;
 
         // Traverse the AST and count the number of nodes that a mutator can mutate for each
@@ -128,7 +129,10 @@ impl MutableLanguage for JSONLanguageInterface {
         mutation_type: &MutationType,
         index: usize,
         rng: &mut Pcg64,
+        permissions: &Permissions,
     ) -> Result<SuperAST, MetamorphError> {
+        let permitter = self.delegate.get_node_permitter(permissions);
+
         let actual_ast = self.recover_json_ast(ast)?;
 
         let mut mutated_ast = actual_ast.clone();
@@ -137,6 +141,7 @@ impl MutableLanguage for JSONLanguageInterface {
             self.mutators.get(mutation_type).unwrap().as_ref(),
             rng,
             index,
+            permitter,
         );
 
         // Traverse the cloned AST, only mutating the index(th) node in the tree that the mutation

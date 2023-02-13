@@ -183,6 +183,21 @@ impl Preferences {
         None
     }
 
+    /// Return a bool for the value stored for `key` if the value is a bool.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string value containing the key.
+    pub fn get_bool_for_key(&self, key: &str) -> Option<bool> {
+        if let Some(value) = self.map.get(key) {
+            return match value {
+                PreferenceValue::Boolean(b) => Some(*b),
+                _ => None,
+            };
+        }
+        None
+    }
+
     /// Return a [`HashMap<String, PreferenceValue>`] for the value stored for `key` if the value
     /// is a map.
     ///
@@ -305,6 +320,16 @@ impl Preferences {
     pub fn set_preferences_for_key(&mut self, key: &str, prefs: Preferences) {
         self.map
             .insert(String::from(key), PreferenceValue::Map(prefs.map));
+    }
+
+    /// Return the number of preferences stored in the object.
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Return true if the object is empty.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 }
 

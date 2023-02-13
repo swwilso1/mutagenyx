@@ -10,6 +10,7 @@ use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language::Language;
 use metamorph_lib::language_interface::*;
 use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
+use metamorph_lib::permissions::Permissions;
 use metamorph_lib::preferences::Preferences;
 use metamorph_lib::recognizer::{FileType, Recognizer};
 use metamorph_lib::super_ast::SuperAST;
@@ -100,12 +101,24 @@ pub fn generate_mutants(args: MutateCLArgs) {
             print_original: args.print_original,
             save_configuration_file: args.save_config_files,
             preferences: &mut preferences,
+            functions: args.functions.clone(),
         };
 
         if let Err(e) = generate_mutations(&mut generator_params) {
             println!("Unable to generate mutations: {}", e);
         }
     }
+}
+
+fn convert_function_names_to_permissions(names: &Vec<String>) -> Permissions {
+    let mut permissions = Permissions::new();
+
+    for function_name in names {
+        let permission_value = String::from("mutate.") + function_name.as_str();
+        permissions.set_permission(&permission_value, true);
+    }
+
+    permissions
 }
 
 /// An upper bound on the number times to try to generate a particular mutant for an input file.
@@ -124,6 +137,10 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
     let mut language_object =
         LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
+
+    // create the mutation permissions
+    let mut function_mutation_permissions =
+        convert_function_names_to_permissions(&params.functions);
 
     if recognize_result.file_type == FileType::Config {
         // If we have a config file, then we need to override parameters with details from
@@ -168,6 +185,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
         } else if !configuration_details.mutations.is_empty() {
             params.mutations = configuration_details.mutations;
         }
+
+        if !configuration_details.functions.is_empty() {
+            function_mutation_permissions.clear();
+            function_mutation_permissions =
+                convert_function_names_to_permissions(&configuration_details.functions);
+            params.functions = configuration_details.functions;
+        }
     }
 
     if !params.mutations.is_empty() {
@@ -185,7 +209,8 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
     language_object.select_mutators_for_mutation_types(&params.mutations)?;
 
-    let mutable_nodes_table = language_object.count_mutable_nodes(&ast)?;
+    let mutable_nodes_table =
+        language_object.count_mutable_nodes(&ast, &function_mutation_permissions)?;
 
     if mutable_nodes_table.is_empty() {
         return Err(MetamorphError::NoMutableNode);
@@ -227,15 +252,16 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             }
         };
 
-        let details = ConfigurationFileDetails::new(
-            Some(recognize_result.language),
-            params.file_name.clone(),
-            params.number_of_mutants as i64,
-            Some(params.rng_seed),
-            &params.mutations,
-            false,
+        let details = ConfigurationFileDetails {
+            language: Some(recognize_result.language),
+            filename: PathBuf::from(params.file_name.clone()),
+            number_of_mutants: params.number_of_mutants as i64,
+            seed: Some(params.rng_seed),
+            mutations: params.mutations.clone(),
+            all_mutations: false,
             compiler_details,
-        );
+            functions: params.functions.clone(),
+        };
 
         // Build the output file name.
         let input_file_name = PathBuf::from(&params.file_name);
@@ -300,8 +326,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             };
 
             // Generate the mutated AST.
-            let mutated_ast =
-                language_object.mutate_ast(&ast, mutation_type, index, &mut params.rng)?;
+            let mutated_ast = language_object.mutate_ast(
+                &ast,
+                mutation_type,
+                index,
+                &mut params.rng,
+                &function_mutation_permissions,
+            )?;
 
             // See if we have already generated this AST before.  We only want to output unique
             // mutations.

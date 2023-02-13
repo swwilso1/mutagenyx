@@ -42,4 +42,7 @@ pub struct GeneratorParameters<'a> {
 
     /// Preferences
     pub preferences: &'a mut Preferences,
+
+    /// Function names to mutate.
+    pub functions: Vec<String>,
 }

@@ -4,6 +4,8 @@
 use crate::error::MetamorphError;
 use crate::language::Language;
 use crate::mutator::MutatorFactory;
+use crate::permissions::Permissions;
+use crate::permit::Permit;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::super_ast::SuperAST;
@@ -78,4 +80,11 @@ pub trait JSONLanguageDelegate {
 
     /// Return a [`Preferences`] object containing compiler default settings.
     fn default_compiler_settings(&self) -> Preferences;
+
+    /// Return a [`Permit`] object that will contain permission settings for
+    /// mutating an AST.
+    fn get_node_permitter<'a>(
+        &'a self,
+        permissions: &'a Permissions,
+    ) -> Box<dyn Permit<Value> + '_>;
 }

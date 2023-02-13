@@ -64,6 +64,10 @@ pub struct MutateCLArgs {
     /// Write output to stdout instead of the directory given in `output_directory`.
     #[clap(long)]
     pub stdout: bool,
+
+    /// Only generate mutations in the listed functions.
+    #[clap(long, multiple = true)]
+    pub functions: Vec<String>,
 }
 
 /// Pretty-print sub-command command line arguments.

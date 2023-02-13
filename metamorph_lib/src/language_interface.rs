@@ -6,6 +6,7 @@ use crate::error::MetamorphError;
 use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
+use crate::permissions::Permissions;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
 use crate::recognizer::FileType;
@@ -60,9 +61,12 @@ pub trait MutableLanguage {
     /// # Arguments
     ///
     /// * `ast` - The [`SuperAST`] object that encapsulates the concrete language AST.
+    /// * `permissions` - A [`Permissions`] object containing permission settings that control
+    /// how to count the nodes.
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
+        permissions: &Permissions,
     ) -> Result<HashMap<MutationType, usize>, MetamorphError>;
 
     /// Make a copy of `ast`, traverse the copy and mutate one node in the AST using the
@@ -77,12 +81,14 @@ pub trait MutableLanguage {
     /// The index values index nodes in AST traversal order.
     /// * `rng` - The random number generator for the mutator objects to use. The mutator
     /// objects may randomly select variations withing a mutation algorithm when mutating a node.
+    /// * `permissions` - A [`Permissions`] object that controls how to mutate the ast.
     fn mutate_ast(
         &mut self,
         ast: &SuperAST,
         mutation_type: &MutationType,
         index: usize,
         rng: &mut Pcg64,
+        permissions: &Permissions,
     ) -> Result<SuperAST, MetamorphError>;
 
     /// Pretty-print the contents of `ast` to the file named in `file_name`.

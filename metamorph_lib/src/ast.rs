@@ -51,29 +51,32 @@ impl ASTTraverser {
         // Let the visitor know that we are starting to process the node.
         visitor.on_enter(node);
 
-        // Have the visitor process the node.
-        let should_stop = visitor.visit(node);
-        if should_stop {
-            visitor.on_exit(node);
-            return true;
-        }
+        if visitor.have_permission_to_visit(node) {
+            // Have the visitor process the node.
+            let should_stop = visitor.visit(node);
+            if should_stop {
+                visitor.on_exit(node);
+                return true;
+            }
 
-        // Check to see if this visitor needs this algorithm to traverse the node's children.  Some
-        // visitors will traverse child nodes in order to correctly in-order process the syntax
-        // tree. If the visitor does not traverse the children then we will traverse the children
-        // in this algorithm.
-        if visitor.visit_children(node) {
-            let children = tree_node.get_children();
-            for child in children {
-                // Traverse each child of the node.
-                let should_stop = ASTTraverser::traverse(child, visitor);
-                if should_stop {
-                    // Inform the visitor that we will leave this node.
-                    visitor.on_exit(node);
-                    return true;
+            // Check to see if this visitor needs this algorithm to traverse the node's children.  Some
+            // visitors will traverse child nodes in order to correctly in-order process the syntax
+            // tree. If the visitor does not traverse the children then we will traverse the children
+            // in this algorithm.
+            if visitor.visit_children(node) {
+                let children = tree_node.get_children();
+                for child in children {
+                    // Traverse each child of the node.
+                    let should_stop = ASTTraverser::traverse(child, visitor);
+                    if should_stop {
+                        // Inform the visitor that we will leave this node.
+                        visitor.on_exit(node);
+                        return true;
+                    }
                 }
             }
         }
+
         // Inform the visitor that we will leave this node.
         visitor.on_exit(node);
         false
@@ -103,32 +106,37 @@ impl ASTTraverser {
         // more than one mutable reference to an object at any given time, so we instead make use of
         // the tree_node.get_node_mut() function to borrow mutably only when absolutely necessary.
 
+        let mut should_stop = false;
+
         // Inform the visitor that we have started processing the node.
         visitor.on_enter(tree_node.get_node_mut());
 
-        // Have the visitor fully process the node.
-        let mut should_stop = visitor.visit_mut(tree_node.get_node_mut());
-        if should_stop {
-            visitor.on_exit(tree_node.get_node_mut());
-            return true;
-        }
+        if visitor.have_permission_to_visit(tree_node.get_node()) {
+            // Have the visitor fully process the node.
+            should_stop = visitor.visit_mut(tree_node.get_node_mut());
+            if should_stop {
+                visitor.on_exit(tree_node.get_node_mut());
+                return true;
+            }
 
-        // Check to see if this visitor needs this algorithm to traverse the node's children.  Some
-        // visitors will traverse child nodes in order to correctly in-order process the syntax
-        // tree. If the visitor does not traverse the children then we will traverse the children
-        // in this algorithm.
-        if visitor.visit_children(tree_node.get_node_mut()) {
-            let children = tree_node.get_children_mut();
-            for child in children {
-                // Traverse each child node.
-                should_stop = ASTTraverser::traverse_mut(child, visitor);
-                if should_stop {
-                    // We do not call visitor.on_exit() here because that would involve a second
-                    // mutable borrow from tree_node in this scope.
-                    break;
+            // Check to see if this visitor needs this algorithm to traverse the node's children.  Some
+            // visitors will traverse child nodes in order to correctly in-order process the syntax
+            // tree. If the visitor does not traverse the children then we will traverse the children
+            // in this algorithm.
+            if visitor.visit_children(tree_node.get_node_mut()) {
+                let children = tree_node.get_children_mut();
+                for child in children {
+                    // Traverse each child node.
+                    should_stop = ASTTraverser::traverse_mut(child, visitor);
+                    if should_stop {
+                        // We do not call visitor.on_exit() here because that would involve a second
+                        // mutable borrow from tree_node in this scope.
+                        break;
+                    }
                 }
             }
         }
+
         // Inform the visitor that we will leave this node.
         visitor.on_exit(tree_node.get_node_mut());
         if should_stop {

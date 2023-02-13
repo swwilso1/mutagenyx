@@ -4,10 +4,13 @@
 use crate::compiler_details::*;
 use crate::error::MetamorphError;
 use crate::json::*;
+use crate::json_ast_permitter::JSONPermitter;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
 use crate::mutator::*;
 use crate::node_printer::NodePrinterFactory;
+use crate::permissions::Permissions;
+use crate::permit::Permit;
 use crate::preferences::Preferences;
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
@@ -125,6 +128,13 @@ impl JSONLanguageDelegate for VyperLanguageDelegate {
         let mut preferences = Preferences::new();
         preferences.set_string_for_key(PATH_KEY, "vyper");
         preferences
+    }
+
+    fn get_node_permitter<'a>(
+        &'a self,
+        permissions: &'a Permissions,
+    ) -> Box<dyn Permit<Value> + '_> {
+        Box::new(JSONPermitter::new(permissions, "ast_type", "FunctionDef"))
     }
 }
 

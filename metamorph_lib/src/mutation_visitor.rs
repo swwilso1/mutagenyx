@@ -3,6 +3,7 @@
 
 use crate::mutation::MutationType;
 use crate::mutator::*;
+use crate::permit::*;
 use crate::visitor::*;
 use rand_pcg::*;
 use std::collections::HashMap;
@@ -15,6 +16,9 @@ pub struct MutableNodesCounter<'a, AST> {
 
     /// A reference to the map of mutators by [`MutationType`].
     mutator_map: &'a HashMap<MutationType, Box<dyn Mutator<AST>>>,
+
+    /// A [`Permit`] trait object that responds to permission queries.
+    permitter: Box<dyn Permit<AST> + 'a>,
 }
 
 impl<'a, AST> MutableNodesCounter<'a, AST> {
@@ -23,12 +27,15 @@ impl<'a, AST> MutableNodesCounter<'a, AST> {
     /// # Arguments
     ///
     /// * `mutator_map` - A reference to an external map of mutators by [`MutationType`].
+    /// * `permitter` - A [`Permit`] trait object that answers permission questions.
     pub fn new(
         mutator_map: &'a HashMap<MutationType, Box<dyn Mutator<AST>>>,
+        permitter: Box<dyn Permit<AST> + 'a>,
     ) -> MutableNodesCounter<'a, AST> {
         MutableNodesCounter {
             counter_table: HashMap::new(),
             mutator_map,
+            permitter,
         }
     }
 }
@@ -36,9 +43,13 @@ impl<'a, AST> MutableNodesCounter<'a, AST> {
 impl<'a, AST> Visitor<AST> for MutableNodesCounter<'a, AST> {
     fn on_enter(&mut self, _node: &AST) {}
 
+    fn have_permission_to_visit(&self, node: &AST) -> bool {
+        self.permitter.has_permission_to(VISIT, node)
+    }
+
     fn visit(&mut self, node: &AST) -> bool {
-        for (key, value) in self.mutator_map {
-            if value.is_mutable_node(node) {
+        for (key, mutator) in self.mutator_map {
+            if mutator.is_mutable_node(node) {
                 if self.counter_table.contains_key(key) {
                     let size = self.counter_table.get_mut(key).unwrap();
                     *size += 1;
@@ -76,6 +87,9 @@ pub struct MutationMaker<'a, AST> {
 
     /// The current count of mutable nodes in the AST.
     current_index: usize,
+
+    /// A [`Permit`] trait object that responds to permission queries.
+    permitter: Box<dyn Permit<AST> + 'a>,
 }
 
 impl<'a, AST> MutationMaker<'a, AST> {
@@ -86,22 +100,29 @@ impl<'a, AST> MutationMaker<'a, AST> {
     /// * `mutator` - The reference to the mutator.
     /// * `rng` - The reference to the random number generator.
     /// * `index` - The index of the node in the AST to mutate.
+    /// * `permitter` - A [`Permit`] trait object that answers permission questions.
     pub fn new(
         mutator: &'a dyn Mutator<AST>,
         rng: &'a mut Pcg64,
         index: usize,
+        permitter: Box<dyn Permit<AST> + 'a>,
     ) -> MutationMaker<'a, AST> {
         MutationMaker {
             mutator,
             rng,
             index,
             current_index: 0,
+            permitter,
         }
     }
 }
 
 impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
     fn on_enter(&mut self, _node: &mut AST) {}
+
+    fn have_permission_to_visit(&self, node: &AST) -> bool {
+        self.permitter.has_permission_to(VISIT, node)
+    }
 
     fn visit_mut(&mut self, node: &mut AST) -> bool {
         if self.mutator.is_mutable_node(node) {
