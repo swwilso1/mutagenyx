@@ -235,11 +235,8 @@ impl MutableLanguage for JSONLanguageInterface {
             .delegate
             .mutant_compiles(source_file.to_str().unwrap(), prefs);
 
-        match std::fs::remove_file(source_file.clone()) {
-            Ok(_) => (),
-            _ => {
-                log::debug!("Failed to remove temporary source file: {:?}", source_file);
-            }
+        if std::fs::remove_file(source_file.clone()).is_err() {
+            log::debug!("Failed to remove temporary source file: {:?}", source_file);
         }
 
         compile_result
