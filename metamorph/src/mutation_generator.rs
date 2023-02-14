@@ -204,7 +204,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                     output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
                     use_stdout: args.stdout,
                     mutations: actual_mutations.clone(),
-                    verify_mutant_viability: false,
+                    verify_mutant_viability: args.check,
                     print_original: args.print_original,
                     save_configuration_file: args.save_config_files,
                     preferences: actual_preferences.clone(),
@@ -222,7 +222,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                 output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
                 use_stdout: args.stdout,
                 mutations: actual_mutations,
-                verify_mutant_viability: false,
+                verify_mutant_viability: args.check,
                 print_original: args.print_original,
                 save_configuration_file: args.save_config_files,
                 preferences: actual_preferences,
@@ -406,6 +406,13 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             // See if we have already generated this AST before.  We only want to output unique
             // mutations.
             if observed_asts.contains(&mutated_ast) {
+                attempts += 1;
+                continue;
+            }
+
+            if params.verify_mutant_viability
+                && !language_object.mutant_compiles(&mutated_ast, &params.preferences)
+            {
                 attempts += 1;
                 continue;
             }

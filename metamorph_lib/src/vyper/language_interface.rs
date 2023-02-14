@@ -136,6 +136,102 @@ impl JSONLanguageDelegate for VyperLanguageDelegate {
     ) -> Box<dyn Permit<Value> + '_> {
         Box::new(JSONPermitter::new(permissions, "ast_type", "FunctionDef"))
     }
+
+    fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool {
+        file_compiles(file_name, prefs)
+    }
+}
+
+/// Retrieve Vyper compiler flags from a [`Preferences`] object.
+///
+/// # Arguments
+///
+/// * `prefs` - The [`Preferences`] object.
+fn get_vyper_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<String> {
+    let mut args: Vec<String> = Vec::new();
+
+    let language_key = format!["{}", Language::Vyper];
+    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
+                args.push(String::from("-p"));
+                args.push(root_path);
+            }
+        }
+    }
+
+    args
+}
+
+/// Retrieve the Vyper compiler from a [`Preferences`] object.
+///
+/// # Arguments
+///
+/// * `prefs` - The [`Preferences`] containing the compiler path.
+fn get_vyper_compiler_from_preferences(prefs: &Preferences) -> String {
+    let mut vyper_compiler = String::from("vyper");
+
+    let language_key = format!["{}", Language::Vyper];
+    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
+                vyper_compiler = path;
+            }
+        }
+    }
+
+    vyper_compiler
+}
+
+/// Invoke the compiler and get it's version information.
+///
+/// # Arguments
+///
+/// * `compiler` - The compiler to query.
+fn get_vyper_compiler_version(compiler: &str) -> Result<Versioning, MetamorphError> {
+    let discovered_compiler_version = match shell_execute(compiler, vec![String::from("--version")])
+    {
+        Ok(output) => {
+            if output.status.success() {
+                let output_version = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+
+                // Clip off the newline character.  The Mess code dislikes the newline.
+                let output_version = &output_version[..output_version.len() - 1];
+
+                // We use Mess here because the compiler may output some non-semantic versioned string
+                // like `0.2.11+commit.5db35ef` for a compiler version.  Mess gives us a shot at recovering
+                // the major/minor/release numbers even when the version string has extra, hard-to-parse
+                // contents.
+                match Mess::new(output_version) {
+                    Some(v) => {
+                        let mut vstr = String::new();
+                        if let Some(value) = v.nth(0) {
+                            vstr += &(value).to_string();
+                        }
+                        vstr += ".";
+                        if let Some(value) = v.nth(1) {
+                            vstr += &(value).to_string();
+                        }
+                        vstr += ".";
+                        if let Some(value) = v.nth(2) {
+                            vstr += &(value).to_string();
+                        }
+                        Versioning::new(&vstr).unwrap()
+                    }
+                    None => return Err(MetamorphError::CompilerNoVersion(String::from(compiler))),
+                }
+            } else {
+                let command_error = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::error!("Unable to retrieve compiler version: {}", command_error);
+                return Err(MetamorphError::CompilerNoVersion(String::from(compiler)));
+            }
+        }
+        Err(e) => {
+            log::error!("shell_execute error: {}", e);
+            return Err(e);
+        }
+    };
+    Ok(discovered_compiler_version)
 }
 
 /// Try to execute the vyper compiler on the command line assuming that the user
@@ -160,7 +256,6 @@ fn file_is_source_file_with_vyper_from_pip(
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
     let mut full_path_to_tmp_file = PathBuf::from(&tmp_dir);
-    let mut full_compiler_args: Vec<String> = Vec::new();
 
     // The Vyper compiler did not start to support '-o outfile_name' as a command line option until
     // Vyper compiler version 3.0.0.
@@ -168,68 +263,10 @@ fn file_is_source_file_with_vyper_from_pip(
 
     full_path_to_tmp_file.push(String::from(base_name) + ".json");
 
-    // Check to see if the caller gave us a unique Vyper compiler, otherwise use `vyper` as the
-    // default.
-    let mut vyper_compiler = String::from("vyper");
+    let vyper_compiler = get_vyper_compiler_from_preferences(preferences);
+    let mut full_compiler_args = get_vyper_compiler_flags_from_preferences(preferences);
 
-    let language_key = format!["{}", Language::Vyper];
-    if let Some(language_prefs) = preferences.get_preferences_for_key(&language_key) {
-        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
-            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
-                vyper_compiler = path;
-            }
-            if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
-                full_compiler_args.push(String::from("-p"));
-                full_compiler_args.push(root_path);
-            }
-        }
-    }
-
-    let discovered_compiler_version: Versioning;
-
-    // Now check the compiler version to see if we support -o.
-    log::debug!("Invoking Vyper compiler {} with --version", vyper_compiler);
-    match shell_execute(&vyper_compiler, vec![String::from("--version")]) {
-        Ok(output) => {
-            if output.status.success() {
-                let output_version = core::str::from_utf8(output.stdout.as_slice()).unwrap();
-
-                // Clip off the newline character.  The Mess code dislikes the newline.
-                let output_version = &output_version[..output_version.len() - 1];
-
-                // We use Mess here because the compiler may output some non-semantic versioned string
-                // like `0.2.11+commit.5db35ef` for a compiler version.  Mess gives us a shot at recovering
-                // the major/minor/release numbers even when the version string has extra, hard-to-parse
-                // contents.
-                discovered_compiler_version = match Mess::new(output_version) {
-                    Some(v) => {
-                        let mut vstr = String::new();
-                        if let Some(value) = v.nth(0) {
-                            vstr += &(value as u32).to_string();
-                        }
-                        vstr += ".";
-                        if let Some(value) = v.nth(1) {
-                            vstr += &(value as u32).to_string();
-                        }
-                        vstr += ".";
-                        if let Some(value) = v.nth(2) {
-                            vstr += &(value as u32).to_string();
-                        }
-                        Versioning::new(&vstr).unwrap()
-                    }
-                    None => return Err(MetamorphError::CompilerNoVersion(vyper_compiler)),
-                };
-            } else {
-                let command_error = core::str::from_utf8(output.stderr.as_slice()).unwrap();
-                log::error!("Unable to retrieve compiler version: {}", command_error);
-                return Err(MetamorphError::CompilerNoVersion(vyper_compiler));
-            }
-        }
-        Err(e) => {
-            log::error!("shell_execute error: {}", e);
-            return Err(e);
-        }
-    }
+    let discovered_compiler_version = get_vyper_compiler_version(&vyper_compiler)?;
 
     // Now that we know the compiler version, set the appropriate command-line arguments and
     // mark whether or not we should post-process the output.  If the compiler does not support
@@ -316,17 +353,10 @@ fn file_is_source_file_with_docker(
     args.push(String::from("-f"));
     args.push(String::from("ast"));
 
-    // Here we pause in constructing 'args' to check if the user passed us some compiler_details.
-    // In this case the compiler details might contain information about the -p command line flag
-    // and if present we need to add that flag to 'args'.
-    let language_key = format!["{}", Language::Vyper];
-    if let Some(language_prefs) = preferences.get_preferences_for_key(&language_key) {
-        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
-            if let Some(root_path) = compiler_prefs.get_string_for_key(ROOT_PATH_KEY) {
-                args.push(String::from("-p"));
-                args.push(root_path);
-            }
-        }
+    let other_compiler_args = get_vyper_compiler_flags_from_preferences(preferences);
+
+    for other_arg in other_compiler_args {
+        args.push(other_arg);
     }
 
     args.push(String::from(file_name));
@@ -349,4 +379,89 @@ fn file_is_source_file_with_docker(
             file_name,
         ))),
     }
+}
+
+fn file_compiles_with_pip(file_name: &str, prefs: &Preferences) -> bool {
+    let vyper_compiler = get_vyper_compiler_from_preferences(prefs);
+    let mut full_compiler_args = get_vyper_compiler_flags_from_preferences(prefs);
+
+    full_compiler_args.push(String::from(file_name));
+
+    log::debug!(
+        "Attempting to compile {} with Vyper compiler '{}' and args: {:?}",
+        file_name,
+        vyper_compiler,
+        full_compiler_args
+    );
+
+    match shell_execute(&vyper_compiler, full_compiler_args) {
+        Ok(output) => {
+            if !output.status.success() {
+                let stdout_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+                let stderr_contents = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::debug!(
+                    "Compilation failed:\n\tstdout: {}\n\tstderr: {}",
+                    stdout_contents,
+                    stderr_contents
+                );
+            }
+            output.status.success()
+        }
+        Err(_e) => false,
+    }
+}
+
+fn file_compiles_with_docker(file_name: &str, prefs: &Preferences) -> bool {
+    // The docker command to invoke the Vyper compiler requires the path where the source file
+    // is located to map into the container /code directory.
+    let mut directory_name = PathBuf::from_str(file_name).unwrap();
+
+    // Now get just the directory:
+    directory_name.pop();
+
+    let dir_name = directory_name.to_str().unwrap();
+
+    let mut args: Vec<String> = Vec::new();
+    args.push(String::from("run"));
+    args.push(String::from("-v"));
+    args.push(format!("{dir_name}:/code"));
+    args.push(String::from("vyperlang/vyper"));
+
+    let other_compiler_args = get_vyper_compiler_flags_from_preferences(prefs);
+
+    for other_arg in other_compiler_args {
+        args.push(other_arg);
+    }
+
+    args.push(String::from(file_name));
+
+    log::debug!(
+        "Attempting to compile {} with docker Vyper compiler and args: {:?}",
+        file_name,
+        args
+    );
+
+    match shell_execute("docker", args) {
+        Ok(output) => {
+            if !output.status.success() {
+                let stdout_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+                let stderr_contents = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::debug!(
+                    "Compilation failed:\n\tstdout: {}\n\tstderr: {}",
+                    stdout_contents,
+                    stderr_contents
+                );
+            }
+            output.status.success()
+        }
+        Err(_e) => false,
+    }
+}
+
+fn file_compiles(file_name: &str, prefs: &Preferences) -> bool {
+    if file_compiles_with_pip(file_name, prefs) {
+        return true;
+    }
+
+    file_compiles_with_docker(file_name, prefs)
 }

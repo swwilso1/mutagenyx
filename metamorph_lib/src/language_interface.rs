@@ -156,6 +156,14 @@ pub trait MutableLanguage {
     /// Return a [`Preferences`] object containing default compiler settings for the language.
     fn default_compiler_settings(&self) -> Preferences;
 
+    /// Return true if the program in `file_name` compiles.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_name` - The string slice referencing the text containing the file name.
+    /// * `prefs` - The preferences object that contains compiler settings.
+    fn mutant_compiles(&mut self, ast: &SuperAST, prefs: &Preferences) -> bool;
+
     /// Returns the [`Language`] type that the language sub-module implements.
     fn implements(&self) -> Language;
 }

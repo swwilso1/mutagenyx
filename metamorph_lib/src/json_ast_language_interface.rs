@@ -20,6 +20,7 @@ use crate::super_ast::SuperAST;
 use rand_pcg::Pcg64;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::env;
 use std::io::Write;
 
 /// The interface object for the programming languages with JSON encoded ASTs.
@@ -213,6 +214,35 @@ impl MutableLanguage for JSONLanguageInterface {
 
     fn default_compiler_settings(&self) -> Preferences {
         self.delegate.default_compiler_settings()
+    }
+
+    fn mutant_compiles(&mut self, ast: &SuperAST, prefs: &Preferences) -> bool {
+        // We will pretty print the AST to a file in the temp directory.
+        let mut source_file = env::temp_dir();
+        let file_name = String::from("mutant") + "." + self.get_extension_for_output_file();
+        source_file.push(file_name);
+
+        let mut pretty_printer = PrettyPrinter::new(4, 150);
+
+        if self
+            .pretty_print_ast_to_file(ast, source_file.to_str().unwrap(), &mut pretty_printer)
+            .is_err()
+        {
+            return false;
+        }
+
+        let compile_result = self
+            .delegate
+            .mutant_compiles(source_file.to_str().unwrap(), prefs);
+
+        match std::fs::remove_file(source_file.clone()) {
+            Ok(_) => (),
+            _ => {
+                log::debug!("Failed to remove temporary source file: {:?}", source_file);
+            }
+        }
+
+        compile_result
     }
 
     fn implements(&self) -> Language {

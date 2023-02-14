@@ -68,6 +68,10 @@ pub struct MutateCLArgs {
     /// Only generate mutations in the listed functions.
     #[clap(long, multiple = true)]
     pub functions: Vec<String>,
+
+    /// Check each mutant for correctness. (Currently attempts to compile each mutant)
+    #[clap(long)]
+    pub check: bool,
 }
 
 /// Pretty-print sub-command command line arguments.

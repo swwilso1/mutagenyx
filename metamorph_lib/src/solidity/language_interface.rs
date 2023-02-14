@@ -134,6 +134,66 @@ impl JSONLanguageDelegate for SolidityLanguageSubDelegate {
             "FunctionDefinition",
         ))
     }
+
+    fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool {
+        file_compiles(file_name, prefs)
+    }
+}
+
+/// Retrieve Solidity compiler flags from a [`Preferences`] object.
+///
+/// # Arguments
+///
+/// * `prefs` - The [`Preferences`] object.
+fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<String> {
+    let mut args: Vec<String> = Vec::new();
+
+    let language_key = format!["{}", Language::Solidity];
+    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(base_path) = compiler_prefs.get_string_for_key(BASE_PATH_KEY) {
+                args.push(String::from("--base-path"));
+                args.push(base_path);
+            }
+            if let Some(include_path_array) = compiler_prefs.get_array_for_key(INCLUDE_PATHS_KEY) {
+                for path in &include_path_array {
+                    if let PreferenceValue::String(s) = path {
+                        args.push(String::from("--include-path"));
+                        args.push(s.clone());
+                    }
+                }
+            }
+            if let Some(remappings_array) = compiler_prefs.get_array_for_key(REMAPPINGS_KEY) {
+                for mapping in &remappings_array {
+                    if let PreferenceValue::String(s) = mapping {
+                        args.push(s.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    args
+}
+
+/// Retrieve the Solidity compiler from a [`Preferences`] object.
+///
+/// # Arguments
+///
+/// * `prefs` - The [`Preferences`] containing the compiler path.
+fn get_solidity_compiler_from_preferences(prefs: &Preferences) -> String {
+    let mut solidity_compiler = String::from("solc");
+
+    let language_key = format!["{}", Language::Solidity];
+    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
+        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
+            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
+                solidity_compiler = path;
+            }
+        }
+    }
+
+    solidity_compiler
 }
 
 /// Try to execute the Solidity compiler on the command line.
@@ -155,39 +215,8 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         file_name,
     ];
 
-    let mut full_compiler_args: Vec<String> = Vec::new();
-
-    let mut solidity_compiler = String::from("solc");
-
-    let language_key = format!["{}", Language::Solidity];
-    if let Some(language_prefs) = prefs.get_preferences_for_key(&language_key) {
-        if let Some(compiler_prefs) = language_prefs.get_preferences_for_key(COMPILER_KEY) {
-            if let Some(path) = compiler_prefs.get_string_for_key(PATH_KEY) {
-                solidity_compiler = path;
-            }
-            if let Some(base_path) = compiler_prefs.get_string_for_key(BASE_PATH_KEY) {
-                full_compiler_args.push(String::from("--base-path"));
-                full_compiler_args.push(base_path);
-            }
-            if let Some(include_path_array) = compiler_prefs.get_array_for_key(INCLUDE_PATHS_KEY) {
-                for path in &include_path_array {
-                    if let PreferenceValue::String(s) = path {
-                        full_compiler_args.push(String::from("--include-path"));
-                        full_compiler_args.push(s.clone());
-                    }
-                }
-            }
-            if let Some(remappings_array) = compiler_prefs.get_array_for_key(REMAPPINGS_KEY) {
-                for mapping in &remappings_array {
-                    if let PreferenceValue::String(s) = mapping {
-                        full_compiler_args.push(s.clone());
-                    }
-                }
-            }
-        }
-    } else if let Some(PreferenceValue::String(s)) = prefs.get_value_for_key("solidity_compiler") {
-        solidity_compiler = s;
-    }
+    let solidity_compiler = get_solidity_compiler_from_preferences(prefs);
+    let mut full_compiler_args: Vec<String> = get_solidity_compiler_flags_from_preferences(prefs);
 
     for arg in &args {
         full_compiler_args.push(String::from(*arg));
@@ -198,6 +227,7 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         solidity_compiler,
         full_compiler_args
     );
+
     match shell_execute(&solidity_compiler, full_compiler_args) {
         Ok(output) => {
             if output.status.success() {
@@ -211,5 +241,46 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
         Err(_e) => Err(MetamorphError::SourceDoesNotCompile(String::from(
             file_name,
         ))),
+    }
+}
+
+/// Checks to see if the contents of file located at `file_name` compiles.
+///
+/// # Arguments
+///
+/// * `file_name` - The name of the file in the file system to compile.
+/// * `prefs` - The [`Preferences`] object containing compiler settings.
+fn file_compiles(file_name: &str, prefs: &Preferences) -> bool {
+    let tmp_dir = env::temp_dir();
+    let args = vec!["--overwrite", "-o", tmp_dir.to_str().unwrap(), file_name];
+
+    let solidity_compiler = get_solidity_compiler_from_preferences(prefs);
+    let mut full_compiler_args: Vec<String> = get_solidity_compiler_flags_from_preferences(prefs);
+
+    for arg in &args {
+        full_compiler_args.push(String::from(*arg));
+    }
+
+    log::debug!(
+        "Attempting to compile {} with Solidity compiler '{}' and args: {:?}",
+        file_name,
+        solidity_compiler,
+        full_compiler_args
+    );
+
+    match shell_execute(&solidity_compiler, full_compiler_args) {
+        Ok(output) => {
+            if !output.status.success() {
+                let stdout_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+                let stderr_contents = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::debug!(
+                    "Compilation failed:\n\tstdout: {}\n\tstderr: {}",
+                    stdout_contents,
+                    stderr_contents
+                );
+            }
+            output.status.success()
+        }
+        Err(_e) => false,
     }
 }

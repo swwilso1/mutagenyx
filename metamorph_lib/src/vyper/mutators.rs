@@ -343,8 +343,8 @@ impl Mutator<VyperAST> for AssignmentMutator {
         match mutation_kind {
             0 => {
                 // Generate an integer
-                let lower_bound = -(2_i128.pow(127)) as i128;
-                let upper_bound = (2_i128.pow(127)) as i128;
+                let lower_bound = -(2_i128.pow(127));
+                let upper_bound = 2_i128.pow(127);
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
                 let new_node = match new_integer_constant_node(replacement_value) {

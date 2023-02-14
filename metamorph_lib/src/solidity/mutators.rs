@@ -434,8 +434,8 @@ impl Mutator<SolidityAST> for AssignmentMutator {
                     type_size = 128;
                 }
 
-                let lower_bound = -(2_i128.pow(type_size - 1)) as i128;
-                let upper_bound = (2_i128.pow(type_size - 1)) as i128;
+                let lower_bound = -(2_i128.pow(type_size - 1));
+                let upper_bound = 2_i128.pow(type_size - 1);
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
                 let new_node = match new_integer_constant_node(replacement_value) {

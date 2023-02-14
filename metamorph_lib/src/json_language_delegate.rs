@@ -87,4 +87,12 @@ pub trait JSONLanguageDelegate {
         &'a self,
         permissions: &'a Permissions,
     ) -> Box<dyn Permit<Value> + '_>;
+
+    /// Return true if the program in `file_name` successfully compiles.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_name` - The string slice referencing the text comprising the file name.
+    /// * `prefs` - The [`Preferences`] object that contains compiler settings.
+    fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool;
 }
