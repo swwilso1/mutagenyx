@@ -23,43 +23,74 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::{path::PathBuf, str::FromStr};
 
 /// Convert a vector of [`MutationType`] to a vector of [`String`].
+///
+/// # Arguments
+///
+/// * `array` - The array of mutation types to convert to strings.
 fn get_mutation_strings_from_types(array: &[MutationType]) -> Vec<String> {
     array.iter().map(|t| t.to_string()).collect()
 }
 
-/// Run the mutation generator algorithm.
+/// Convert a vector of [`String`] to a vector of [`MutationType`].
+fn get_mutation_types_from_strings(array: &[String]) -> Vec<MutationType> {
+    array
+        .iter()
+        .filter_map(|s| MutationType::from_str(s).ok())
+        .collect()
+}
+
+/// Helper function to convert a vector of strings representing function names to a Permissions
+/// object suitable for use in AST traversal.
 ///
 /// # Arguments
 ///
-/// * `args` - The command line arguments that control the mutation algorithm.
-pub fn generate_mutants(args: MutateCLArgs) {
-    // Select the mutation algorithms to use while generating mutations.  Args.all_mutations takes
-    // precedence over individual algorithms selected in args.mutations.
-    let mutations: Vec<MutationType> = if args.all_mutations {
-        get_all_mutation_algorithms()
-    } else {
-        // Change the algorithm strings from the command line into actual MutationType values.
-        args.mutations
-            .iter()
-            .filter(|m| match MutationType::from_str(m) {
-                Ok(_) => true,
-                _ => {
-                    println!("Mutation algorithm {} not supported", m);
-                    false
-                }
-            })
-            .map(|m| MutationType::from_str(m).unwrap())
-            .collect()
-    };
+/// * `names` - The vector of function names.
+fn convert_function_names_to_permissions(names: &Vec<String>) -> Permissions {
+    let mut permissions = Permissions::new();
 
+    for function_name in names {
+        let permission_value = String::from("mutate.") + function_name.as_str();
+        permissions.set_permission(&permission_value, true);
+    }
+
+    permissions
+}
+
+/// Simple struct to collect references to compiler paths.
+struct CompilerPaths<'a> {
+    /// Path to solidity compiler.
+    solidity: &'a String,
+
+    /// Path to vyper compiler.
+    vyper: &'a String,
+}
+
+/// Generate a basic language Preferences layout starting from compiler paths.
+///
+/// The Preferences object is not JSON, but in JSON, the return Preferences has the following
+/// form.
+///
+/// {
+///     "Solidity:" {
+///         "compiler": {
+///             "path": "..."
+///         }
+///     },
+///     "Vyper": {
+///         "compiler": {
+///             "path": "..."
+///         }
+///     }
+/// }
+fn generate_preferences_compiler_paths(compiler_paths: &CompilerPaths) -> Preferences {
     let mut solidity_compiler_prefs = Preferences::new();
-    solidity_compiler_prefs.set_string_for_key(PATH_KEY, &args.solidity_compiler);
+    solidity_compiler_prefs.set_string_for_key(PATH_KEY, compiler_paths.solidity);
 
     let mut solidity_prefs = Preferences::new();
     solidity_prefs.set_preferences_for_key(COMPILER_KEY, solidity_compiler_prefs);
 
     let mut vyper_compiler_prefs = Preferences::new();
-    vyper_compiler_prefs.set_string_for_key(PATH_KEY, &args.vyper_compiler);
+    vyper_compiler_prefs.set_string_for_key(PATH_KEY, compiler_paths.vyper);
 
     let mut vyper_prefs = Preferences::new();
     vyper_prefs.set_preferences_for_key(COMPILER_KEY, vyper_compiler_prefs);
@@ -70,14 +101,44 @@ pub fn generate_mutants(args: MutateCLArgs) {
     preferences.set_preferences_for_key(&solidity_key, solidity_prefs);
     preferences.set_preferences_for_key(&vyper_key, vyper_prefs);
 
-    // Now, for each input file, generate the requested number and type of mutations.
+    preferences
+}
+
+/// Run the mutation generator algorithm.
+///
+/// # Arguments
+///
+/// * `args` - The command line arguments that control the mutation algorithm.
+pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
+    // Select the mutation algorithms to use while generating mutations.  Args.all_mutations takes
+    // precedence over individual algorithms selected in args.mutations.
+    let mutations: Vec<MutationType> = if args.all_mutations {
+        get_all_mutation_algorithms()
+    } else {
+        // Change the algorithm strings from the command line into actual MutationType values.
+        get_mutation_types_from_strings(&args.mutations)
+    };
+
+    // We allow the user to pass in compilers for each supported language on the command line.
+    let compiler_paths = CompilerPaths {
+        solidity: &args.solidity_compiler,
+        vyper: &args.vyper_compiler,
+    };
+
+    let mut preferences = generate_preferences_compiler_paths(&compiler_paths);
+
+    let mut generator_parameters: Vec<GeneratorParameters> = Vec::new();
+
     for file_name in args.file_names {
-        // We build a new random number generator for each file.  The file might be a config
-        // file and contain a new random number generator seed.  The `generate_mutations` code
-        // will handle loading a config file and will create a new rng from a seed from a config
-        // file if the config file has a new seed.  Here, we just create a new seed from time,
-        // or use the seed from the command line.
-        let seed: u64 = if args.rng_seed < 0 {
+        let mut actual_preferences = preferences.clone();
+        let actual_file_name = file_name.clone();
+        let mut actual_mutations = mutations.clone();
+        let mut actual_functions = args.functions.clone();
+        let mut actual_number_of_mutants = args.num_mutants;
+
+        // Select a random number generator seed based on args.rng_seed. If args.rng_seed is less
+        // than 0, then use a seed based off of time (we don't need cryptographic security).
+        let mut seed: u64 = if args.rng_seed < 0 {
             let start = SystemTime::now();
             let since_the_epoch = start.duration_since(UNIX_EPOCH);
             match since_the_epoch {
@@ -89,36 +150,95 @@ pub fn generate_mutants(args: MutateCLArgs) {
             args.rng_seed as u64
         };
 
-        let mut generator_params = GeneratorParameters {
-            file_name,
-            number_of_mutants: args.num_mutants,
-            rng_seed: seed,
-            rng: Pcg64::seed_from_u64(seed),
-            output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
-            use_stdout: args.stdout,
-            mutations: mutations.clone(),
-            verify_mutant_viability: false,
-            print_original: args.print_original,
-            save_configuration_file: args.save_config_files,
-            preferences: &mut preferences,
-            functions: args.functions.clone(),
-        };
+        // Try to recognize the language of the source file.  The file might be a source code file,
+        // an AST file, or a configuration file.
+        let recognizer = Recognizer::new(&mut preferences);
+        let recognize_result = recognizer.recognize_file(&actual_file_name)?;
 
-        if let Err(e) = generate_mutations(&mut generator_params) {
-            println!("Unable to generate mutations: {}", e);
+        if recognize_result.file_type == FileType::Config {
+            // If we have a config file, then we need to extract the mutation parameters from
+            // the configuration file.
+            let configuration_details = ConfigurationFileDetails::new_from_file(&actual_file_name)?;
+
+            if let Some(compiler_details) = &configuration_details.compiler_details {
+                let language_key = format!["{}", recognize_result.language];
+                if let Some(mut language_preferences) =
+                    actual_preferences.get_preferences_for_key(&language_key)
+                {
+                    language_preferences
+                        .set_preferences_for_key(COMPILER_KEY, compiler_details.clone());
+                    actual_preferences.set_preferences_for_key(&language_key, language_preferences);
+                }
+            }
+
+            actual_number_of_mutants = configuration_details.number_of_mutants as usize;
+
+            // Here we update the random number generator from the configuration details seed if the
+            // details have a new seed.
+            if let Some(s) = configuration_details.seed {
+                seed = s;
+            };
+
+            // Check to see if the configuration file requested a different set of mutation algorithms.
+            if configuration_details.all_mutations {
+                actual_mutations = get_all_mutation_algorithms();
+            } else if !configuration_details.mutations.is_empty() {
+                actual_mutations = configuration_details.mutations.clone();
+            }
+
+            if !configuration_details.functions.is_empty() {
+                actual_functions = configuration_details.functions;
+            }
+
+            // The configuration files can have multiple files to mutate using the same settings
+            // for each file. Go through the filenames list and add a generator parameter object
+            // for each file in the list.
+            for path_buf in configuration_details.filenames {
+                let file_to_mutate_name = String::from(path_buf.to_str().unwrap());
+
+                let generator_params = GeneratorParameters {
+                    file_name: file_to_mutate_name,
+                    number_of_mutants: actual_number_of_mutants,
+                    rng_seed: seed,
+                    rng: Pcg64::seed_from_u64(seed),
+                    output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
+                    use_stdout: args.stdout,
+                    mutations: actual_mutations.clone(),
+                    verify_mutant_viability: false,
+                    print_original: args.print_original,
+                    save_configuration_file: args.save_config_files,
+                    preferences: actual_preferences.clone(),
+                    functions: actual_functions.clone(),
+                };
+
+                generator_parameters.push(generator_params);
+            }
+        } else {
+            let generator_params = GeneratorParameters {
+                file_name: actual_file_name,
+                number_of_mutants: actual_number_of_mutants,
+                rng_seed: seed,
+                rng: Pcg64::seed_from_u64(seed),
+                output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
+                use_stdout: args.stdout,
+                mutations: actual_mutations,
+                verify_mutant_viability: false,
+                print_original: args.print_original,
+                save_configuration_file: args.save_config_files,
+                preferences: actual_preferences,
+                functions: actual_functions,
+            };
+
+            generator_parameters.push(generator_params);
         }
     }
-}
 
-fn convert_function_names_to_permissions(names: &Vec<String>) -> Permissions {
-    let mut permissions = Permissions::new();
-
-    for function_name in names {
-        let permission_value = String::from("mutate.") + function_name.as_str();
-        permissions.set_permission(&permission_value, true);
+    // Now, for each set of parameters, invoke the mutator.
+    for params in &mut generator_parameters {
+        generate_mutations(params)?;
     }
 
-    permissions
+    Ok(())
 }
 
 /// An upper bound on the number times to try to generate a particular mutant for an input file.
@@ -132,67 +252,14 @@ static ATTEMPTS_TO_GENERATE_A_MUTANT: usize = 50;
 fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphError> {
     // Try to recognize the language of the source file.  The file might be a source code file
     // or perhaps an AST file.
-    let recognizer = Recognizer::new(params.preferences);
-    let mut recognize_result = recognizer.recognize_file(&params.file_name)?;
+    let recognizer = Recognizer::new(&mut params.preferences);
+    let recognize_result = recognizer.recognize_file(&params.file_name)?;
 
     let mut language_object =
         LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
     // create the mutation permissions
-    let mut function_mutation_permissions =
-        convert_function_names_to_permissions(&params.functions);
-
-    if recognize_result.file_type == FileType::Config {
-        // If we have a config file, then we need to override parameters with details from
-        // the config file.
-        let configuration_details = ConfigurationFileDetails::new_from_file(&params.file_name)?;
-
-        if let Some(compiler_details) = &configuration_details.compiler_details {
-            let language_key = format!["{}", recognize_result.language];
-            if let Some(mut language_preferences) =
-                params.preferences.get_preferences_for_key(&language_key)
-            {
-                language_preferences
-                    .set_preferences_for_key(COMPILER_KEY, compiler_details.clone());
-                params
-                    .preferences
-                    .set_preferences_for_key(&language_key, language_preferences);
-            }
-        }
-
-        let mut prefs_copy = params.preferences.clone();
-        let sub_recognizer = Recognizer::new(&mut prefs_copy);
-
-        // The file in the config file may still be either an AST or a source code file. We need
-        // to recognize that file.
-        recognize_result =
-            sub_recognizer.recognize_file(configuration_details.filename.to_str().unwrap())?;
-
-        params.file_name = String::from(configuration_details.filename.to_str().unwrap());
-
-        params.number_of_mutants = configuration_details.number_of_mutants as usize;
-
-        // Here we update the random number generator from the configuration details seed if the
-        // details have a new seed.
-        if let Some(s) = configuration_details.seed {
-            params.rng_seed = s;
-            params.rng = Pcg64::seed_from_u64(s)
-        };
-
-        // Check to see if the configuration file requested a different set of mutation algorithms.
-        if configuration_details.all_mutations {
-            params.mutations = get_all_mutation_algorithms();
-        } else if !configuration_details.mutations.is_empty() {
-            params.mutations = configuration_details.mutations;
-        }
-
-        if !configuration_details.functions.is_empty() {
-            function_mutation_permissions.clear();
-            function_mutation_permissions =
-                convert_function_names_to_permissions(&configuration_details.functions);
-            params.functions = configuration_details.functions;
-        }
-    }
+    let function_mutation_permissions = convert_function_names_to_permissions(&params.functions);
 
     if !params.mutations.is_empty() {
         log::info!(
@@ -204,7 +271,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     let ast = language_object.load_ast_from_file(
         &params.file_name,
         &recognize_result.file_type,
-        params.preferences,
+        &params.preferences,
     )?;
 
     language_object.select_mutators_for_mutation_types(&params.mutations)?;
@@ -252,9 +319,11 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             }
         };
 
+        let filenames: Vec<PathBuf> = vec![PathBuf::from(params.file_name.clone())];
+
         let details = ConfigurationFileDetails {
             language: Some(recognize_result.language),
-            filename: PathBuf::from(params.file_name.clone()),
+            filenames,
             number_of_mutants: params.number_of_mutants as i64,
             seed: Some(params.rng_seed),
             mutations: params.mutations.clone(),

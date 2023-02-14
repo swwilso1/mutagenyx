@@ -18,7 +18,7 @@ pub static CONFIG_FILE_EXTENSION: &str = "morph";
 pub static LANGUAGE_KEY: &str = "language";
 
 /// The key in the configuration file for the file.
-pub static FILENAME_KEY: &str = "filename";
+pub static FILENAMES_KEY: &str = "filenames";
 
 /// The key in the configuration file for the compiler details.
 pub static COMPILER_DETAILS_KEY: &str = "compiler-details";
@@ -44,7 +44,7 @@ pub struct ConfigurationFileDetails {
     pub language: Option<Language>,
 
     /// Path to either a source file or AST file to mutate.
-    pub filename: PathBuf,
+    pub filenames: Vec<PathBuf>,
 
     /// The number of mutations to generate for the file.
     pub number_of_mutants: i64,
@@ -91,7 +91,7 @@ impl ConfigurationFileDetails {
 
         let mut details = ConfigurationFileDetails {
             language: None,
-            filename: PathBuf::new(),
+            filenames: Vec::new(),
             compiler_details: None,
             number_of_mutants: 5,
             // TODO: casting to u64 truncates data here, find something better.
@@ -108,8 +108,8 @@ impl ConfigurationFileDetails {
                 missing_keys.push(String::from(LANGUAGE_KEY));
             }
 
-            if !json_value.contains_key(FILENAME_KEY) {
-                missing_keys.push(String::from(FILENAME_KEY));
+            if !json_value.contains_key(FILENAMES_KEY) {
+                missing_keys.push(String::from(FILENAMES_KEY));
             }
 
             if !missing_keys.is_empty() {
@@ -133,9 +133,13 @@ impl ConfigurationFileDetails {
 
             details.language = Some(language);
 
-            let filename_str = json_value.get_str_for_key(FILENAME_KEY).unwrap();
-
-            details.filename = PathBuf::from_str(filename_str).unwrap();
+            if let Some(filenames_array) = json_value.get_array_for_key(FILENAMES_KEY) {
+                details.filenames = filenames_array
+                    .iter()
+                    .filter(|v| v.is_string())
+                    .map(|v| PathBuf::from_str(v.as_str().unwrap()).unwrap())
+                    .collect();
+            }
 
             if let Some(number_of_mutants) = json_value.get_int_for_key(NUMBER_OF_MUTANTS_KEY) {
                 details.number_of_mutants = number_of_mutants;
@@ -192,7 +196,13 @@ impl ConfigurationFileDetails {
             json_value.set_str_for_key(LANGUAGE_KEY, &language.to_string());
         }
 
-        json_value.set_str_for_key(FILENAME_KEY, self.filename.to_str().unwrap());
+        let json_filenames_array: Vec<Value> = self
+            .filenames
+            .iter()
+            .map(|p| Value::from(p.to_str().unwrap()))
+            .collect();
+
+        json_value.set_node_for_key(FILENAMES_KEY, json![json_filenames_array]);
 
         json_value.set_node_for_key(NUMBER_OF_MUTANTS_KEY, json![self.number_of_mutants]);
 

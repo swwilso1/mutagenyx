@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 /// Object to capture the parameters needed to guide the mutation generator algorithm.
 #[derive(Debug)]
-pub struct GeneratorParameters<'a> {
+pub struct GeneratorParameters {
     /// The location of the input file in the file system
     pub file_name: String,
 
@@ -41,7 +41,7 @@ pub struct GeneratorParameters<'a> {
     pub save_configuration_file: bool,
 
     /// Preferences
-    pub preferences: &'a mut Preferences,
+    pub preferences: Preferences,
 
     /// Function names to mutate.
     pub functions: Vec<String>,

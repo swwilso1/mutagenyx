@@ -127,7 +127,9 @@ fn main() {
         .try_init();
     match MetamorphCommand::parse() {
         MetamorphCommand::Mutate(params) => {
-            generate_mutants(params);
+            if let Err(e) = generate_mutants(params) {
+                println!("Unable to generate mutations: {}", e);
+            }
         }
         MetamorphCommand::PrettyPrint(params) => {
             pretty_print_files(params);
