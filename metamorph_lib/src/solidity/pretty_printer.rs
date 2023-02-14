@@ -776,7 +776,7 @@ impl NodePrinter<SolidityAST> for ParameterListPrinter {
 struct BlockPrinter {
     /// When true, write a block with only one statement on the same line:
     ///
-    /// { <statement>; }
+    /// `{ <statement>; }`
     single_statement_on_same_line: bool,
 }
 

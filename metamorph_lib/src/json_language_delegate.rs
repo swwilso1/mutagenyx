@@ -34,7 +34,7 @@ pub trait JSONLanguageDelegate {
     /// access to language specific [`crate::mutator::Mutator<T>`] objects.
     fn get_mutator_factory(&self) -> Box<dyn MutatorFactory<Value>>;
 
-    /// Get a language-specific object that conforms to the ['Visitor<T>`] trait for traversing
+    /// Get a language-specific object that conforms to the [`Visitor<T>`] trait for traversing
     /// the AST for the purpose of pretty-printing the AST back to source code form.
     ///
     /// # Arguments

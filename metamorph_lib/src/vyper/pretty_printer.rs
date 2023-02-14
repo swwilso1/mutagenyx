@@ -98,7 +98,7 @@ fn write_args_as_array(
     write_key_of_node_as_array(printer, stream, factory, "args", node);
 }
 
-/// Write the object in the `value` element of `node` with ' = <value>'.
+/// Write the object in the `value` element of `node` with `something = <value>`.
 ///
 /// # Arguments
 ///
