@@ -71,7 +71,7 @@ pub struct MutateCLArgs {
 
     /// Check each mutant for correctness. (Currently attempts to compile each mutant)
     #[clap(long)]
-    pub check: bool,
+    pub validate_mutants: bool,
 }
 
 /// Pretty-print sub-command command line arguments.

@@ -135,6 +135,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
         let mut actual_mutations = mutations.clone();
         let mut actual_functions = args.functions.clone();
         let mut actual_number_of_mutants = args.num_mutants;
+        let mut actual_verify = args.validate_mutants;
 
         // Select a random number generator seed based on args.rng_seed. If args.rng_seed is less
         // than 0, then use a seed based off of time (we don't need cryptographic security).
@@ -190,6 +191,8 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                 actual_functions = configuration_details.functions;
             }
 
+            actual_verify = configuration_details.verify_mutants;
+
             // The configuration files can have multiple files to mutate using the same settings
             // for each file. Go through the filenames list and add a generator parameter object
             // for each file in the list.
@@ -204,7 +207,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                     output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
                     use_stdout: args.stdout,
                     mutations: actual_mutations.clone(),
-                    verify_mutant_viability: args.check,
+                    verify_mutant_viability: actual_verify,
                     print_original: args.print_original,
                     save_configuration_file: args.save_config_files,
                     preferences: actual_preferences.clone(),
@@ -222,7 +225,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                 output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
                 use_stdout: args.stdout,
                 mutations: actual_mutations,
-                verify_mutant_viability: args.check,
+                verify_mutant_viability: actual_verify,
                 print_original: args.print_original,
                 save_configuration_file: args.save_config_files,
                 preferences: actual_preferences,
@@ -330,6 +333,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
             all_mutations: false,
             compiler_details,
             functions: params.functions.clone(),
+            verify_mutants: params.verify_mutant_viability,
         };
 
         // Build the output file name.

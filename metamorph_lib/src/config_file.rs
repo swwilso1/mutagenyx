@@ -38,6 +38,9 @@ pub static ALL_MUTATIONS_KEY: &str = "all-mutations";
 /// The key for the list of functions to mutate.
 pub static FUNCTIONS_KEY: &str = "functions";
 
+/// The key to indicate whether the tool should compile the mutants.
+pub static VALIDATE_MUTANTS_KEY: &str = "validate-mutants";
+
 /// Configuration details loaded from a .morph configuration file.
 pub struct ConfigurationFileDetails {
     /// Language specified in configuration file.
@@ -63,6 +66,9 @@ pub struct ConfigurationFileDetails {
 
     /// List of names of functions to mutate.  If the list is empty, all functions can be mutated.
     pub functions: Vec<String>,
+
+    /// True if the tool should compile the mutants for viability.
+    pub verify_mutants: bool,
 }
 
 impl ConfigurationFileDetails {
@@ -99,6 +105,7 @@ impl ConfigurationFileDetails {
             mutations: Vec::new(),
             all_mutations: false,
             functions: Vec::new(),
+            verify_mutants: false,
         };
 
         if let Ok(json_value) = load_json_from_file_with_name(config_file) {
@@ -177,6 +184,10 @@ impl ConfigurationFileDetails {
                     .map(|v| String::from(v.as_str().unwrap()))
                     .collect();
             }
+
+            if let Some(check) = json_value.get_bool_for_key(VALIDATE_MUTANTS_KEY) {
+                details.verify_mutants = check;
+            }
         } else {
             return Err(MetamorphError::ConfigFileNotSupported(String::from(
                 config_file,
@@ -231,6 +242,8 @@ impl ConfigurationFileDetails {
         if !self.functions.is_empty() {
             json_value.set_node_for_key(FUNCTIONS_KEY, json![self.functions]);
         }
+
+        json_value.set_node_for_key(VALIDATE_MUTANTS_KEY, json![self.verify_mutants]);
 
         Ok(json_value)
     }
