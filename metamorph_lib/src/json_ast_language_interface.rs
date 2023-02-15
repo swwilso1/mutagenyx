@@ -138,7 +138,7 @@ impl MutableLanguage for JSONLanguageInterface {
 
         let mut mutated_ast = actual_ast.clone();
 
-        let mut mutation_maker = MutationMaker::<Value>::new(
+        let mut mutation_maker: MutationMaker<Value> = MutationMaker::new(
             self.mutators.get(mutation_type).unwrap().as_ref(),
             rng,
             index,
