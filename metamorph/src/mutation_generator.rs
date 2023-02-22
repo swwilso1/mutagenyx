@@ -18,7 +18,7 @@ use rand::seq::SliceRandom;
 use rand::RngCore;
 use rand::SeedableRng;
 use rand_pcg::*;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{path::PathBuf, str::FromStr};
 
@@ -129,6 +129,22 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
 
     let mut generator_parameters: Vec<GeneratorParameters> = Vec::new();
 
+    // Select a random number generator seed based on args.rng_seed. If args.rng_seed is less
+    // than 0, then use a seed based off of time (we don't need cryptographic randomness).
+    let mut seed: u64 = if args.rng_seed < 0 {
+        let start = SystemTime::now();
+        let since_the_epoch = start.duration_since(UNIX_EPOCH);
+        match since_the_epoch {
+            // Todo: This step truncates a u128 to u64.  We probably need those extra bits.
+            Ok(t) => t.as_millis() as u64,
+            _ => 0,
+        }
+    } else {
+        args.rng_seed as u64
+    };
+
+    let pcg = Pcg64::seed_from_u64(seed);
+
     for file_name in args.file_names {
         let mut actual_preferences = preferences.clone();
         let actual_file_name = file_name.clone();
@@ -136,20 +152,6 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
         let mut actual_functions = args.functions.clone();
         let mut actual_number_of_mutants = args.num_mutants;
         let mut actual_verify = args.validate_mutants;
-
-        // Select a random number generator seed based on args.rng_seed. If args.rng_seed is less
-        // than 0, then use a seed based off of time (we don't need cryptographic security).
-        let mut seed: u64 = if args.rng_seed < 0 {
-            let start = SystemTime::now();
-            let since_the_epoch = start.duration_since(UNIX_EPOCH);
-            match since_the_epoch {
-                // Todo: This step truncates a u128 to u64.  We probably need those extra bits.
-                Ok(t) => t.as_millis() as u64,
-                _ => 0,
-            }
-        } else {
-            args.rng_seed as u64
-        };
 
         // Try to recognize the language of the source file.  The file might be a source code file,
         // an AST file, or a configuration file.
@@ -221,7 +223,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
                 file_name: actual_file_name,
                 number_of_mutants: actual_number_of_mutants,
                 rng_seed: seed,
-                rng: Pcg64::seed_from_u64(seed),
+                rng: pcg.clone(),
                 output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
                 use_stdout: args.stdout,
                 mutations: actual_mutations,
@@ -264,13 +266,6 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     // create the mutation permissions
     let function_mutation_permissions = convert_function_names_to_permissions(&params.functions);
 
-    if !params.mutations.is_empty() {
-        log::info!(
-            "Generating mutations using algorithms: {:?}",
-            get_mutation_strings_from_types(&params.mutations)
-        );
-    }
-
     let ast = language_object.load_ast_from_file(
         &params.file_name,
         &recognize_result.file_type,
@@ -279,8 +274,16 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
 
     language_object.select_mutators_for_mutation_types(&params.mutations)?;
 
-    let mutable_nodes_table =
-        language_object.count_mutable_nodes(&ast, &function_mutation_permissions)?;
+    let mutable_nodes_table = language_object.count_mutable_nodes(
+        &ast,
+        &mut params.rng,
+        &function_mutation_permissions,
+    )?;
+
+    // Calculate the paths to each node in the AST by node id.  The mutation step may make
+    // use of this information to insert comments in the AST.
+    let node_path_map =
+        language_object.calculate_node_paths(&ast, &function_mutation_permissions)?;
 
     if mutable_nodes_table.is_empty() {
         return Err(MetamorphError::NoMutableNode);
@@ -362,22 +365,90 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
     }
 
     // This list now holds the mutation types for which the AST has nodes to mutate.
-    let mutation_type_list: Vec<MutationType> = mutable_nodes_table
+    let mut mutation_type_list: Vec<MutationType> = mutable_nodes_table
         .iter()
         .filter(|(_, v)| **v > 0)
         .map(|(k, _)| *k)
         .collect();
 
+    // Sort the list so we get more deterministic behavior when selecting mutation algorithms.
+    mutation_type_list.sort();
+
+    log::info!(
+        "Of the requested mutation algorithms, the AST contains nodes for {:?}",
+        get_mutation_strings_from_types(&mutation_type_list)
+    );
+
     // Now we generate a list of mutation types of length self.parameters.number_of_mutants
     // with mutation types chosen randomly from list of usable mutation types.
     let mut mutation_kinds_todo: VecDeque<MutationType> = VecDeque::new();
-    let mut requested_mutants_remaining = params.number_of_mutants;
+
+    // We can have a case where the user requests multiple mutants from only one mutation algorithm
+    // and the AST has only a small number of mutable nodes for that algorithm (where smaller means
+    // some number less than the requested number of mutants).  If that case happens we do not want
+    // the tool to spend time trying to generate unique mutants for the requested number of mutants
+    // that exceeds the available number of mutable nodes.
+
+    // The tuple values here represent:
+    // 1 - The number of times the algorithm selector has selected the mutation type.
+    // 2 - The number of nodes mutable by the mutation type in the AST.
+    // 3 - True if the counting algorithm has displayed a message about reaching the limit
+    // for the use of the mutation type and false if not.
+    let mut selected_algorithm_map: HashMap<MutationType, (usize, usize, bool)> = HashMap::new();
+
+    // fill the map.
+    for mutation_type in &mutation_type_list {
+        let number_of_mutable_nodes = mutable_nodes_table.get(&mutation_type).unwrap();
+        selected_algorithm_map.insert(*mutation_type, (0, *number_of_mutable_nodes, false));
+    }
+
+    // Now try to randomly select the mutation algorithms, but only allow the max number of
+    // algorithm usages by the number of mutable nodes for each algorithm.
+    let mut requested_mutants_remaining: usize = params.number_of_mutants;
+
+    let mut full_algorithms: usize = 0;
+    let mut available_mutations: usize = 0;
+
+    // Run through the selected_algorithm_map and sum the max possible mutations for each algorithm.
+    for (_, data_tuple) in &selected_algorithm_map {
+        available_mutations += data_tuple.1;
+    }
+
+    log::info!(
+        "AST supports at most {} different mutations using the requested mutation algorithms",
+        available_mutations
+    );
+
     while requested_mutants_remaining > 0 {
+        // Select a random algorithm
         let mutation_type = match mutation_type_list.choose(&mut params.rng) {
             Some(t) => t,
             None => continue,
         };
-        mutation_kinds_todo.push_back(*mutation_type);
+
+        // Get the tuple containing the total times the algorithm was used, the total mutable
+        // nodes for the algorithm, and the boolean that captures whether this algorithm has
+        // displayed a message about reaching the max allowed mutations for the mutation type.
+        let data_tuple = selected_algorithm_map.get_mut(mutation_type).unwrap();
+
+        if data_tuple.0 < data_tuple.1 {
+            data_tuple.0 += 1;
+            mutation_kinds_todo.push_back(*mutation_type);
+        } else {
+            if full_algorithms >= available_mutations {
+                log::info!("Reached the limit of mutable nodes in the AST, lowering requested mutants by {} to {}", requested_mutants_remaining, mutation_kinds_todo.len());
+                break;
+            }
+
+            // Only report on reaching the mutable node limit once.
+            if !data_tuple.2 {
+                log::info!("Reached the maximum allowable usages of algorithm {}, trying another algorithm", mutation_type);
+                data_tuple.2 = true;
+            }
+            full_algorithms += 1;
+            continue;
+        }
+
         requested_mutants_remaining -= 1;
     }
 
@@ -405,6 +476,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MetamorphE
                 index,
                 &mut params.rng,
                 &function_mutation_permissions,
+                &node_path_map,
             )?;
 
             // See if we have already generated this AST before.  We only want to output unique

@@ -63,6 +63,20 @@ pub trait Visitor<N: ?Sized> {
         true
     }
 
+    /// Alert the visitor that the traversal algorithm will now traverse children.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node.
+    fn on_start_visit_children(&mut self, _node: &N) {}
+
+    /// Alert the visitor that the traversal algorithm will stop traversing children.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node.
+    fn on_end_visit_children(&mut self, _node: &N) {}
+
     /// The traversal algorithm calls this function just after processing the children of `node`
     /// and before moving on to the next node in the syntax tree.
     ///
@@ -121,6 +135,20 @@ pub trait VisitorMut<N: ?Sized> {
     fn visit_children(&mut self, _node: &mut N) -> bool {
         true
     }
+
+    /// Alert the visitor that the traversal algorithm will now traverse children.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node.
+    fn on_start_visit_children(&mut self, _node: &N) {}
+
+    /// Alert the visitor that the traversal algorithm will stop traversing children.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - A reference to the node.
+    fn on_end_visit_children(&mut self, _node: &N) {}
 
     /// The traversal algorithm calls this function just after processing the children of `node`
     /// and before moving on to the next node in the syntax tree.

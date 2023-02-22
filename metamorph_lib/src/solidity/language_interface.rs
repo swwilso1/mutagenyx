@@ -3,9 +3,13 @@
 
 use crate::compiler_details::*;
 use crate::error::MetamorphError;
+use crate::id::Id;
 use crate::json::*;
+use crate::json_ast_id_maker::JSONIDMaker;
 use crate::json_ast_permitter::JSONPermitter;
+use crate::json_comment_inserter::JSONCommentInserter;
 use crate::json_language_delegate::JSONLanguageDelegate;
+use crate::mutation_visitor::NodePath;
 use crate::mutator::*;
 use crate::node_printer::NodePrinterFactory;
 use crate::permissions::Permissions;
@@ -14,8 +18,10 @@ use crate::preferences::*;
 use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::ast::SolidityAST;
+use crate::solidity::commenter::SolidityCommenterFactory;
 use crate::solidity::compiler_details::{BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY};
 use crate::solidity::mutators::SolidityMutatorFactory;
+use crate::solidity::node_finder::SolidityNodeFinderFactory;
 use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
 use crate::super_ast::SuperAST;
 use crate::utility::shell_execute;
@@ -137,6 +143,21 @@ impl JSONLanguageDelegate for SolidityLanguageSubDelegate {
 
     fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool {
         file_compiles(file_name, prefs)
+    }
+
+    fn get_node_id_maker(&self) -> Box<dyn Id<Value>> {
+        Box::new(JSONIDMaker::new(|n| {
+            n.get_int_for_key("id").map(|id| id as u64)
+        }))
+    }
+
+    fn insert_comment_by_path(&self, ast: &mut Value, comment_node: Value, node_path: &NodePath) {
+        let id_maker = self.get_node_id_maker();
+        let finder_factory = Box::new(SolidityNodeFinderFactory {});
+        let commenter_factory = Box::new(SolidityCommenterFactory {});
+        let json_comment_inserter =
+            JSONCommentInserter::new(finder_factory, commenter_factory, id_maker);
+        json_comment_inserter.insert_comment_by_path(ast, comment_node, node_path)
     }
 }
 

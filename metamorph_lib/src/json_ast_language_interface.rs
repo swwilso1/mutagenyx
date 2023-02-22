@@ -104,11 +104,14 @@ impl MutableLanguage for JSONLanguageInterface {
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
+        rng: &mut Pcg64,
         permissions: &Permissions,
     ) -> Result<HashMap<MutationType, usize>, MetamorphError> {
         let permitter = self.delegate.get_node_permitter(permissions);
-        let mut counter_visitor = MutableNodesCounter::<Value>::new(&self.mutators, permitter);
         let actual_ast = self.recover_json_ast(ast)?;
+
+        let mut counter_visitor: MutableNodesCounter<Value> =
+            MutableNodesCounter::new(&mut self.mutators, permitter, rng);
 
         // Traverse the AST and count the number of nodes that a mutator can mutate for each
         // mutation type supported in the mutator map.
@@ -131,23 +134,35 @@ impl MutableLanguage for JSONLanguageInterface {
         index: usize,
         rng: &mut Pcg64,
         permissions: &Permissions,
+        path_map: &NodePathMap,
     ) -> Result<SuperAST, MetamorphError> {
         let permitter = self.delegate.get_node_permitter(permissions);
+        let id_maker = self.delegate.get_node_id_maker();
 
         let actual_ast = self.recover_json_ast(ast)?;
 
         let mut mutated_ast = actual_ast.clone();
 
         let mut mutation_maker: MutationMaker<Value> = MutationMaker::new(
-            self.mutators.get(mutation_type).unwrap().as_ref(),
+            self.mutators.get_mut(mutation_type).unwrap().as_mut(),
             rng,
             index,
             permitter,
+            id_maker,
         );
 
         // Traverse the cloned AST, only mutating the index(th) node in the tree that the mutation
         // maker can mutate for `mutation_type`.
         ASTTraverser::traverse_mut(&mut mutated_ast, &mut mutation_maker);
+
+        // We now have the path map and the index of the node we mutated in mutation_maker.mutated_node_id.
+        // We can now walk down the ast to insert a comment.
+        if let Some(node) = mutation_maker.mutator_comment {
+            if let Some(node_path) = path_map.get(&mutation_maker.mutated_node_id) {
+                self.delegate
+                    .insert_comment_by_path(&mut mutated_ast, node, node_path);
+            }
+        }
 
         self.delegate.get_value_as_super_ast(mutated_ast)
     }
@@ -240,6 +255,22 @@ impl MutableLanguage for JSONLanguageInterface {
         }
 
         compile_result
+    }
+
+    fn calculate_node_paths(
+        &mut self,
+        ast: &SuperAST,
+        permissions: &Permissions,
+    ) -> Result<NodePathMap, MetamorphError> {
+        let actual_ast = self.recover_json_ast(ast)?;
+        let permitter = self.delegate.get_node_permitter(permissions);
+        let id_maker = self.delegate.get_node_id_maker();
+        let mut path_visitor = PathVisitor::new(permitter, id_maker);
+
+        // Walk the AST and calculate the path to each node in the AST.
+        ASTTraverser::traverse(actual_ast, &mut path_visitor);
+
+        Ok(path_visitor.path_map)
     }
 
     fn implements(&self) -> Language {

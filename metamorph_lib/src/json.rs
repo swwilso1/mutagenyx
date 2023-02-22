@@ -2,6 +2,9 @@
 //! [`Value`] objects for the purpose of traversing and mutating abstract syntax trees
 //! encoded in JSON.
 use crate::error::MetamorphError;
+use crate::id::Id;
+#[cfg(test)]
+use crate::json_ast_id_maker::JSONIDMaker;
 use serde_json::{from_str, json, Map, Value};
 use std::fs::File;
 use std::io::BufReader;
@@ -73,13 +76,17 @@ pub trait JSONMutate {
     fn set_node_for_key_at_index(&mut self, key: &str, index: usize, node: Value);
     fn push_node(&mut self, node: Value);
     fn get_array_for_key(&self, key: &str) -> Option<&Vec<Value>>;
+    fn get_array_for_key_mut(&mut self, key: &str) -> Option<&mut Vec<Value>>;
     fn get_map_for_key(&self, key: &str) -> Option<&Map<String, Value>>;
+    fn get_map_for_key_mut(&mut self, key: &str) -> Option<&mut Map<String, Value>>;
     fn get_str_for_key(&self, path: &str) -> Option<&str>;
     fn set_str_for_key(&mut self, path: &str, value: &str);
     fn get_bool_for_key(&self, key: &str) -> Option<bool>;
     fn get_int_for_key(&self, key: &str) -> Option<i64>;
     fn get_float_for_key(&self, key: &str) -> Option<f64>;
     fn contains_key(&self, key: &str) -> bool;
+    fn get_node_with_id(&self, id: u64, id_maker: &dyn Id<Value>) -> Option<&Value>;
+    fn get_node_with_id_mut(&mut self, id: u64, id_maker: &dyn Id<Value>) -> Option<&mut Value>;
 }
 
 impl JSONMutate for Value {
@@ -198,6 +205,24 @@ impl JSONMutate for Value {
     }
 
     /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
+    /// the dictionary contains an entry for `key` that holds a JSON array, return a mutable
+    /// reference to that array.
+    ///
+    /// The caller should use [`Value::is_object`] and [`Value::is_array`]
+    /// to check for a JSON dictionary/map that contains a JSON array.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string slice referencing the text comprising the key.
+    fn get_array_for_key_mut(&mut self, key: &str) -> Option<&mut Vec<Value>> {
+        let json_path = json_path(key);
+        match self.pointer_mut(&json_path) {
+            Some(v) => v.as_array_mut(),
+            _ => None,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
     /// the dictionary contains an entry for `key` that holds a JSON map, return a reference
     /// to that map.
     ///
@@ -211,6 +236,24 @@ impl JSONMutate for Value {
         let json_path = json_path(key);
         match self.pointer(&json_path) {
             Some(v) => v.as_object(),
+            _ => None,
+        }
+    }
+
+    /// Assuming the [`Value`] object represents a JSON dictionary/map object, and that
+    /// the dictionary contains an entry for `key` that holds a JSON map, return a mutable reference
+    /// to that map.
+    ///
+    /// The caller should use [`Value::is_object`] to check for a JSON dictionary/map that contains
+    /// a JSON map.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The string slice referencing the text comprising the key.
+    fn get_map_for_key_mut(&mut self, key: &str) -> Option<&mut Map<String, Value>> {
+        let json_path = json_path(key);
+        match self.pointer_mut(&json_path) {
+            Some(v) => v.as_object_mut(),
             _ => None,
         }
     }
@@ -320,6 +363,71 @@ impl JSONMutate for Value {
             }
         }
         false
+    }
+
+    /// If the node contains another node with id `id`, return a reference to that node.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The id code value.
+    /// * `id_maker` - A [`Id<AST>`] trait object capable of returning the id of an AST node.
+    fn get_node_with_id(&self, id: u64, id_maker: &dyn Id<Value>) -> Option<&Value> {
+        if let Some(node_id) = id_maker.get_id(self) {
+            if node_id == id {
+                return Some(self);
+            }
+        }
+
+        if self.is_array() {
+            for value in self.as_array().unwrap() {
+                if let Some(sub_node) = value.get_node_with_id(id, id_maker) {
+                    return Some(sub_node);
+                }
+            }
+            None
+        } else if self.is_object() {
+            for (_key, value) in self.as_object().unwrap() {
+                if let Some(sub_node) = value.get_node_with_id(id, id_maker) {
+                    return Some(sub_node);
+                }
+            }
+            None
+        } else {
+            None
+        }
+    }
+
+    /// If the node contains another node with the id `id`, return a mutable reference to that
+    /// node.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The node id to find.
+    /// * `id_maker` - The [`Id<AST>`] object that can convert an AST node to an id value.
+    fn get_node_with_id_mut(&mut self, id: u64, id_maker: &dyn Id<Value>) -> Option<&mut Value> {
+        if let Some(node_id) = id_maker.get_id(self) {
+            if node_id == id {
+                return Some(self);
+            }
+        }
+
+        if self.is_array() {
+            for value in self.as_array_mut().unwrap() {
+                if let Some(sub_node) = value.get_node_with_id_mut(id, id_maker) {
+                    return Some(sub_node);
+                }
+            }
+            None
+        } else if self.is_object() {
+            for (_key, value) in self.as_object_mut().unwrap() {
+                if let Some(sub_node) = value.get_node_with_id_mut(id, id_maker) {
+                    return Some(sub_node);
+                }
+            }
+            None
+        } else {
+            None
+        }
     }
 }
 
@@ -461,6 +569,45 @@ mod tests {
     }
 
     #[test]
+    fn test_json_mutate_get_array_for_key_mut() {
+        let mut value: Value = from_str(
+            "{\
+            \"node\": [1, 3, 5]
+        }",
+        )
+        .unwrap();
+
+        if let Some(array) = value.get_array_for_key_mut("node") {
+            assert_eq!(array.len(), 3);
+            if let Some(node) = array.get(0) {
+                assert_eq!(node.as_i64().unwrap(), 1);
+            } else {
+                assert!(false, "Array did not have anything at index 0");
+            }
+            if let Some(node) = array.get(1) {
+                assert_eq!(node.as_i64().unwrap(), 3);
+            } else {
+                assert!(false, "Array did not have anything at index 1");
+            }
+            if let Some(node) = array.get(2) {
+                assert_eq!(node.as_i64().unwrap(), 5);
+            } else {
+                assert!(false, "Array did not have anything at index 2");
+            }
+
+            array.push(json![65]);
+
+            if let Some(node) = array.get(3) {
+                assert_eq!(node.as_i64().unwrap(), 65);
+            } else {
+                assert!(false, "Array did not have the newly inserted value 65");
+            }
+        } else {
+            assert!(false, "Cannot find value for key 'node'");
+        }
+    }
+
+    #[test]
     fn test_json_mutate_get_map_for_key() {
         let value: Value = from_str(
             "{\
@@ -595,5 +742,59 @@ mod tests {
         let value2 = json![[]];
 
         assert!(!value2.contains_key("bar"));
+    }
+
+    #[test]
+    fn test_json_mutate_get_node_with_id() {
+        let node: Value = from_str(
+            "{\
+                \"id\": 10,
+                \"thing\": [{
+                    \"id\":11
+                }]
+            }",
+        )
+        .unwrap();
+
+        let id_maker = JSONIDMaker::new(|n| {
+            if let Some(id) = n.get_int_for_key("id") {
+                Some(id as u64)
+            } else {
+                None
+            }
+        });
+
+        if let Some(found_node) = node.get_node_with_id(11, &id_maker) {
+            assert_eq!(id_maker.get_id(found_node), Some(11));
+        } else {
+            assert!(false, "Get_node_with_id failed to locate node with id=11.");
+        }
+    }
+
+    #[test]
+    fn test_json_mutate_get_node_with_id_mut() {
+        let mut node: Value = from_str(
+            "{\
+                \"id\": 10,
+                \"thing\": [{
+                    \"id\":11
+                }]
+            }",
+        )
+        .unwrap();
+
+        let id_maker = JSONIDMaker::new(|n| {
+            if let Some(id) = n.get_int_for_key("id") {
+                Some(id as u64)
+            } else {
+                None
+            }
+        });
+
+        if let Some(found_node) = node.get_node_with_id_mut(11, &id_maker) {
+            assert_eq!(id_maker.get_id(found_node), Some(11));
+        } else {
+            assert!(false, "Get_node_with_id failed to locate node with id=11.");
+        }
     }
 }

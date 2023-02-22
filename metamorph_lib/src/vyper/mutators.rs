@@ -95,6 +95,31 @@ fn new_comment_node(text: &str) -> Result<VyperAST, MetamorphError> {
     Ok(node)
 }
 
+/// Return a new comment node populated with the value of `node`.
+///
+/// # Arguments
+///
+/// * `node` - A [`VyperAST`] node to embed in the comment.
+fn new_comment_node_from_node(node: VyperAST) -> Result<VyperAST, MetamorphError> {
+    let node_str = "{\
+            \"node_id\": 9999996,
+            \"ast_type\": \"Comment\",
+            \"value\": null
+        }";
+
+    let id_value = node.get_int_for_key("node_id").unwrap_or(9999996);
+
+    let mut new_node = new_json_node(node_str)?;
+    new_node.set_node_for_key("value", node);
+
+    // The commenting algorithms need to be able to find the id of the original node.
+    // Since the original node is effectively going away, we move the id from the node
+    // into the comment node.
+    new_node.set_node_for_key("node_id", json![id_value]);
+
+    Ok(new_node)
+}
+
 /// Return a new Pass node.
 fn new_pass_node() -> Result<VyperAST, MetamorphError> {
     let node_str = "{\
@@ -159,6 +184,22 @@ fn new_unary_op_node(operator: &str, operand: VyperAST) -> Result<VyperAST, Meta
     let mut new_node = new_json_node(&node_str)?;
     new_node.set_node_for_key("operand", operand);
     Ok(new_node)
+}
+
+/// Return the string containing the pretty-printed form of `node`.
+///
+/// # Arguments
+///
+/// * `node` - The node to pretty-print.
+fn pretty_print_node(node: &VyperAST) -> String {
+    let mut node_contents = Vec::new();
+    let mut printer = PrettyPrinter::new(4, 150);
+    let factory = VyperNodePrinterFactory::default();
+    traverse_sub_node_and_print(&mut printer, &mut node_contents, &factory, node);
+
+    // s now contains the pretty-printed node.
+    let s = core::str::from_utf8(node_contents.as_slice()).unwrap();
+    String::from(s)
 }
 
 enum ListLikeThing {
@@ -227,6 +268,9 @@ struct BinaryOpMutator {
 
     /// The mutation algorithm implemented by the mutator.
     mutation_type: MutationType,
+
+    /// The comment node generated when a mutation occurs.
+    comment_node: Option<VyperAST>,
 }
 
 impl BinaryOpMutator {
@@ -249,12 +293,13 @@ impl BinaryOpMutator {
             operator_map,
             reverse_operator_map,
             mutation_type,
+            comment_node: None,
         }
     }
 }
 
 impl Mutator<VyperAST> for BinaryOpMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node in the AST is a "BinOp" node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "BinOp" || n == "BoolOp" || n == "Compare" {
@@ -273,9 +318,18 @@ impl Mutator<VyperAST> for BinaryOpMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Do not hang on to any old comment node.
+        self.comment_node = None;
+
+        // Make a copy of the original node in case we need to pretty-print the original.
+        let original_node = node.clone();
+
         if let Some(mut op) = node.take_value_for_key("op") {
             if let Some(op_type_str) = op.get_str_for_key("ast_type") {
+                // Pretty-print the original version of the node for use in the comment block.
+                let original_node_s = pretty_print_node(&original_node);
+
                 // Get the original operator so that we can use it to compare for the
                 // randomly chosen new operator. We do not want to replace the original operator
                 // with itself, just by randomly selecting the same operator from the operator list.
@@ -284,14 +338,14 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 // Choose a new operator.
                 let mut chosen_operator = match self.operators.choose(rand) {
                     Some(o) => o,
-                    None => return,
+                    None => return None,
                 };
 
                 // If we chose the original operator, keep choosing until we get a different operator.
                 while original_operator == chosen_operator {
                     chosen_operator = match self.operators.choose(rand) {
                         Some(o) => o,
-                        None => return,
+                        None => return None,
                     };
                 }
 
@@ -302,12 +356,33 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 op.set_str_for_key("ast_type", vyper_chosen_operator);
 
                 node.set_node_for_key("op", op);
+
+                // Pretty-print the new version of the node for use in the comment block.
+                let new_node_s = pretty_print_node(node);
+
+                // create a comment node.
+                let comment_text = format!(
+                    "{} Mutator: Changed '{}' to '{}'",
+                    self.mutation_type, original_node_s, new_node_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                if let Some(id) = node.get_int_for_key("node_id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         self.mutation_type
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -317,10 +392,19 @@ impl Mutator<VyperAST> for BinaryOpMutator {
 /// with a random value.  The algorithm operates on assignments to integer, unsigned integer,
 /// and boolean variables.  For number types, the algorithm will try to generate values in the
 /// valid value ranges for each type.
-struct AssignmentMutator {}
+struct AssignmentMutator {
+    /// The comment node that describes the mutation.
+    comment_node: Option<VyperAST>,
+}
 
+impl AssignmentMutator {
+    /// Create a new assignment mutator.
+    pub fn new() -> AssignmentMutator {
+        AssignmentMutator { comment_node: None }
+    }
+}
 impl Mutator<VyperAST> for AssignmentMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node is an `Assign` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "Assign" {
@@ -330,7 +414,20 @@ impl Mutator<VyperAST> for AssignmentMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Get rid of any previous comment node.
+        self.comment_node = None;
+
+        let value_node: VyperAST = if let Some(vnode) = node.get("value") {
+            vnode.clone()
+        } else {
+            log::debug!("AssignmentMutator failed to find existing `value` node.");
+            return None;
+        };
+
+        // Pretty-print the original value node so that we can later create a comment node.
+        let original_value_s = pretty_print_node(&value_node);
+
         // We need to replace the 'value' node in the tree with a
         // node that contains an int, unsigned int, float, or a boolean value.
         // Vyper is Python based and as such nodes in the tree do not carry
@@ -343,13 +440,18 @@ impl Mutator<VyperAST> for AssignmentMutator {
         match mutation_kind {
             0 => {
                 // Generate an integer
-                let lower_bound = -(2_i128.pow(127));
-                let upper_bound = 2_i128.pow(127);
+
+                // -(2**127)
+                let lower_bound = -170141183460469231731687303715884105728_i128;
+
+                // 2_i128.pow(127) - 1
+                let upper_bound = 170141183460469231731687303715884105727_i128;
+
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("value", new_node);
@@ -362,7 +464,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("value", new_node);
@@ -374,7 +476,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 let new_node = match new_boolean_constant_node(actual_boolean) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("value", new_node);
@@ -389,17 +491,35 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 let new_node = match new_float_constant_node(random_float) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("value", new_node);
             }
             _ => (),
         }
+
+        let new_value_node = node.get("value").unwrap();
+        let new_value_s = pretty_print_node(new_value_node);
+
+        let comment_text = format!(
+            "Assignment Mutator: changed '{}' to '{}'",
+            original_value_s, new_value_s
+        );
+
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("node_id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::Assignment)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -407,6 +527,11 @@ impl Mutator<VyperAST> for AssignmentMutator {
 ///
 /// The algorithm finds FunctionDef nodes and attempts to correctly remove
 /// a statement in the function definition while retaining correct compilation of the function.
+///
+/// When a FunctionDef node appears in an `interface` declaration, the body of the FunctionDef
+/// will only contain one statement with certain values.  This mutator looks for those cases
+/// and will not delete a statement in the body of a FunctionDef used inside an `interface`
+/// declaration.
 ///
 /// # Example
 ///
@@ -437,14 +562,47 @@ impl Mutator<VyperAST> for AssignmentMutator {
 ///     # return 2, 3
 ///     return (None, None)
 /// ```
-struct DeleteStatementMutator {}
+struct DeleteStatementMutator {
+    /// Comment node detailing mutation.
+    comment_node: Option<VyperAST>,
+
+    /// keywords that indicate a function definition is part of a function declaration in
+    /// an `interface` declaration.
+    single_line_statements_to_avoid: Vec<&'static str>,
+}
+
+impl DeleteStatementMutator {
+    /// Create a new delete statement mutator.
+    pub fn new() -> DeleteStatementMutator {
+        DeleteStatementMutator {
+            comment_node: None,
+            single_line_statements_to_avoid: vec!["view", "nonpayable", "payable"],
+        }
+    }
+}
 
 impl Mutator<VyperAST> for DeleteStatementMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type_str) = node.get_str_for_key("ast_type") {
-            if ast_type_str == "FunctionDef" {
+            // TODO: There is currently no way to select the 'orelse' block of an 'If'
+            // statement.  You can pick it in this function, but there is not a way to tell
+            // the mutate function at mutation time that it needs to mutate the 'orelse' block.
+            if ast_type_str == "FunctionDef"
+                || ast_type_str == "For"
+                || ast_type_str == "If"
+                || ast_type_str == "Module"
+            {
                 if let Some(body_node) = node.get("body") {
                     if let Some(body_array) = body_node.as_array() {
+                        if body_array.len() == 1 {
+                            let first_statement_s = pretty_print_node(&body_array[0]);
+                            if self
+                                .single_line_statements_to_avoid
+                                .contains(&&*first_statement_s)
+                            {
+                                return false;
+                            }
+                        }
                         if !body_array.is_empty() {
                             return true;
                         }
@@ -455,8 +613,11 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
-        // We have a FunctionDef node.  We want to randomly delete a node in the body
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previous comment.
+        self.comment_node = None;
+
+        // We have a node with a 'body' member.  We want to randomly delete a node in the body
         // array (assuming a body array is present).
         if let Some(mut body_node) = node.take_value_for_key("body") {
             if let Some(body_array) = body_node.as_array_mut() {
@@ -464,17 +625,11 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 let index = (rand.next_u64() % body_array.len() as u64) as usize;
                 let value = body_array.remove(index);
 
-                // Pretty-print the node so we can then wrap the string version in a comment
-                // node.
-                let mut contents = Vec::new();
-                let mut printer = PrettyPrinter::new(4, 150);
-                let factory = VyperNodePrinterFactory::default();
-                traverse_sub_node_and_print(&mut printer, &mut contents, &factory, &value);
-                let s = core::str::from_utf8(contents.as_slice()).unwrap();
+                let value_id = value.get_int_for_key("node_id").map(|id| id as u64);
 
-                let new_node = match new_comment_node(s) {
+                let new_node = match new_comment_node_from_node(value) {
                     Ok(node) => node,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
 
                 body_array.insert(index, new_node);
@@ -495,12 +650,12 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             let new_node =
                                                 match new_boolean_constant_node(actual_boolean) {
                                                     Ok(n) => n,
-                                                    _ => return,
+                                                    _ => return None,
                                                 };
 
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
 
                                             body_array.push(return_node);
@@ -511,11 +666,11 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             let number = rand.next_u64() % 10_u64;
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
 
                                             body_array.push(return_node);
@@ -527,11 +682,11 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             number -= 10;
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
 
                                             body_array.push(return_node);
@@ -542,16 +697,16 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                                             ) {
                                                 Ok(node) => node,
-                                                Err(_e) => return
+                                                Err(_e) => return None
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return,
+                                                Err(_e) => return None,
                                             };
 
                                             body_array.push(return_node);
                                         }
-                                        _ => return,
+                                        _ => return None,
                                     }
                                 }
                             } else if ast_type_str == "Pass" {
@@ -562,7 +717,7 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                         let node_type = match ast_type_str {
                                             "Tuple" => ListLikeThing::Tuple,
                                             "List" => ListLikeThing::List,
-                                            _ => return,
+                                            _ => return None,
                                         };
 
                                         let list_like_node = match new_list_like_thing_node(
@@ -570,12 +725,12 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             node_type,
                                         ) {
                                             Ok(node) => node,
-                                            Err(_e) => return,
+                                            Err(_e) => return None,
                                         };
 
                                         let return_node = match new_return_node(list_like_node) {
                                             Ok(node) => node,
-                                            Err(_e) => return,
+                                            Err(_e) => return None,
                                         };
                                         body_array.push(return_node);
                                     }
@@ -584,33 +739,57 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                         } else {
                             let new_node = match new_pass_node() {
                                 Ok(node) => node,
-                                Err(_e) => return,
+                                Err(_e) => return None,
                             };
                             body_array.push(new_node);
                         }
                     } else {
                         let new_node = match new_pass_node() {
                             Ok(node) => node,
-                            Err(_e) => return,
+                            Err(_e) => return None,
                         };
                         body_array.push(new_node);
                     }
                 }
 
+                // Now create a comment node describing the change we made.
+                let comment_text =
+                    String::from("DeleteStatement Mutator: commented out the following line.");
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
                 node.set_node_for_key("body", body_node);
+
+                return value_id;
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::DeleteStatement)
     }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
+    }
 }
 
-struct FunctionCallMutator {}
+struct FunctionCallMutator {
+    /// node containing information about the mutation.
+    comment_node: Option<VyperAST>,
+}
+
+impl FunctionCallMutator {
+    /// Create a new function call mutator.
+    pub fn new() -> FunctionCallMutator {
+        FunctionCallMutator { comment_node: None }
+    }
+}
 
 impl Mutator<VyperAST> for FunctionCallMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node is an `Call` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "Call" {
@@ -627,7 +806,10 @@ impl Mutator<VyperAST> for FunctionCallMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Get rid of any previous comment.
+        self.comment_node = None;
+
         if let Some(args_node) = node.get("args") {
             if let Some(args_array) = args_node.as_array() {
                 loop {
@@ -639,15 +821,38 @@ impl Mutator<VyperAST> for FunctionCallMutator {
                             continue;
                         }
                     }
+
+                    // Create a comment node.
+                    let original_node_s = pretty_print_node(node);
+                    let value_s = pretty_print_node(value);
+                    let comment_text = format!(
+                        "FunctionCall Mutator: replaced '{}' with '{}'",
+                        original_node_s, value_s
+                    );
+                    if let Ok(comment_node) = new_comment_node(&comment_text) {
+                        self.comment_node = Some(comment_node);
+                    }
+
                     *node = value.clone();
                     break;
                 }
+
+                if node.is_object() {
+                    if let Some(id) = node.get_int_for_key("node_id") {
+                        return Some(id as u64);
+                    }
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::FunctionCall)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -658,10 +863,20 @@ impl Mutator<VyperAST> for FunctionCallMutator {
 /// the Vyper AST does not contain type annotations for the arguments to function calls, it is
 /// outside the scope of this algorithm to ensure that algorithm only swaps arguments of the same
 /// type.
-struct SwapFunctionArgumentsMutator {}
+struct SwapFunctionArgumentsMutator {
+    /// Information about the mutation
+    comment_node: Option<VyperAST>,
+}
+
+impl SwapFunctionArgumentsMutator {
+    /// Create a new swap-function-arguments mutator.
+    pub fn new() -> SwapFunctionArgumentsMutator {
+        SwapFunctionArgumentsMutator { comment_node: None }
+    }
+}
 
 impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node is an `Call` node.
         if let Some(n) = node.get_str_for_key("ast_type") {
             if n == "Call" {
@@ -681,17 +896,34 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
-        if let Some(args) = node.take_value_for_key("args") {
-            if let Some(args_array) = node.as_array_mut() {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove an previously existing comment.
+        self.comment_node = None;
+
+        if let Some(mut args) = node.take_value_for_key("args") {
+            if let Some(args_array) = args.as_array_mut() {
                 let bound: usize = 2;
                 match args_array.len().cmp(&bound) {
                     Ordering::Equal => {
                         // Just swap the two arguments
                         let arg1 = args_array[0].clone();
                         let arg2 = args_array[1].clone();
+
+                        // Now we pretty-print the changed args.
+                        let arg1_s = pretty_print_node(&arg1);
+                        let arg2_s = pretty_print_node(&arg2);
+
                         args_array[0] = arg2;
                         args_array[1] = arg1;
+
+                        let comment_text = format!(
+                            "SwapFunctionArguments Mutator: swapped '{}', for '{}'",
+                            arg1_s, arg2_s
+                        );
+
+                        if let Ok(comment_node) = new_comment_node(&comment_text) {
+                            self.comment_node = Some(comment_node);
+                        }
 
                         node.set_node_for_key("args", args);
                     }
@@ -708,19 +940,42 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
 
                         let arg1 = args_array[random_index1].clone();
                         let arg2 = args_array[random_index2].clone();
+
+                        // Now we pretty-print the changed args.
+                        let arg1_s = pretty_print_node(&arg1);
+                        let arg2_s = pretty_print_node(&arg2);
+
                         args_array[random_index1] = arg2;
                         args_array[random_index2] = arg1;
+
+                        let comment_text = format!(
+                            "SwapFunctionArguments Mutator: swapped '{}', for '{}'",
+                            arg1_s, arg2_s
+                        );
+
+                        if let Ok(comment_node) = new_comment_node(&comment_text) {
+                            self.comment_node = Some(comment_node);
+                        }
 
                         node.set_node_for_key("args", args);
                     }
                     _ => {}
                 }
+
+                if let Some(id) = node.get_int_for_key("node_id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::FunctionSwapArguments)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -730,10 +985,20 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
 /// * The algorithm replaces the condition of the if statement with `true`.
 /// * The algorithm replaces the condition of the if statement with `false`.
 /// * The algorithm replaces the condition (called c) of the if statement with `!(c)`.
-struct IfStatementMutator {}
+struct IfStatementMutator {
+    /// Information about the mutation.
+    comment_node: Option<VyperAST>,
+}
+
+impl IfStatementMutator {
+    /// Create a new if-statement mutator.
+    pub fn new() -> IfStatementMutator {
+        IfStatementMutator { comment_node: None }
+    }
+}
 
 impl Mutator<VyperAST> for IfStatementMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "If" {
                 if let Some(_test_node) = node.get("test") {
@@ -744,7 +1009,17 @@ impl Mutator<VyperAST> for IfStatementMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previous comment.
+        self.comment_node = None;
+
+        let original_test_s = if let Some(test_node) = node.get("test") {
+            pretty_print_node(test_node)
+        } else {
+            log::info!("Could not find a test node to mutate in IfStatementMutator");
+            return None;
+        };
+
         // Randomly choose between three possible mutations:
         // * Replace condition with true.
         // * Replace condition with false.
@@ -754,8 +1029,17 @@ impl Mutator<VyperAST> for IfStatementMutator {
                 // Replace the condition with 'True'
                 let new_node = match new_boolean_constant_node(true) {
                     Ok(n) => n,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
+
+                let new_node_str = pretty_print_node(&new_node);
+                let comment_text = format!(
+                    "IfStatement Mutator: changed test condition '{}' to '{}'",
+                    original_test_s, new_node_str
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
 
                 node.set_node_for_key("test", new_node);
             }
@@ -763,8 +1047,18 @@ impl Mutator<VyperAST> for IfStatementMutator {
                 // Replace the condition with `False`.
                 let new_node = match new_boolean_constant_node(false) {
                     Ok(n) => n,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
+
+                let new_node_str = pretty_print_node(&new_node);
+                let comment_text = format!(
+                    "IfStatement Mutator: changed test condition '{}' to '{}'",
+                    original_test_s, new_node_str
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
                 node.set_node_for_key("test", new_node);
             }
             2 => {
@@ -772,18 +1066,32 @@ impl Mutator<VyperAST> for IfStatementMutator {
                 if let Some(test_node) = node.take_value_for_key("test") {
                     let new_node = match new_unary_op_node("Not", test_node) {
                         Ok(n) => n,
-                        Err(_e) => return,
+                        Err(_e) => return None,
                     };
+
+                    let new_node_str = pretty_print_node(&new_node);
+                    let comment_text = format!(
+                        "IfStatement Mutator: changed test condition '{}' to '{}'",
+                        original_test_s, new_node_str
+                    );
+                    if let Ok(comment_node) = new_comment_node(&comment_text) {
+                        self.comment_node = Some(comment_node);
+                    }
 
                     node.set_node_for_key("test", new_node);
                 }
             }
             _ => (),
         }
+        node.get_int_for_key("node_id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::IfStatement)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -793,10 +1101,20 @@ impl Mutator<VyperAST> for IfStatementMutator {
 /// * Adds one to integer constant.
 /// * Subtracts one from integer constant.
 /// * Generates a random value.
-struct IntegerMutator {}
+struct IntegerMutator {
+    /// Information about the mutation.
+    comment_node: Option<VyperAST>,
+}
+
+impl IntegerMutator {
+    /// Create a new integer mutator.
+    pub fn new() -> IntegerMutator {
+        IntegerMutator { comment_node: None }
+    }
+}
 
 impl Mutator<VyperAST> for IntegerMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "Int" {
                 return true;
@@ -805,7 +1123,12 @@ impl Mutator<VyperAST> for IntegerMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previous comments
+        self.comment_node = None;
+
+        let original_value_s = pretty_print_node(node);
+
         match rand.next_u64() % 3_u64 {
             0 => {
                 // Add one to the integer constant.
@@ -835,10 +1158,26 @@ impl Mutator<VyperAST> for IntegerMutator {
             }
             _ => (),
         }
+
+        let new_value_s = pretty_print_node(node);
+
+        let comment_text = format!(
+            "Integer Mutator: changed '{}' to '{}'",
+            original_value_s, new_value_s
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("node_id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::Integer)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -850,6 +1189,7 @@ impl Mutator<VyperAST> for IntegerMutator {
 struct OperatorSwapArgumentsMutator {
     valid_operators: Vec<&'static str>,
     operator_map: HashMap<&'static str, &'static str>,
+    comment_node: Option<VyperAST>,
 }
 
 impl OperatorSwapArgumentsMutator {
@@ -858,12 +1198,13 @@ impl OperatorSwapArgumentsMutator {
         OperatorSwapArgumentsMutator {
             valid_operators: non_commutative_operators(),
             operator_map: get_python_operator_map(),
+            comment_node: None,
         }
     }
 }
 
 impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "BinOp" || ast_type == "BoolOp" || ast_type == "Compare" {
                 if let Some(op_node) = node.get("op") {
@@ -879,11 +1220,21 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, _rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, _rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previous comment
+        self.comment_node = None;
+
+        let mut left_node_s = String::new();
+        let mut right_node_s = String::new();
+
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "BinOp" || ast_type == "Compare" {
                 if let Some(left_node) = node.take_value_for_key("left") {
                     if let Some(right_node) = node.take_value_for_key("right") {
+                        // Get the pretty-printed nodes.
+                        left_node_s = pretty_print_node(&left_node);
+                        right_node_s = pretty_print_node(&right_node);
+
                         node.set_node_for_key("left", right_node);
                         node.set_node_for_key("right", left_node);
                     }
@@ -893,16 +1244,38 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
                     if let Some(values_array) = values_node.as_array_mut() {
                         let right = values_array.remove(1);
                         let left = values_array.remove(0);
+
+                        // Get the pretty-printed nodes.
+                        left_node_s = pretty_print_node(&left);
+                        right_node_s = pretty_print_node(&right);
+
                         values_array.push(right);
                         values_array.push(left);
                     }
                 }
             }
+
+            let comment_text = format!(
+                "OperatorSwapArguments Mutator: Swapped '{}' for '{}'",
+                left_node_s, right_node_s
+            );
+            if let Ok(comment_node) = new_comment_node(&comment_text) {
+                self.comment_node = Some(comment_node);
+            }
+
+            if let Some(id) = node.get_int_for_key("node_id") {
+                return Some(id as u64);
+            }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::OperatorSwapArguments)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -911,14 +1284,32 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
 /// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
 /// the lines.  Since function return statements affect how a program compiles, the algorithm
 /// will explicitly not swap lines with return statements.
-struct LinesSwapMutator {}
+struct LinesSwapMutator {
+    /// A comment node describing the mutation
+    comment_node: Option<VyperAST>,
+
+    /// The key used to select the block of statements. (Might be `orelse` for `If` nodes).
+    /// Currently always `body`.  There is no way to pass this info to the mutate function at
+    /// mutation time.
+    key: String,
+}
+
+impl LinesSwapMutator {
+    /// Create a new LinesSwap mutator.
+    pub fn new() -> LinesSwapMutator {
+        LinesSwapMutator {
+            comment_node: None,
+            key: String::from("body"),
+        }
+    }
+}
 
 impl Mutator<VyperAST> for LinesSwapMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // We need a function definition with at least two body statements.
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "FunctionDef" || ast_type == "For" || ast_type == "If" {
-                if let Some(body_node) = node.get("body") {
+                if let Some(body_node) = node.get(&self.key) {
                     if let Some(body_array) = body_node.as_array() {
                         if body_array.len() >= 2 {
                             let mut found_return_statement = false;
@@ -946,8 +1337,11 @@ impl Mutator<VyperAST> for LinesSwapMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, rand: &mut Pcg64) {
-        if let Some(mut body_node) = node.take_value_for_key("body") {
+    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+        // Do not hang on to any old comment node.
+        self.comment_node = None;
+
+        if let Some(mut body_node) = node.take_value_for_key(&self.key) {
             if let Some(body_array) = body_node.as_array_mut() {
                 // Randomly pick a first node.
                 let mut first_index: usize;
@@ -990,15 +1384,37 @@ impl Mutator<VyperAST> for LinesSwapMutator {
 
                 let larger_node = body_array.remove(larger_index);
                 let smaller_node = body_array.remove(smaller_index);
-                body_array.insert(smaller_index, larger_node);
-                body_array.insert(larger_index, smaller_node);
+                body_array.insert(smaller_index, larger_node.clone());
+                body_array.insert(larger_index, smaller_node.clone());
                 node.set_node_for_key("body", body_node);
+
+                // We now create a comment node.
+                let large_node_s = pretty_print_node(&larger_node);
+                let small_node_s = pretty_print_node(&smaller_node);
+
+                let comment_text = format!(
+                    "LinesSwap Mutator: Swapped line '{}' with '{}'",
+                    large_node_s, small_node_s
+                );
+
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                if let Some(id) = node.get_int_for_key("node_id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::LinesSwap)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1011,10 +1427,20 @@ impl Mutator<VyperAST> for LinesSwapMutator {
 /// Since these unary operations occur in expressions with different semantic meaning,
 /// (ie one a logical operation and one a bitwise negation) the algorithm will not
 /// interchange `not` for `~`, but instead, drop the prefix operator leaving just the operand.
-struct UnaryOpMutator {}
+struct UnaryOpMutator {
+    /// Information about the mutation.
+    comment_node: Option<VyperAST>,
+}
+
+impl UnaryOpMutator {
+    /// Create a new unary operation mutator.
+    pub fn new() -> UnaryOpMutator {
+        UnaryOpMutator { comment_node: None }
+    }
+}
 
 impl Mutator<VyperAST> for UnaryOpMutator {
-    fn is_mutable_node(&self, node: &VyperAST) -> bool {
+    fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "UnaryOp" {
                 return true;
@@ -1023,14 +1449,37 @@ impl Mutator<VyperAST> for UnaryOpMutator {
         false
     }
 
-    fn mutate(&self, node: &mut VyperAST, _rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut VyperAST, _rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previously existing comment
+        self.comment_node = None;
+
+        let original_node_s = pretty_print_node(node);
+
         if let Some(operand_node) = node.take_value_for_key("operand") {
             *node = operand_node;
+
+            let new_node_s = pretty_print_node(node);
+            let comment_text = format!(
+                "UnaryOp Mutator: Replaced '{}' with '{}",
+                original_node_s, new_node_s
+            );
+            if let Ok(comment_node) = new_comment_node(&comment_text) {
+                self.comment_node = Some(comment_node);
+            }
+
+            if let Some(id) = node.get_int_for_key("node_id") {
+                return Some(id as u64);
+            }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::UnaryOp)
+    }
+
+    fn get_comment_node(&self) -> Option<VyperAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1062,19 +1511,19 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                     comparison_operators(),
                     MutationType::Generic(GenericMutation::ComparisonBinaryOp),
                 ))),
-                GenericMutation::Assignment => Some(Box::new(AssignmentMutator {})),
-                GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
+                GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator::new())),
+                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
                 GenericMutation::FunctionSwapArguments => {
-                    Some(Box::new(SwapFunctionArgumentsMutator {}))
+                    Some(Box::new(SwapFunctionArgumentsMutator::new()))
                 }
-                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
-                GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
+                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),
+                GenericMutation::Integer => Some(Box::new(IntegerMutator::new())),
                 GenericMutation::OperatorSwapArguments => {
                     Some(Box::new(OperatorSwapArgumentsMutator::new()))
                 }
-                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator {})),
-                GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator {})),
+                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
+                GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
             },
             _ => None,
         }

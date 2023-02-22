@@ -323,7 +323,9 @@ impl PrettyPrinter {
         // way and breaks the column accounting algorithms.  This is a naive implementation of
         // character removal.
         let mut text = String::from(s);
-        text.remove_all("\n");
+        while text.find('\n').is_some() {
+            text = text.replace('\n', " ");
+        }
 
         // Extra spaces may also break the flow.  So we replace two or more spaces with one space
         // until we have no more double spaces.

@@ -1638,15 +1638,20 @@ impl NodePrinter<SolidityAST> for CommentPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut dyn Write,
-        _factory: &dyn NodePrinterFactory<SolidityAST>,
+        factory: &dyn NodePrinterFactory<SolidityAST>,
         node: &SolidityAST,
     ) {
+        write_token(printer, stream, "//");
+        write_space(printer, stream);
+
         if let Some(comment_text) = node.get_str_for_key("text") {
             if !comment_text.is_empty() {
-                write_token(printer, stream, "//");
-                write_space(printer, stream);
                 write_flowable_text(printer, stream, comment_text, "// ");
             }
+        }
+
+        if let Some(value_node) = node.get("value") {
+            traverse_sub_node_and_print(printer, stream, factory, value_node);
         }
     }
 }

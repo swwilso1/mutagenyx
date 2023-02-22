@@ -104,6 +104,35 @@ fn new_comment_node(text: &str) -> Result<SolidityAST, MetamorphError> {
     Ok(node)
 }
 
+/// Return a new comment node populated with the value of `node`.
+///
+/// # Arguments
+///
+/// * `node` - A [`SolidityAST`] node to embed in the comment.
+fn new_comment_node_from_node(node: SolidityAST) -> Result<SolidityAST, MetamorphError> {
+    let node_string = "{\
+            \"id\": 9999997,
+            \"isConstant\": false,
+            \"isLValue\": false,
+            \"isPure\": false,
+            \"lValueRequested\": false,
+            \"nodeType\": \"Comment\",
+            \"value\": null
+        }";
+
+    let id_value: i64 = node.get_int_for_key("id").unwrap_or(9999997);
+
+    let mut new_node = new_json_node(node_string)?;
+    new_node.set_node_for_key("value", node);
+
+    // The commenting algorithms need to be able to find the id of the original node.
+    // Since the original node is effectively going away, we move the id from the node
+    // into the comment node.
+    new_node.set_node_for_key("id", json![id_value]);
+
+    Ok(new_node)
+}
+
 /// Helper function to generate a new unary operator node.
 ///
 /// # Arguments
@@ -164,7 +193,10 @@ fn new_tuple_expression_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Met
 /// # Arguments
 ///
 /// * `array` - The vector of [`SolidityAST`] nodes to place in the UncheckedBlock
-fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, MetamorphError> {
+fn new_unchecked_block_node(
+    array: Vec<SolidityAST>,
+    node_id: u64,
+) -> Result<SolidityAST, MetamorphError> {
     let node_array = json![array];
 
     let node_str = "{\
@@ -175,7 +207,24 @@ fn new_unchecked_block_node(array: Vec<SolidityAST>) -> Result<SolidityAST, Meta
 
     let mut unchecked_node = new_json_node(node_str)?;
     unchecked_node.set_node_for_key("statements", node_array);
+    unchecked_node.set_node_for_key("id", json![node_id]);
     Ok(unchecked_node)
+}
+
+/// Return the string containing the pretty-printed form of `node`.
+///
+/// # Arguments
+///
+/// * `node` - The node to pretty-print.
+fn pretty_print_node(node: &SolidityAST) -> String {
+    let mut node_contents = Vec::new();
+    let mut printer = PrettyPrinter::new(4, 150);
+    let factory = SolidityNodePrinterFactory::default();
+    traverse_sub_node_and_print(&mut printer, &mut node_contents, &factory, node);
+
+    // s now contains the pretty-printed node.
+    let s = core::str::from_utf8(node_contents.as_slice()).unwrap();
+    String::from(s)
 }
 
 /// The object that implements mutations for binary expressions.
@@ -190,6 +239,9 @@ struct BinaryOpMutator {
 
     /// The mutation algorithm implemented by the mutator.
     mutation_type: MutationType,
+
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
 }
 
 impl BinaryOpMutator {
@@ -206,12 +258,13 @@ impl BinaryOpMutator {
         BinaryOpMutator {
             operators,
             mutation_type,
+            comment_node: None,
         }
     }
 }
 
 impl Mutator<SolidityAST> for BinaryOpMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node in the AST is a "BinaryOperation" node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "BinaryOperation" {
@@ -226,31 +279,53 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove any previous comment.
+        self.comment_node = None;
+
         if let Some(original_operator) = node.get_str_for_key("operator") {
             // Get the original operator so that we can use it to compare for the
             // randomly chosen new operator. We do not want to replace the original operator
             // with itself, just by randomly selecting the same operator from the operator list.
             let mut chosen_operator = match self.operators.choose(rand) {
                 Some(o) => o,
-                None => return,
+                None => return None,
             };
+
+            let original_operator_s = String::from(original_operator);
 
             // If we chose the original operator, keep choosing until we get a different operator.
             while original_operator == *chosen_operator {
                 chosen_operator = match self.operators.choose(rand) {
                     Some(o) => o,
-                    None => return,
+                    None => return None,
                 };
             }
 
             // Insert the new operator into the node.
             node.set_str_for_key("operator", chosen_operator);
+
+            let comment_text = format!(
+                "{} Mutator: changed '{}' to '{}'",
+                self.mutation_type, original_operator_s, chosen_operator
+            );
+            if let Ok(comment_node) = new_comment_node(&comment_text) {
+                self.comment_node = Some(comment_node);
+            }
+
+            if let Some(id) = node.get_int_for_key("id") {
+                return Some(id as u64);
+            }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         self.mutation_type
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -261,6 +336,9 @@ struct UnaryOpMutator {
 
     /// A list of operators usable as postfix operators.
     postfix_operators: Vec<&'static str>,
+
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
 }
 
 impl UnaryOpMutator {
@@ -269,12 +347,13 @@ impl UnaryOpMutator {
         UnaryOpMutator {
             prefix_operators: prefix_operators(),
             postfix_operators: postfix_operators(),
+            comment_node: None,
         }
     }
 }
 
 impl Mutator<SolidityAST> for UnaryOpMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node is a 'UnaryOperation' node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "UnaryOperation" {
@@ -307,7 +386,10 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previously existing comment.
+        self.comment_node = None;
+
         // Determine if the node is a prefix/postfix operation and then use the prefix or
         // postfix operator list.
         let operator_list = match node.get_bool_for_key("prefix") {
@@ -323,7 +405,7 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
                     "Mutate found a UnaryOperator node with no prefix information: {:?}",
                     node
                 );
-                return;
+                return None;
             }
         };
 
@@ -332,25 +414,42 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         // selecting operators until we have a different operator.
         let original_operator = node.get_str_for_key("operator").unwrap_or("");
 
+        // Make copy of the operator for use with comments later.
+        let original_operator_s = String::from(original_operator);
+
         // Choose a new operator.
         let mut chosen_operator = match operator_list.choose(rand) {
             Some(o) => o,
-            None => return,
+            None => return None,
         };
 
         // If the operators match, choose another operator until they no longer match.
         while original_operator == *chosen_operator {
             chosen_operator = match operator_list.choose(rand) {
                 Some(o) => o,
-                None => return,
+                None => return None,
             };
         }
 
         node.set_str_for_key("operator", chosen_operator);
+
+        let comment_text = format!(
+            "UnaryOp Mutator: Changed '{}' to '{}'",
+            original_operator_s, chosen_operator
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::UnaryOp)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -362,17 +461,20 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
 /// algorithm will recognize the range of the type and generate random numbers that lie in the
 /// range.  Since rust only supports a maximum of 128-bit signed and unsigned integers, Solidity
 /// types larger than that will only receive a random number in the 128-bit range.
-struct AssignmentMutator {}
+struct AssignmentMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
 
 impl AssignmentMutator {
     /// Create the new mutator.
     pub fn new() -> AssignmentMutator {
-        AssignmentMutator {}
+        AssignmentMutator { comment_node: None }
     }
 }
 
 impl Mutator<SolidityAST> for AssignmentMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // First check to see if the node is an `Assignment` node.
         if let Some(n) = node.get_str_for_key("nodeType") {
             if n == "Assignment" {
@@ -405,13 +507,16 @@ impl Mutator<SolidityAST> for AssignmentMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previously existing comment
+        self.comment_node = None;
+
         // Recover the type descriptions for the node.
         let type_description_node = match node.get("typeDescriptions") {
             Some(n) => n,
             _ => {
                 log::info!("Assignment node has no type description object");
-                return;
+                return None;
             }
         };
 
@@ -419,8 +524,15 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             Some(s) => s,
             _ => {
                 log::info!("Assignment node's type description has no type string");
-                return;
+                return None;
             }
+        };
+
+        let original_rhs_s = if let Some(rhs_node) = node.get("rightHandSide") {
+            pretty_print_node(rhs_node)
+        } else {
+            log::info!("Did not find right hand side in Assignment mutator");
+            return None;
         };
 
         let first_three_chars = &type_string[..3];
@@ -440,7 +552,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
@@ -465,7 +577,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
@@ -477,17 +589,38 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let new_node = match new_boolean_literal_node(bool_literal) {
                     Ok(n) => n,
-                    _ => return,
+                    _ => return None,
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
             }
             _ => (),
         }
+
+        let new_rhs_s = if let Some(rhs_node) = node.get("rightHandSide") {
+            pretty_print_node(rhs_node)
+        } else {
+            log::info!("Could not get right hand side after Assignment mutation");
+            return None;
+        };
+
+        let comment_text = format!(
+            "Assignment Mutator: Replaced '{}' with '{}'",
+            original_rhs_s, new_rhs_s
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::Assignment)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -495,10 +628,20 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 ///
 /// The algorithm chooses a random ExpressionStatement node in any Block and replaces that statement
 /// with a comment node.
-struct DeleteStatementMutator {}
+struct DeleteStatementMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl DeleteStatementMutator {
+    /// Create the new delete statement mutator.
+    pub fn new() -> DeleteStatementMutator {
+        DeleteStatementMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for DeleteStatementMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // We are looking for a Block node that has at least one ExpressionStatement
         // in the body of the function.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
@@ -522,7 +665,10 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previously existing comment.
+        self.comment_node = None;
+
         // We have a Block node that has a statements array with at least one
         // ExpressionStatement. Go through the statements and pick one randomly in order
         // to delete the statement.
@@ -545,32 +691,37 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
                     (rand.next_u64() % expression_statement_indexes.len() as u64) as usize;
                 let value = statements_array.remove(expression_statement_indexes[vector_index]);
 
-                // Now pretty-print the node so we can wrap the resulting string in a comment node.
-                let mut contents = Vec::new();
-                let mut printer = PrettyPrinter::new(4, 150);
-                let node_printer_factory = SolidityNodePrinterFactory::default();
-                traverse_sub_node_and_print(
-                    &mut printer,
-                    &mut contents,
-                    &node_printer_factory,
-                    &value,
-                );
-                let s = core::str::from_utf8(contents.as_slice()).unwrap();
+                let value_s = pretty_print_node(&value);
 
-                let new_node = match new_comment_node(s) {
+                let value_id = value.get_int_for_key("id").map(|id| id as u64);
+
+                let new_node = match new_comment_node_from_node(value) {
                     Ok(node) => node,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
 
                 statements_array.insert(expression_statement_indexes[vector_index], new_node);
 
                 node.set_node_for_key("statements", statements_node);
+
+                let comment_text =
+                    format!("DeleteStatement Mutator: deleted statement '{}'", value_s);
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                return value_id;
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::DeleteStatement)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -603,10 +754,20 @@ impl IndexedNode {
 /// The algorithm selects a random function call and replaces the function call with one of the
 /// arguments from the function call.  The algorithm does not check the return type of the function
 /// from the function's definition to select an argument that matches the return type.
-struct FunctionCallMutator {}
+struct FunctionCallMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl FunctionCallMutator {
+    /// Create a new function-call mutator.
+    pub fn new() -> FunctionCallMutator {
+        FunctionCallMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for FunctionCallMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // We only want function call nodes with at least 1 argument.
         // We may want to ignore require() functions.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
@@ -623,9 +784,13 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previously existing comment
+        self.comment_node = None;
+
         if let Some(arguments_node) = node.get("arguments") {
             if let Some(arguments_array) = arguments_node.as_array() {
+                let original_node_s = pretty_print_node(node);
                 loop {
                     // Randomly pick an array member, but avoid Literal nodes.
                     let index = (rand.next_u64() % arguments_array.len() as u64) as usize;
@@ -635,15 +800,39 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
                             continue;
                         }
                     }
+
                     *node = value.clone();
                     break;
                 }
+                let new_node_s = pretty_print_node(node);
+                let comment_text = format!(
+                    "FunctionCall Mutator: replaced '{}' with '{}'",
+                    original_node_s, new_node_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                // We may not get a good id out of the new node.  The FunctionCall mutation replaces
+                // a function call with an argument to the function.
+                let value_id = if node.is_object() {
+                    node.get_int_for_key("id").map(|id| id as u64)
+                } else {
+                    None
+                };
+
+                return value_id;
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::FunctionCall)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -651,17 +840,20 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
 ///
 /// The mutator should identify function call expressions where the function call contains
 /// at least two arguments of the same type.  The mutator will swap the two arguments.
-struct SwapFunctionArgumentsMutator {}
+struct SwapFunctionArgumentsMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
 
 impl SwapFunctionArgumentsMutator {
     /// Create the mutator object.
     pub fn new() -> SwapFunctionArgumentsMutator {
-        SwapFunctionArgumentsMutator {}
+        SwapFunctionArgumentsMutator { comment_node: None }
     }
 }
 
 impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "FunctionCall" {
                 if let Some(arguments_node) = node.get("arguments") {
@@ -699,7 +891,10 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Replace previously existing comment.
+        self.comment_node = None;
+
         // We have the FunctionCall node with arguments of the same type. Iterate and find
         // nodes of the same type so that we can swap them.
         if let Some(mut arguments_node) = node.take_value_for_key("arguments") {
@@ -737,17 +932,40 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
                 let node_list = &list_list[list_index];
                 let in1 = &node_list[0];
                 let in2 = &node_list[1];
+
+                // pretty print the node contents first before swapping. We need these strings
+                // for the comment node.
+                let in1_node_s = pretty_print_node(&in1.node);
+                let in2_node_s = pretty_print_node(&in2.node);
+
                 arguments_array.remove(in1.index);
                 arguments_array.insert(in1.index, in2.node.clone());
                 arguments_array.remove(in2.index);
                 arguments_array.insert(in2.index, in1.node.clone());
                 node.set_node_for_key("arguments", arguments_node);
+
+                let comment_text = format!(
+                    "FunctionSwapArguments Mutator: switched '{}' for '{}'",
+                    in1_node_s, in2_node_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                if let Some(id) = node.get_int_for_key("id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::FunctionSwapArguments)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -757,10 +975,20 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
 /// * The algorithm replaces the condition of the if statement with `true`.
 /// * The algorithm replaces the condition of the if statement with `false`.
 /// * The algorithm replaces the condition (called c) of the if statement with `!(c)`.
-struct IfStatementMutator {}
+struct IfStatementMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl IfStatementMutator {
+    /// Create the new if-statement mutator.
+    pub fn new() -> IfStatementMutator {
+        IfStatementMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for IfStatementMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "IfStatement" {
                 if let Some(condition_node) = node.get("condition") {
@@ -773,7 +1001,17 @@ impl Mutator<SolidityAST> for IfStatementMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previously existing comment.
+        self.comment_node = None;
+
+        let original_condition_node_s = if let Some(condition_node) = node.get("condition") {
+            pretty_print_node(condition_node)
+        } else {
+            log::info!("IfStatement mutator could not find condition node.");
+            return None;
+        };
+
         // Randomly choose between three possible mutations:
         // * Replace condition with true.
         // * Replace condition with false.
@@ -783,7 +1021,7 @@ impl Mutator<SolidityAST> for IfStatementMutator {
                 // Replace the condition with `true`.
                 let bool_node = match new_boolean_literal_node(true) {
                     Ok(n) => n,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
                 node.set_node_for_key("condition", bool_node);
             }
@@ -791,7 +1029,7 @@ impl Mutator<SolidityAST> for IfStatementMutator {
                 // Replace the condition with `false`.
                 let bool_node = match new_boolean_literal_node(false) {
                     Ok(n) => n,
-                    Err(_e) => return,
+                    Err(_e) => return None,
                 };
                 node.set_node_for_key("condition", bool_node);
             }
@@ -804,13 +1042,13 @@ impl Mutator<SolidityAST> for IfStatementMutator {
                     // Put the array into a TupleExpression node.
                     let tuple_node = match new_tuple_expression_node(components_array) {
                         Ok(n) => n,
-                        Err(_e) => return,
+                        Err(_e) => return None,
                     };
 
                     // Wrap the TupleExpression node in a UnaryOp (! TupleExpression).
                     let not_node = match new_unary_op_node("!", true, tuple_node) {
                         Ok(n) => n,
-                        Err(_e) => return,
+                        Err(_e) => return None,
                     };
 
                     node.set_node_for_key("condition", not_node);
@@ -818,10 +1056,31 @@ impl Mutator<SolidityAST> for IfStatementMutator {
             }
             _ => (),
         }
+
+        let new_condition_node_s = if let Some(condition_node) = node.get("condition") {
+            pretty_print_node(condition_node)
+        } else {
+            log::info!("IfStatement mutator can not find condition node after mutation.");
+            return None;
+        };
+
+        let comment_text = format!(
+            "IfStatement Mutator: changed condition '{}' to '{}'",
+            original_condition_node_s, new_condition_node_s
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::IfStatement)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -831,10 +1090,20 @@ impl Mutator<SolidityAST> for IfStatementMutator {
 /// * Adds one to integer constant.
 /// * Subtracts one from integer constant.
 /// * Generates a random value.
-struct IntegerMutator {}
+struct IntegerMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl IntegerMutator {
+    /// Create a new integer mutator.
+    pub fn new() -> IntegerMutator {
+        IntegerMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for IntegerMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // We look for a Literal node with an integer literal, not a floating point number.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Literal" {
@@ -855,14 +1124,22 @@ impl Mutator<SolidityAST> for IntegerMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Remove previous comment.
+        self.comment_node = None;
+
+        let mut original_value_s = String::new();
+        let mut new_value_s = String::new();
+
         match rand.next_u64() % 3_u64 {
             0 => {
                 // Add one to the integer constant.
                 if let Some(value) = node.get_str_for_key("value") {
                     let value_string = value.to_string();
+                    original_value_s = value_string.clone();
                     let mut my_integer = value_string.parse::<i64>().unwrap();
                     my_integer += 1;
+                    new_value_s = my_integer.to_string();
                     node.set_str_for_key("value", my_integer.to_string().as_str());
                 }
             }
@@ -870,22 +1147,43 @@ impl Mutator<SolidityAST> for IntegerMutator {
                 // Subtract one from the integer constant.
                 if let Some(value) = node.get_str_for_key("value") {
                     let value_string = value.to_string();
+                    original_value_s = value_string.clone();
                     let mut my_integer = value_string.parse::<i64>().unwrap();
                     my_integer -= 1;
+                    new_value_s = my_integer.to_string();
                     node.set_str_for_key("value", my_integer.to_string().as_str());
                 }
             }
             2 => {
+                if let Some(value) = node.get_str_for_key("value") {
+                    original_value_s = String::from(value);
+                }
+
                 // Generate a random number.
                 let value = rand.next_u64();
+                new_value_s = value.to_string();
                 node.set_str_for_key("value", value.to_string().as_str());
             }
             _ => (),
         }
+
+        let comment_text = format!(
+            "Integer Mutator: changed '{}' to '{}'",
+            original_value_s, new_value_s
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::Integer)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -896,6 +1194,9 @@ impl Mutator<SolidityAST> for IntegerMutator {
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
 struct OperatorSwapArgumentsMutator {
     valid_operators: Vec<&'static str>,
+
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
 }
 
 impl OperatorSwapArgumentsMutator {
@@ -903,12 +1204,13 @@ impl OperatorSwapArgumentsMutator {
     fn new() -> OperatorSwapArgumentsMutator {
         OperatorSwapArgumentsMutator {
             valid_operators: non_commutative_operators(),
+            comment_node: None,
         }
     }
 }
 
 impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "BinaryOperation" {
                 if let Some(operator_string) = node.get_str_for_key("operator") {
@@ -921,17 +1223,40 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, _rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, _rand: &mut Pcg64) -> Option<u64> {
+        // Remove previous comment.
+        self.comment_node = None;
+
         if let Some(left_expr) = node.take_value_for_key("leftExpression") {
             if let Some(right_expr) = node.take_value_for_key("rightExpression") {
+                let left_expr_s = pretty_print_node(&left_expr);
+                let right_expr_s = pretty_print_node(&right_expr);
+
                 node.set_node_for_key("leftExpression", right_expr);
                 node.set_node_for_key("rightExpression", left_expr);
+
+                let comment_text = format!(
+                    "OperatorSwapArguments Mutator: switched '{}' and '{}'",
+                    left_expr_s, right_expr_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                if let Some(id) = node.get_int_for_key("id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::OperatorSwapArguments)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -940,10 +1265,20 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
 /// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
 /// the lines.  Since function return statements affect how a program compiles, the algorithm
 /// will explicitly not swap lines with return statements.
-struct LinesSwapMutator {}
+struct LinesSwapMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl LinesSwapMutator {
+    /// Create the new lines-swap mutator.
+    pub fn new() -> LinesSwapMutator {
+        LinesSwapMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for LinesSwapMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // We need a function definition with at least two body statements.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Block" {
@@ -975,7 +1310,10 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Replace previous comment.
+        self.comment_node = None;
+
         if let Some(mut statements_node) = node.take_value_for_key("statements") {
             if let Some(statements_array) = statements_node.as_array_mut() {
                 // Randomly pick a first node.
@@ -1023,15 +1361,36 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
 
                 let larger_node = statements_array.remove(larger_index);
                 let smaller_node = statements_array.remove(smaller_index);
+
+                let larger_node_s = pretty_print_node(&larger_node);
+                let smaller_node_s = pretty_print_node(&smaller_node);
+
                 statements_array.insert(smaller_index, larger_node);
                 statements_array.insert(larger_index, smaller_node);
                 node.set_node_for_key("statements", statements_node);
+
+                let comment_text = format!(
+                    "LinesSwap Mutator: swapped line '{}' with line '{}'",
+                    larger_node_s, smaller_node_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                if let Some(id) = node.get_int_for_key("id") {
+                    return Some(id as u64);
+                }
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Generic(GenericMutation::LinesSwap)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1051,17 +1410,20 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
 /// ```solidity
 /// require(!(a > b))
 /// ```
-struct SolidityRequireMutator {}
+struct SolidityRequireMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
 
 impl SolidityRequireMutator {
     /// Create the new require mutator.
     pub fn new() -> SolidityRequireMutator {
-        SolidityRequireMutator {}
+        SolidityRequireMutator { comment_node: None }
     }
 }
 
 impl Mutator<SolidityAST> for SolidityRequireMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // Check that the node is a 'FunctionCall' node, that the function call is the
         // `require` function, and that the function has an argument.
         return node.get_str_for_key("nodeType").map_or_else(
@@ -1082,7 +1444,26 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
         );
     }
 
-    fn mutate(&self, node: &mut SolidityAST, _: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, _: &mut Pcg64) -> Option<u64> {
+        // Remove previous comment
+        self.comment_node = None;
+
+        let original_arguments_s = if let Some(arguments_node) = node.get("arguments") {
+            if let Some(args_array) = arguments_node.as_array() {
+                if !args_array.is_empty() {
+                    let arg = &args_array[0];
+                    pretty_print_node(arg)
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        } else {
+            log::info!("LinesSwap mutator unable to get arguments node.");
+            return None;
+        };
+
         // First create a Unary ! operation node.
         let new_node_str = "{\
             \"id\": 99999,
@@ -1100,7 +1481,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
         }";
         let mut new_node = match new_json_node(new_node_str) {
             Ok(v) => v,
-            Err(_) => return,
+            Err(_) => return None,
         };
 
         // Create a Tuple node to hold the function argument
@@ -1120,13 +1501,13 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
 
         let mut tuple_expression_node = match new_json_node(tuple_expression_str) {
             Ok(v) => v,
-            Err(_) => return,
+            Err(_) => return None,
         };
 
         let components_str = "[]";
         let mut components_node = match new_json_node(components_str) {
             Ok(v) => v,
-            Err(_) => return,
+            Err(_) => return None,
         };
 
         // Get the node from the arguments list.
@@ -1134,13 +1515,13 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
             Some(n) => n,
             _ => {
                 log::info!("Arguments list does not contain valid node");
-                return;
+                return None;
             }
         };
 
         let components_array = match components_node.as_array_mut() {
             Some(v) => v,
-            _ => return,
+            _ => return None,
         };
 
         components_array.push(arg);
@@ -1148,11 +1529,28 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
 
         // Put the node into the generated UnaryOp node.
         new_node["subExpression"] = tuple_expression_node;
+
+        let new_arguments_node_s = pretty_print_node(&new_node);
+
         node.set_node_for_key_at_index("arguments", 0, new_node);
+
+        let comment_text = format!(
+            "Require Mutator: Changing '{}' to '{}'",
+            original_arguments_s, new_arguments_node_s
+        );
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Solidity(SolidityMutation::Require)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1161,29 +1559,52 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
 /// The algorithm selects a random expression statement from a Block and replaces
 /// the statement with unchecked{ statement; }.  The algorithm will not select a
 /// statement that contains a Return.
-struct SolidityUncheckedBlockMutator {}
+struct SolidityUncheckedBlockMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl SolidityUncheckedBlockMutator {
+    /// Create a new unchecked-block node.
+    pub fn new() -> SolidityUncheckedBlockMutator {
+        SolidityUncheckedBlockMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "Block" {
                 if let Some(statements_node) = node.get("statements") {
                     if let Some(statements_array) = statements_node.as_array() {
                         if !statements_array.is_empty() {
                             let mut have_return_statement = false;
+                            let mut have_unchecked_block_statement = false;
+                            let mut required_length: usize = 1;
                             for value in statements_array {
                                 if let Some(value_node_type) = value.get_str_for_key("nodeType") {
-                                    if value_node_type == "Return" {
+                                    if (!have_return_statement) && value_node_type == "Return" {
                                         have_return_statement = true;
+                                        required_length += 1;
+                                    }
+                                    if (!have_unchecked_block_statement)
+                                        && value_node_type == "UncheckedBlock"
+                                    {
+                                        have_unchecked_block_statement = true;
+                                        required_length += 1;
+                                    }
+
+                                    if have_return_statement && have_unchecked_block_statement {
                                         break;
                                     }
                                 }
                             }
 
-                            // If the Block node has a return statement, we need at least two statements
+                            // If the Block node has a return statement and/or an UncheckedBlock statement,
+                            // we need at least one more statement than block + unchecked block
                             // in order for the algorithm to work.  We do not wrap a return statement
-                            // in unchecked{}.
-                            if !have_return_statement || statements_array.len() >= 2 {
+                            // or an unchecked block statement in unchecked{}.
+                            if statements_array.len() >= required_length {
                                 return true;
                             }
                         }
@@ -1194,7 +1615,10 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+        // Replace previous comment.
+        self.comment_node = None;
+
         if let Some(mut statements_node) = node.take_value_for_key("statements") {
             if let Some(statements_array) = statements_node.as_array_mut() {
                 // Pick a random statement, but avoid Return statements.
@@ -1204,25 +1628,50 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
                     index = (rand.next_u64() % statements_array.len() as u64) as usize;
                     node_to_wrap = statements_array.remove(index);
                     if let Some(node_type) = node_to_wrap.get_str_for_key("nodeType") {
-                        if node_type == "Return" {
+                        if node_type == "Return" || node_type == "UncheckedBlock" {
+                            statements_array.insert(index, node_to_wrap);
                             continue;
                         }
                     }
                     break;
                 }
+
+                let node_to_wrap_id = node_to_wrap.get_int_for_key("id").unwrap_or(9999999);
+
+                let node_to_wrap_s = pretty_print_node(&node_to_wrap);
+
                 let wrapped_array = vec![node_to_wrap];
-                let wrapped_node = match new_unchecked_block_node(wrapped_array) {
-                    Ok(n) => n,
-                    Err(_e) => return,
-                };
+                let wrapped_node =
+                    match new_unchecked_block_node(wrapped_array, node_to_wrap_id as u64) {
+                        Ok(n) => n,
+                        Err(_e) => return None,
+                    };
+
+                let wrapped_node_s = pretty_print_node(&wrapped_node);
+
                 statements_array.insert(index, wrapped_node);
                 node.set_node_for_key("statements", statements_node);
+
+                let comment_text = format!(
+                    "UncheckedBlock Mutator: Changing '{}' to '{}'",
+                    node_to_wrap_s, wrapped_node_s
+                );
+                if let Ok(comment_node) = new_comment_node(&comment_text) {
+                    self.comment_node = Some(comment_node);
+                }
+
+                return Some(node_to_wrap_id as u64);
             }
         }
+        None
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Solidity(SolidityMutation::UncheckedBlock)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1230,10 +1679,20 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
 ///
 /// The algorithm finds MemberAccess nodes whose expression sub-node has a memberName key
 /// with the value `delegatecall`. The algorithm replaces the `delegatecall` with `call`.
-struct SolidityElimDelegateCallMutator {}
+struct SolidityElimDelegateCallMutator {
+    /// Information about the mutation.
+    comment_node: Option<SolidityAST>,
+}
+
+impl SolidityElimDelegateCallMutator {
+    /// Create a new elim-delegatecall mutator.
+    pub fn new() -> SolidityElimDelegateCallMutator {
+        SolidityElimDelegateCallMutator { comment_node: None }
+    }
+}
 
 impl Mutator<SolidityAST> for SolidityElimDelegateCallMutator {
-    fn is_mutable_node(&self, node: &SolidityAST) -> bool {
+    fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "MemberAccess" {
                 if let Some(member_name_str) = node.get_str_for_key("memberName") {
@@ -1246,12 +1705,26 @@ impl Mutator<SolidityAST> for SolidityElimDelegateCallMutator {
         false
     }
 
-    fn mutate(&self, node: &mut SolidityAST, _rand: &mut Pcg64) {
+    fn mutate(&mut self, node: &mut SolidityAST, _rand: &mut Pcg64) -> Option<u64> {
+        // Replace previous comment
+        self.comment_node = None;
         node.set_str_for_key("memberName", "call");
+
+        let comment_text =
+            String::from("ElimDelegateCall Mutator: replace 'delegatecall' with 'call'");
+        if let Ok(comment_node) = new_comment_node(&comment_text) {
+            self.comment_node = Some(comment_node);
+        }
+
+        node.get_int_for_key("id").map(|id| id as u64)
     }
 
     fn implements(&self) -> MutationType {
         MutationType::Solidity(SolidityMutation::ElimDelegateCall)
+    }
+
+    fn get_comment_node(&self) -> Option<SolidityAST> {
+        self.comment_node.clone()
     }
 }
 
@@ -1284,26 +1757,26 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                     MutationType::Generic(GenericMutation::ComparisonBinaryOp),
                 ))),
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
-                GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator {})),
-                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator {})),
+                GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator::new())),
+                GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
                 GenericMutation::FunctionSwapArguments => {
                     Some(Box::new(SwapFunctionArgumentsMutator::new()))
                 }
-                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator {})),
-                GenericMutation::Integer => Some(Box::new(IntegerMutator {})),
+                GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),
+                GenericMutation::Integer => Some(Box::new(IntegerMutator::new())),
                 GenericMutation::OperatorSwapArguments => {
                     Some(Box::new(OperatorSwapArgumentsMutator::new()))
                 }
-                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator {})),
+                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
             },
             MutationType::Solidity(t) => match t {
                 SolidityMutation::Require => Some(Box::new(SolidityRequireMutator::new())),
                 SolidityMutation::UncheckedBlock => {
-                    Some(Box::new(SolidityUncheckedBlockMutator {}))
+                    Some(Box::new(SolidityUncheckedBlockMutator::new()))
                 }
                 SolidityMutation::ElimDelegateCall => {
-                    Some(Box::new(SolidityElimDelegateCallMutator {}))
+                    Some(Box::new(SolidityElimDelegateCallMutator::new()))
                 }
             },
         }

@@ -6,6 +6,7 @@ use crate::error::MetamorphError;
 use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
+use crate::mutation_visitor::NodePathMap;
 use crate::permissions::Permissions;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
@@ -61,11 +62,14 @@ pub trait MutableLanguage {
     /// # Arguments
     ///
     /// * `ast` - The [`SuperAST`] object that encapsulates the concrete language AST.
+    /// * `rng` - The random number generator to use for selecting parts of nodes that have
+    /// divergent paths (such as the choice between an if or else block).
     /// * `permissions` - A [`Permissions`] object containing permission settings that control
     /// how to count the nodes.
     fn count_mutable_nodes(
         &mut self,
         ast: &SuperAST,
+        rng: &mut Pcg64,
         permissions: &Permissions,
     ) -> Result<HashMap<MutationType, usize>, MetamorphError>;
 
@@ -82,6 +86,8 @@ pub trait MutableLanguage {
     /// * `rng` - The random number generator for the mutator objects to use. The mutator
     /// objects may randomly select variations withing a mutation algorithm when mutating a node.
     /// * `permissions` - A [`Permissions`] object that controls how to mutate the ast.
+    /// * `path_map` - A precalculated path object containing the paths to every node in the
+    /// AST.
     fn mutate_ast(
         &mut self,
         ast: &SuperAST,
@@ -89,6 +95,7 @@ pub trait MutableLanguage {
         index: usize,
         rng: &mut Pcg64,
         permissions: &Permissions,
+        path_map: &NodePathMap,
     ) -> Result<SuperAST, MetamorphError>;
 
     /// Pretty-print the contents of `ast` to the file named in `file_name`.
@@ -163,6 +170,18 @@ pub trait MutableLanguage {
     /// * `file_name` - The string slice referencing the text containing the file name.
     /// * `prefs` - The preferences object that contains compiler settings.
     fn mutant_compiles(&mut self, ast: &SuperAST, prefs: &Preferences) -> bool;
+
+    /// Calculate all the paths to all the nodes in `ast`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ast` - The AST object.
+    /// * `permissions` - [`Permissions`] that direct the traversal of `ast` to count the nodes.
+    fn calculate_node_paths(
+        &mut self,
+        ast: &SuperAST,
+        permissions: &Permissions,
+    ) -> Result<NodePathMap, MetamorphError>;
 
     /// Returns the [`Language`] type that the language sub-module implements.
     fn implements(&self) -> Language;

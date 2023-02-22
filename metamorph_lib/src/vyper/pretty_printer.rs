@@ -245,6 +245,22 @@ fn write_value_string_as_token(
     }
 }
 
+/// Return the string containing the pretty-printed form of `node`.
+///
+/// # Arguments
+///
+/// * `node` - The node to pretty-print.
+/// * `factory` - The node printer factory.
+fn pretty_print_node(node: &VyperAST, factory: &dyn NodePrinterFactory<VyperAST>) -> String {
+    let mut node_contents = Vec::new();
+    let mut printer = PrettyPrinter::new(4, 150);
+    traverse_sub_node_and_print(&mut printer, &mut node_contents, factory, node);
+
+    // s now contains the pretty-printed node.
+    let s = core::str::from_utf8(node_contents.as_slice()).unwrap();
+    String::from(s)
+}
+
 struct DummyNodePrinter {}
 
 impl NodePrinter<VyperAST> for DummyNodePrinter {
@@ -1322,14 +1338,21 @@ impl NodePrinter<VyperAST> for CommentPrinter {
         &mut self,
         printer: &mut PrettyPrinter,
         stream: &mut dyn Write,
-        _factory: &dyn NodePrinterFactory<VyperAST>,
+        factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
-        if let Some(value_str) = node.get_str_for_key("value") {
-            if !value_str.is_empty() {
+        if let Some(value_node) = node.get("value") {
+            if value_node.is_string() {
+                if let Some(value_str) = value_node.as_str() {
+                    write_token(printer, stream, "#");
+                    write_space(printer, stream);
+                    write_flowable_text(printer, stream, value_str, "# ");
+                }
+            } else if value_node.is_object() {
                 write_token(printer, stream, "#");
                 write_space(printer, stream);
-                write_flowable_text(printer, stream, value_str, "# ");
+                let s = pretty_print_node(value_node, factory);
+                write_flowable_text(printer, stream, &s, "# ");
             }
         }
     }

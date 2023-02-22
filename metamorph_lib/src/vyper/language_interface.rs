@@ -3,10 +3,14 @@
 
 use crate::compiler_details::*;
 use crate::error::MetamorphError;
+use crate::id::Id;
 use crate::json::*;
+use crate::json_ast_id_maker::JSONIDMaker;
 use crate::json_ast_permitter::JSONPermitter;
+use crate::json_comment_inserter::JSONCommentInserter;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
+use crate::mutation_visitor::NodePath;
 use crate::mutator::*;
 use crate::node_printer::NodePrinterFactory;
 use crate::permissions::Permissions;
@@ -18,8 +22,10 @@ use crate::super_ast::SuperAST;
 use crate::utility::shell_execute;
 use crate::visitor::Visitor;
 use crate::vyper::ast::VyperAST;
+use crate::vyper::commenter::VyperCommenterFactory;
 use crate::vyper::compiler_details::ROOT_PATH_KEY;
 use crate::vyper::mutators::VyperMutatorFactory;
+use crate::vyper::node_finder::VyperNodeFinderFactory;
 use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use serde_json::Value;
 use std::env;
@@ -139,6 +145,21 @@ impl JSONLanguageDelegate for VyperLanguageDelegate {
 
     fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool {
         file_compiles(file_name, prefs)
+    }
+
+    fn get_node_id_maker(&self) -> Box<dyn Id<Value>> {
+        Box::new(JSONIDMaker::new(|n| {
+            n.get_int_for_key("node_id").map(|node_id| node_id as u64)
+        }))
+    }
+
+    fn insert_comment_by_path(&self, ast: &mut Value, comment_node: Value, node_path: &NodePath) {
+        let id_maker = self.get_node_id_maker();
+        let finder_factory = Box::new(VyperNodeFinderFactory {});
+        let commenter_factory = Box::new(VyperCommenterFactory {});
+        let json_comment_inserter =
+            JSONCommentInserter::new(finder_factory, commenter_factory, id_maker);
+        json_comment_inserter.insert_comment_by_path(ast, comment_node, node_path)
     }
 }
 

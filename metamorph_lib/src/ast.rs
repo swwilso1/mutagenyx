@@ -64,6 +64,7 @@ impl ASTTraverser {
             // tree. If the visitor does not traverse the children then we will traverse the children
             // in this algorithm.
             if visitor.visit_children(node) {
+                visitor.on_start_visit_children(node);
                 let children = tree_node.get_children();
                 for child in children {
                     // Traverse each child of the node.
@@ -74,6 +75,7 @@ impl ASTTraverser {
                         return true;
                     }
                 }
+                visitor.on_end_visit_children(node);
             }
         }
 
@@ -124,6 +126,7 @@ impl ASTTraverser {
             // tree. If the visitor does not traverse the children then we will traverse the children
             // in this algorithm.
             if visitor.visit_children(tree_node.get_node_mut()) {
+                visitor.on_start_visit_children(tree_node.get_node_mut());
                 let children = tree_node.get_children_mut();
                 for child in children {
                     // Traverse each child node.
@@ -134,6 +137,7 @@ impl ASTTraverser {
                         break;
                     }
                 }
+                visitor.on_end_visit_children(tree_node.get_node_mut());
             }
         }
 

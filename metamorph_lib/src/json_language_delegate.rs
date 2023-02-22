@@ -2,7 +2,9 @@
 //! language the has a JSON encoded AST.
 
 use crate::error::MetamorphError;
+use crate::id::Id;
 use crate::language::Language;
+use crate::mutation_visitor::NodePath;
 use crate::mutator::MutatorFactory;
 use crate::permissions::Permissions;
 use crate::permit::Permit;
@@ -95,4 +97,22 @@ pub trait JSONLanguageDelegate {
     /// * `file_name` - The string slice referencing the text comprising the file name.
     /// * `prefs` - The [`Preferences`] object that contains compiler settings.
     fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool;
+
+    /// Return a trait object for [`Id<AST>`] that can uniquely identify a node in the AST.
+    fn get_node_id_maker(&self) -> Box<dyn Id<Value>>;
+
+    /// Find the correct node in `node_path` to insert `comment`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ast` - The starting AST node.
+    /// * `comment_node` - The node to insert into `ast`.
+    /// * `node_path` - The path to the node that was mutated.
+    fn insert_comment_by_path(
+        &self,
+        _ast: &mut Value,
+        _comment_node: Value,
+        _node_path: &NodePath,
+    ) {
+    }
 }
