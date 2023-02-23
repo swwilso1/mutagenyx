@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-     "metamorph",
-     "metamorph_lib",
+     "mutagenyx",
+     "mutagenyx_lib",
 ]
 
