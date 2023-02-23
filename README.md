@@ -1,4 +1,4 @@
-# Mutagenyx
+# <img src="doc/logo.png" alt="mutagenyx logo" height="40" align="left">&nbsp;Mutagenyx: Mutation Tool for AST Mutations
 
 The Mutagenyx project exists to provide an abstract syntax tree (AST) mutator for multiple programming languages.
 The internal frameworks developed for Mutagenyx allow developers to provide support for other programming languages
