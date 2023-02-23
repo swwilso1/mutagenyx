@@ -1,11 +1,12 @@
 //! The `pretty_printing` module provides services for pretty-printing the input source or AST
-//! to the tool's pretty-printing format.  Use these services to change the input file into a form
+//! using the tool's pretty-printing format.  Use these services to change the input file into a form
 //! that you can easily compare with the generated mutants using a diff tool.
 
+use crate::compiler_paths::CompilerPaths;
 use crate::PrettyPrintCLArgs;
 use metamorph_lib::error::MetamorphError;
 use metamorph_lib::language_interface::*;
-use metamorph_lib::preferences::{PreferenceValue, Preferences};
+use metamorph_lib::preferences::Preferences;
 use metamorph_lib::pretty_printer::PrettyPrinter;
 use metamorph_lib::recognizer::Recognizer;
 use metamorph_lib::super_ast::language_for_ast;
@@ -20,26 +21,31 @@ use std::str::FromStr;
 ///
 /// * `args` - The [`PrettyPrintCLArgs`] object.
 pub fn pretty_print_files(args: PrettyPrintCLArgs) {
-    let mut preferences = Preferences::new();
-    preferences.set_value_for_key(
-        "solidity_compiler",
-        PreferenceValue::String(args.solidity_compiler),
-    );
-    preferences.set_value_for_key(
-        "vyper_compiler",
-        PreferenceValue::String(args.vyper_compiler),
-    );
+    let compiler_paths = CompilerPaths {
+        solidity: &args.solidity_compiler,
+        vyper: &args.vyper_compiler,
+    };
+
+    let mut preferences = compiler_paths.to_preferences();
 
     for file_name in args.file_names {
-        let original_file = PathBuf::from_str(&file_name).unwrap();
-        let original_file_str = original_file.file_name().unwrap();
-        match pretty_print_file(&file_name, &args.output_directory, &mut preferences) {
-            Ok(_buf) => log::info!(
-                "Pretty-printing original file {:?} to {}",
-                original_file_str,
-                &args.output_directory
-            ),
-            Err(e) => println!("Unable to pretty-print {:?}: {}", original_file_str, e),
+        if args.stdout {
+            let mut stdout = std::io::stdout();
+            match pretty_print_file_to_stream(&file_name, &mut stdout, &mut preferences) {
+                Ok(_) => return,
+                Err(e) => println!("Unable to pretty-print {}: {}", file_name, e),
+            }
+        } else {
+            let original_file = PathBuf::from_str(&file_name).unwrap();
+            let original_file_str = original_file.file_name().unwrap();
+            match pretty_print_file(&file_name, &args.output_directory, &mut preferences) {
+                Ok(_buf) => log::info!(
+                    "Pretty-printing original file {:?} to {}",
+                    original_file_str,
+                    &args.output_directory
+                ),
+                Err(e) => println!("Unable to pretty-print {:?}: {}", original_file_str, e),
+            }
         }
     }
 }
@@ -97,6 +103,35 @@ pub fn pretty_print_file(
     Ok(outfile_name)
 }
 
+/// Pretty-print an individual file and write the output to `stream`.
+///
+/// # Arguments
+///
+/// * `file_name` - The name of the file to pretty-print.
+/// * `stream` - The [`Write`] trait object that will receive the pretty-printed output.
+/// * `preferences` - The [`Preferences`] object containing compiler settings.
+pub fn pretty_print_file_to_stream(
+    file_name: &str,
+    stream: &mut dyn Write,
+    preferences: &mut Preferences,
+) -> Result<(), MetamorphError> {
+    let recognizer = Recognizer::new(preferences);
+
+    // Recognize the language.
+    let recognize_result = recognizer.recognize_file(file_name)?;
+
+    // Get the language interface object for the language.
+    let mut language_object =
+        LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
+
+    // TODO: We need to have the module that loads either source or AST.
+    // Load the ast.
+    let ast =
+        language_object.load_ast_from_file(file_name, &recognize_result.file_type, preferences)?;
+
+    pretty_print_ast_to_stream(&ast, stream)
+}
+
 /// Pretty print an AST to the file named `file_name` in `output_dir`.
 ///
 /// If `file_name` is a complete path, the function will take the basename of the path and use
@@ -140,6 +175,12 @@ pub fn pretty_print_ast(
     Ok(outfile_name)
 }
 
+/// Pretty-print the AST in `ast` to the [`Write`] object `stream`
+///
+/// # Arguments
+///
+/// * `ast` - Any reference to a [`SuperAST`] abstract syntax tree.
+/// * `stream` - A [`Write`] trait object that can receive the pretty-printed output.
 pub fn pretty_print_ast_to_stream(
     ast: &SuperAST,
     stream: &mut dyn Write,

@@ -1,17 +1,16 @@
 //! The `mutation_generator` module provides the `generate_mutations` function that implements
 //! the mutation generation algorithm.
 
+use crate::compiler_paths::CompilerPaths;
 use crate::generator_parameters::GeneratorParameters;
 use crate::pretty_printing::{pretty_print_ast, pretty_print_ast_to_stream};
 use crate::MutateCLArgs;
 use metamorph_lib::compiler_details::*;
 use metamorph_lib::config_file::*;
 use metamorph_lib::error::MetamorphError;
-use metamorph_lib::language::Language;
 use metamorph_lib::language_interface::*;
 use metamorph_lib::mutation::{get_all_mutation_algorithms, MutationType};
 use metamorph_lib::permissions::Permissions;
-use metamorph_lib::preferences::Preferences;
 use metamorph_lib::recognizer::{FileType, Recognizer};
 use metamorph_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
@@ -56,54 +55,6 @@ fn convert_function_names_to_permissions(names: &Vec<String>) -> Permissions {
     permissions
 }
 
-/// Simple struct to collect references to compiler paths.
-struct CompilerPaths<'a> {
-    /// Path to solidity compiler.
-    solidity: &'a String,
-
-    /// Path to vyper compiler.
-    vyper: &'a String,
-}
-
-/// Generate a basic language Preferences layout starting from compiler paths.
-///
-/// The Preferences object is not JSON, but in JSON, the return Preferences has the following
-/// form.
-///
-/// {
-///     "Solidity:" {
-///         "compiler": {
-///             "path": "..."
-///         }
-///     },
-///     "Vyper": {
-///         "compiler": {
-///             "path": "..."
-///         }
-///     }
-/// }
-fn generate_preferences_compiler_paths(compiler_paths: &CompilerPaths) -> Preferences {
-    let mut solidity_compiler_prefs = Preferences::new();
-    solidity_compiler_prefs.set_string_for_key(PATH_KEY, compiler_paths.solidity);
-
-    let mut solidity_prefs = Preferences::new();
-    solidity_prefs.set_preferences_for_key(COMPILER_KEY, solidity_compiler_prefs);
-
-    let mut vyper_compiler_prefs = Preferences::new();
-    vyper_compiler_prefs.set_string_for_key(PATH_KEY, compiler_paths.vyper);
-
-    let mut vyper_prefs = Preferences::new();
-    vyper_prefs.set_preferences_for_key(COMPILER_KEY, vyper_compiler_prefs);
-
-    let mut preferences = Preferences::new();
-    let solidity_key = format!("{}", Language::Solidity);
-    let vyper_key = format!("{}", Language::Vyper);
-    preferences.set_preferences_for_key(&solidity_key, solidity_prefs);
-    preferences.set_preferences_for_key(&vyper_key, vyper_prefs);
-
-    preferences
-}
-
 /// Run the mutation generator algorithm.
 ///
 /// # Arguments
@@ -125,7 +76,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MetamorphError> {
         vyper: &args.vyper_compiler,
     };
 
-    let mut preferences = generate_preferences_compiler_paths(&compiler_paths);
+    let mut preferences = compiler_paths.to_preferences();
 
     let mut generator_parameters: Vec<GeneratorParameters> = Vec::new();
 

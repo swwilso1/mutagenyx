@@ -1,6 +1,7 @@
 //! The main module contains the code to process the command line for the metamorph program and
 //! run the mutation generator.
 
+mod compiler_paths;
 mod generator_parameters;
 mod mutation_generator;
 mod mutations_info;
@@ -15,7 +16,7 @@ use env_logger::TimestampPrecision;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-/// Mutate sub-command command line arguments.
+/// Arguments for generating mutations from source, AST, or configuration files.
 #[derive(Debug, Clone, Parser, Deserialize, Serialize)]
 #[clap(rename_all = "kebab-case")]
 pub struct MutateCLArgs {
@@ -74,7 +75,7 @@ pub struct MutateCLArgs {
     pub validate_mutants: bool,
 }
 
-/// Pretty-print sub-command command line arguments.
+/// Arguments for pretty-printing source or AST input.
 #[derive(Debug, Clone, Parser, Deserialize, Serialize)]
 #[clap(rename_all = "kebab-case")]
 pub struct PrettyPrintCLArgs {
@@ -93,6 +94,10 @@ pub struct PrettyPrintCLArgs {
     /// Vyper compiler
     #[clap(long, default_value = "vyper")]
     pub vyper_compiler: String,
+
+    /// Write output to stdout instead of the directory given in `output_directory`.
+    #[clap(long)]
+    pub stdout: bool,
 }
 
 /// Arguments for listing details about mutation algorithms
