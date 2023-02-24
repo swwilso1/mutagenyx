@@ -1,3 +1,6 @@
+//! The `compiler_paths` module provides the [`CompilerPaths`] type that can convert paths to
+//! various compilers into a [`Preferences`] object usable by the mutation algorithms.
+
 use mutagenyx_lib::compiler_details::*;
 use mutagenyx_lib::language::Language;
 use mutagenyx_lib::preferences::Preferences;
