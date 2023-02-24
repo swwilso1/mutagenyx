@@ -108,10 +108,11 @@ impl MutableLanguage for JSONLanguageInterface {
         permissions: &Permissions,
     ) -> Result<HashMap<MutationType, usize>, MutagenyxError> {
         let permitter = self.delegate.get_node_permitter(permissions);
+        let namer = self.delegate.get_namer();
         let actual_ast = self.recover_json_ast(ast)?;
 
         let mut counter_visitor: MutableNodesCounter<Value> =
-            MutableNodesCounter::new(&mut self.mutators, permitter, rng);
+            MutableNodesCounter::new(&mut self.mutators, permitter, rng, namer);
 
         // Traverse the AST and count the number of nodes that a mutator can mutate for each
         // mutation type supported in the mutator map.
@@ -137,6 +138,7 @@ impl MutableLanguage for JSONLanguageInterface {
         path_map: &NodePathMap,
     ) -> Result<SuperAST, MutagenyxError> {
         let permitter = self.delegate.get_node_permitter(permissions);
+        let namer = self.delegate.get_namer();
         let id_maker = self.delegate.get_node_id_maker();
 
         let actual_ast = self.recover_json_ast(ast)?;
@@ -149,6 +151,7 @@ impl MutableLanguage for JSONLanguageInterface {
             index,
             permitter,
             id_maker,
+            namer,
         );
 
         // Traverse the cloned AST, only mutating the index(th) node in the tree that the mutation
@@ -264,8 +267,9 @@ impl MutableLanguage for JSONLanguageInterface {
     ) -> Result<NodePathMap, MutagenyxError> {
         let actual_ast = self.recover_json_ast(ast)?;
         let permitter = self.delegate.get_node_permitter(permissions);
+        let namer = self.delegate.get_namer();
         let id_maker = self.delegate.get_node_id_maker();
-        let mut path_visitor = PathVisitor::new(permitter, id_maker);
+        let mut path_visitor = PathVisitor::new(permitter, id_maker, namer);
 
         // Walk the AST and calculate the path to each node in the AST.
         ASTTraverser::traverse(actual_ast, &mut path_visitor);

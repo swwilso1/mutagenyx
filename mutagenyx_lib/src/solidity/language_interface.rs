@@ -9,8 +9,10 @@ use crate::json_ast_id_maker::JSONIDMaker;
 use crate::json_ast_permitter::JSONPermitter;
 use crate::json_comment_inserter::JSONCommentInserter;
 use crate::json_language_delegate::JSONLanguageDelegate;
+use crate::json_namer::JSONNamer;
 use crate::mutation_visitor::NodePath;
 use crate::mutator::*;
+use crate::namer::Namer;
 use crate::node_printer::NodePrinterFactory;
 use crate::permissions::Permissions;
 use crate::permit::Permit;
@@ -134,11 +136,7 @@ impl JSONLanguageDelegate for SolidityLanguageSubDelegate {
         &'a self,
         permissions: &'a Permissions,
     ) -> Box<dyn Permit<Value> + '_> {
-        Box::new(JSONPermitter::new(
-            permissions,
-            "nodeType",
-            "FunctionDefinition",
-        ))
+        Box::new(JSONPermitter::new(permissions))
     }
 
     fn mutant_compiles(&self, file_name: &str, prefs: &Preferences) -> bool {
@@ -158,6 +156,12 @@ impl JSONLanguageDelegate for SolidityLanguageSubDelegate {
         let json_comment_inserter =
             JSONCommentInserter::new(finder_factory, commenter_factory, id_maker);
         json_comment_inserter.insert_comment_by_path(ast, comment_node, node_path)
+    }
+
+    fn get_namer(&self) -> Box<dyn Namer<Value>> {
+        Box::new(JSONNamer::new(|v| {
+            v.get_str_for_key("name").map(|name| String::from(name))
+        }))
     }
 }
 

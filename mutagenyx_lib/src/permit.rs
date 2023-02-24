@@ -1,21 +1,16 @@
 //! The `permit` module provides a trait that the adds the ability to query an AST node for
 //! permission before exercising functionality.
 
-/// Query string that means: 'do I have permission to mutate a node?'
-pub static MUTATE: &str = "mutate";
+use crate::permissions::PermissionAction;
 
-/// Query string that means: 'do I have permission to count a node?'
-pub static COUNT: &str = "count";
-
-/// Query string that means: 'do I have permission to visit a node?'
-pub static VISIT: &str = "visit";
-
+/// Trait that gives an implementing object the ability to answer permission questions about
+/// requested actions.
 pub trait Permit<AST> {
-    /// Return true if the trait object has permission to do operation `query` on `node`
+    /// Return true if the trait object has permission to do operation `action` on `node`
     ///
     /// # Arguments
     ///
-    /// * `query` - A string representing the operation to perform on `node`.
-    /// * `node` - The node on which to perform the operation represented by `query`.
-    fn has_permission_to(&self, query: &str, node: &AST) -> bool;
+    /// * `action` - A [`PermissionAction`] object representing the requested permission for `node`.
+    /// * `node` - The node on which to perform the operation represented by `action`.
+    fn has_permission_to(&self, action: PermissionAction) -> bool;
 }

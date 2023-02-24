@@ -10,7 +10,7 @@ use mutagenyx_lib::config_file::*;
 use mutagenyx_lib::error::MutagenyxError;
 use mutagenyx_lib::language_interface::*;
 use mutagenyx_lib::mutation::{get_all_mutation_algorithms, MutationType};
-use mutagenyx_lib::permissions::Permissions;
+use mutagenyx_lib::permissions::*;
 use mutagenyx_lib::recognizer::{FileType, Recognizer};
 use mutagenyx_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
@@ -47,10 +47,27 @@ fn get_mutation_types_from_strings(array: &[String]) -> Vec<MutationType> {
 fn convert_function_names_to_permissions(names: &Vec<String>) -> Permissions {
     let mut permissions = Permissions::new();
 
-    for function_name in names {
-        let permission_value = String::from("mutate.") + function_name.as_str();
-        permissions.set_permission(&permission_value, true);
+    if !names.is_empty() {
+        for function_name in names {
+            // Give permission to mutate the node with the function name.
+            permissions.add_permission(PermissionAction::Mutate(PermissionScope::Name(
+                PermissionObject::Value(function_name.clone(), Permission::Allow),
+            )));
+
+            // Also grant permission to mutate any children of this node.
+            permissions.add_permission(PermissionAction::Mutate(PermissionScope::Children(
+                PermissionObject::Value(function_name.clone(), Permission::Allow),
+            )));
+        }
+    } else {
+        permissions.add_permission(PermissionAction::Mutate(PermissionScope::Any(
+            Permission::Allow,
+        )));
     }
+
+    permissions.add_permission(PermissionAction::Visit(PermissionScope::Any(
+        Permission::Allow,
+    )));
 
     permissions
 }

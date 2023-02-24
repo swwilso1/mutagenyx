@@ -6,6 +6,7 @@ use crate::id::Id;
 use crate::language::Language;
 use crate::mutation_visitor::NodePath;
 use crate::mutator::MutatorFactory;
+use crate::namer::Namer;
 use crate::permissions::Permissions;
 use crate::permit::Permit;
 use crate::preferences::Preferences;
@@ -115,4 +116,7 @@ pub trait JSONLanguageDelegate {
         _node_path: &NodePath,
     ) {
     }
+
+    /// Return a trait object that can provide a name for JSON AST nodes.
+    fn get_namer(&self) -> Box<dyn Namer<Value>>;
 }
