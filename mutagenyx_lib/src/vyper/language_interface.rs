@@ -166,7 +166,7 @@ impl JSONLanguageDelegate for VyperLanguageDelegate {
 
     fn get_namer(&self) -> Box<dyn Namer<Value>> {
         Box::new(JSONNamer::new(|v| {
-            v.get_str_for_key("name").map(|name| String::from(name))
+            v.get_str_for_key("name").map(String::from)
         }))
     }
 }

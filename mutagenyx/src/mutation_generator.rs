@@ -366,7 +366,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
 
     // fill the map.
     for mutation_type in &mutation_type_list {
-        let number_of_mutable_nodes = mutable_nodes_table.get(&mutation_type).unwrap();
+        let number_of_mutable_nodes = mutable_nodes_table.get(mutation_type).unwrap();
         selected_algorithm_map.insert(*mutation_type, (0, *number_of_mutable_nodes, false));
     }
 
@@ -378,7 +378,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
     let mut available_mutations: usize = 0;
 
     // Run through the selected_algorithm_map and sum the max possible mutations for each algorithm.
-    for (_, data_tuple) in &selected_algorithm_map {
+    for data_tuple in selected_algorithm_map.values() {
         available_mutations += data_tuple.1;
     }
 

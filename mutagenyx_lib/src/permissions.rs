@@ -157,22 +157,13 @@ pub enum Permission {
 
     /// Do not permit the operation to continue.
     Deny,
-    // /// The Permission operation is not assigning a permission, but querying for permission.
-    // Query,
 }
 
 impl Permission {
     pub fn matches(&self, other: &Permission) -> bool {
         match self {
-            Permission::Allow => match other {
-                Permission::Allow => true,
-                _ => false,
-            },
-            Permission::Deny => match other {
-                Permission::Deny => true,
-                _ => false,
-            },
-            // Permission::Query => true,
+            Permission::Allow => matches!(other, Permission::Allow),
+            Permission::Deny => matches!(other, Permission::Deny),
         }
     }
 }

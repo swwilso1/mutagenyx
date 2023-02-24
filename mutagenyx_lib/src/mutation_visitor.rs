@@ -324,21 +324,20 @@ impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
     }
 
     fn visit_mut(&mut self, node: &mut AST) -> bool {
-        if self.skip_mutation_permission_check
-            || has_permission_to_mutate(self.namer.as_ref(), self.permitter.as_ref(), node)
+        if (self.skip_mutation_permission_check
+            || has_permission_to_mutate(self.namer.as_ref(), self.permitter.as_ref(), node))
+            && self.mutator.is_mutable_node(node, self.rng)
         {
-            if self.mutator.is_mutable_node(node, self.rng) {
-                if self.current_index == self.index {
-                    if let Some(id) = self.mutator.mutate(node, self.rng) {
-                        self.mutated_node_id = id;
-                    } else if let Some(other_id) = self.id_maker.get_id(node) {
-                        self.mutated_node_id = other_id;
-                    }
-                    self.mutator_comment = self.mutator.get_comment_node();
-                    return true;
+            if self.current_index == self.index {
+                if let Some(id) = self.mutator.mutate(node, self.rng) {
+                    self.mutated_node_id = id;
+                } else if let Some(other_id) = self.id_maker.get_id(node) {
+                    self.mutated_node_id = other_id;
                 }
-                self.current_index += 1;
+                self.mutator_comment = self.mutator.get_comment_node();
+                return true;
             }
+            self.current_index += 1;
         }
         false
     }
