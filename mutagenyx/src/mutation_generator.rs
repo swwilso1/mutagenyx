@@ -374,7 +374,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
     // algorithm usages by the number of mutable nodes for each algorithm.
     let mut requested_mutants_remaining: usize = params.number_of_mutants;
 
-    let mut full_algorithms: usize = 0;
+    let mut viable_mutations_selected: usize = 0;
     let mut available_mutations: usize = 0;
 
     // Run through the selected_algorithm_map and sum the max possible mutations for each algorithm.
@@ -402,18 +402,18 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
         if data_tuple.0 < data_tuple.1 {
             data_tuple.0 += 1;
             mutation_kinds_todo.push_back(*mutation_type);
+            viable_mutations_selected += 1;
         } else {
-            if full_algorithms >= available_mutations {
+            if viable_mutations_selected >= available_mutations {
                 log::info!("Reached the limit of mutable nodes in the AST, lowering requested mutants by {} to {}", requested_mutants_remaining, mutation_kinds_todo.len());
                 break;
             }
 
             // Only report on reaching the mutable node limit once.
             if !data_tuple.2 {
-                log::info!("Reached the maximum allowable usages of algorithm {}, trying another algorithm", mutation_type);
+                log::debug!("Reached the maximum allowable usages of algorithm {}, trying another algorithm", mutation_type);
                 data_tuple.2 = true;
             }
-            full_algorithms += 1;
             continue;
         }
 
