@@ -176,7 +176,7 @@ pub enum GenericMutation {
     /// ...
     /// a = foo - bar();
     /// ```
-    LinesSwap,
+    SwapLines,
 
     /// If the unary expression contains a prefix operator from (++, --, ~), the algorithm swaps
     /// the operator with another operator from the list.  If the unary expression contains a
@@ -250,7 +250,7 @@ impl FromStr for MutationType {
             "SwapOperatorArguments" => Ok(MutationType::Generic(
                 GenericMutation::SwapOperatorArguments,
             )),
-            "LinesSwap" => Ok(MutationType::Generic(GenericMutation::LinesSwap)),
+            "SwapLines" => Ok(MutationType::Generic(GenericMutation::SwapLines)),
             "UnaryOp" => Ok(MutationType::Generic(GenericMutation::UnaryOp)),
 
             "Require" => Ok(MutationType::Solidity(SolidityMutation::Require)),
@@ -280,7 +280,7 @@ impl fmt::Display for MutationType {
                 GenericMutation::Integer => "Integer",
                 GenericMutation::SwapFunctionArguments => "SwapFunctionArguments",
                 GenericMutation::SwapOperatorArguments => "SwapOperatorArguments",
-                GenericMutation::LinesSwap => "LinesSwap",
+                GenericMutation::SwapLines => "SwapLines",
                 GenericMutation::UnaryOp => "UnaryOp",
             },
             MutationType::Solidity(s) => match s {
@@ -480,7 +480,7 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
     );
 
     algorithm_map.insert(
-        MutationType::Generic(GenericMutation::LinesSwap),
+        MutationType::Generic(GenericMutation::SwapLines),
         MutationAlgorithmDescription {
             summary: "Randomly select two statements in a block and swap the two \
             statements.",

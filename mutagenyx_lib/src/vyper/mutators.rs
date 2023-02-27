@@ -1284,7 +1284,7 @@ impl Mutator<VyperAST> for SwapOperatorArgumentsMutator {
 /// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
 /// the lines.  Since function return statements affect how a program compiles, the algorithm
 /// will explicitly not swap lines with return statements.
-struct LinesSwapMutator {
+struct SwapLinesMutator {
     /// A comment node describing the mutation
     comment_node: Option<VyperAST>,
 
@@ -1294,17 +1294,17 @@ struct LinesSwapMutator {
     key: String,
 }
 
-impl LinesSwapMutator {
-    /// Create a new LinesSwap mutator.
-    pub fn new() -> LinesSwapMutator {
-        LinesSwapMutator {
+impl SwapLinesMutator {
+    /// Create a new SwapLines mutator.
+    pub fn new() -> SwapLinesMutator {
+        SwapLinesMutator {
             comment_node: None,
             key: String::from("body"),
         }
     }
 }
 
-impl Mutator<VyperAST> for LinesSwapMutator {
+impl Mutator<VyperAST> for SwapLinesMutator {
     fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         // We need a function definition with at least two body statements.
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
@@ -1393,7 +1393,7 @@ impl Mutator<VyperAST> for LinesSwapMutator {
                 let small_node_s = pretty_print_node(&smaller_node);
 
                 let comment_text = format!(
-                    "LinesSwap Mutator: Swapped line '{}' with '{}'",
+                    "SwapLines Mutator: Swapped line '{}' with '{}'",
                     large_node_s, small_node_s
                 );
 
@@ -1410,7 +1410,7 @@ impl Mutator<VyperAST> for LinesSwapMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::LinesSwap)
+        MutationType::Generic(GenericMutation::SwapLines)
     }
 
     fn get_comment_node(&self) -> Option<VyperAST> {
@@ -1522,7 +1522,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 GenericMutation::SwapOperatorArguments => {
                     Some(Box::new(SwapOperatorArgumentsMutator::new()))
                 }
-                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
+                GenericMutation::SwapLines => Some(Box::new(SwapLinesMutator::new())),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
             },
             _ => None,

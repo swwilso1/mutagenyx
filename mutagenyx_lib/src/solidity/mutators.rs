@@ -1265,19 +1265,19 @@ impl Mutator<SolidityAST> for SwapOperatorArgumentsMutator {
 /// The algorithm chooses two lines from a block of code and attempts to randomly swap two of
 /// the lines.  Since function return statements affect how a program compiles, the algorithm
 /// will explicitly not swap lines with return statements.
-struct LinesSwapMutator {
+struct SwapLinesMutator {
     /// Information about the mutation.
     comment_node: Option<SolidityAST>,
 }
 
-impl LinesSwapMutator {
+impl SwapLinesMutator {
     /// Create the new lines-swap mutator.
-    pub fn new() -> LinesSwapMutator {
-        LinesSwapMutator { comment_node: None }
+    pub fn new() -> SwapLinesMutator {
+        SwapLinesMutator { comment_node: None }
     }
 }
 
-impl Mutator<SolidityAST> for LinesSwapMutator {
+impl Mutator<SolidityAST> for SwapLinesMutator {
     fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         // We need a function definition with at least two body statements.
         if let Some(node_type) = node.get_str_for_key("nodeType") {
@@ -1370,7 +1370,7 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
                 node.set_node_for_key("statements", statements_node);
 
                 let comment_text = format!(
-                    "LinesSwap Mutator: swapped line '{}' with line '{}'",
+                    "SwapLines Mutator: swapped line '{}' with line '{}'",
                     larger_node_s, smaller_node_s
                 );
                 if let Ok(comment_node) = new_comment_node(&comment_text) {
@@ -1386,7 +1386,7 @@ impl Mutator<SolidityAST> for LinesSwapMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::LinesSwap)
+        MutationType::Generic(GenericMutation::SwapLines)
     }
 
     fn get_comment_node(&self) -> Option<SolidityAST> {
@@ -1460,7 +1460,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
                 return None;
             }
         } else {
-            log::info!("LinesSwap mutator unable to get arguments node.");
+            log::info!("SwapLines mutator unable to get arguments node.");
             return None;
         };
 
@@ -1767,7 +1767,7 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::SwapOperatorArguments => {
                     Some(Box::new(SwapOperatorArgumentsMutator::new()))
                 }
-                GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
+                GenericMutation::SwapLines => Some(Box::new(SwapLinesMutator::new())),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),
             },
             MutationType::Solidity(t) => match t {
