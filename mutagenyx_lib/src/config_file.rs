@@ -12,7 +12,7 @@ use std::io::Write;
 use std::{path::PathBuf, str::FromStr};
 
 /// The extension used for mutagenyx configuration files.
-pub static CONFIG_FILE_EXTENSION: &str = "morph";
+pub static CONFIG_FILE_EXTENSION: &str = "mgnx";
 
 /// The key in the configuration file for the language.
 pub static LANGUAGE_KEY: &str = "language";
@@ -41,7 +41,7 @@ pub static FUNCTIONS_KEY: &str = "functions";
 /// The key to indicate whether the tool should compile the mutants.
 pub static VALIDATE_MUTANTS_KEY: &str = "validate-mutants";
 
-/// Configuration details loaded from a .morph configuration file.
+/// Configuration details loaded from a .mgnx configuration file.
 pub struct ConfigurationFileDetails {
     /// Language specified in configuration file.
     pub language: Option<Language>,
@@ -73,7 +73,7 @@ pub struct ConfigurationFileDetails {
 
 impl ConfigurationFileDetails {
     /// Create a new configuration details object by loading the configuration from a JSON
-    /// file.  The file must have the extension ".morph".
+    /// file.  The file must have the extension ".mgnx".
     ///
     /// # Arguments
     ///
@@ -82,7 +82,7 @@ impl ConfigurationFileDetails {
         let config_path = PathBuf::from_str(config_file).unwrap();
         let extension = config_path.extension();
 
-        // The file must have a .morph extension.
+        // The file must have a .mgnx extension.
         if extension.is_none() {
             return Err(MutagenyxError::ConfigFileBadExtension(String::from(
                 config_file,

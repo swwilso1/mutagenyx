@@ -57,7 +57,7 @@ pub struct MutateCLArgs {
     #[clap(long, default_value = "vyper")]
     pub vyper_compiler: String,
 
-    /// Save the mutation information used to mutate each file in a config (.morph) file
+    /// Save the mutation information used to mutate each file in a config (.mgnx) file
     /// in the output directory
     #[clap(long)]
     pub save_config_files: bool,
