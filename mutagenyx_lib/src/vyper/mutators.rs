@@ -1186,16 +1186,16 @@ impl Mutator<VyperAST> for IntegerMutator {
 /// The algorithm swaps the left and right hand sides of the arguments
 /// to a BinOp/BoolOp/Compare.  The operator of the BinOp/BoolOp/Compare must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
-struct OperatorSwapArgumentsMutator {
+struct SwapOperatorArgumentsMutator {
     valid_operators: Vec<&'static str>,
     operator_map: HashMap<&'static str, &'static str>,
     comment_node: Option<VyperAST>,
 }
 
-impl OperatorSwapArgumentsMutator {
+impl SwapOperatorArgumentsMutator {
     /// Create a new mutator
-    fn new() -> OperatorSwapArgumentsMutator {
-        OperatorSwapArgumentsMutator {
+    fn new() -> SwapOperatorArgumentsMutator {
+        SwapOperatorArgumentsMutator {
             valid_operators: non_commutative_operators(),
             operator_map: get_python_operator_map(),
             comment_node: None,
@@ -1203,7 +1203,7 @@ impl OperatorSwapArgumentsMutator {
     }
 }
 
-impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
+impl Mutator<VyperAST> for SwapOperatorArgumentsMutator {
     fn is_mutable_node(&mut self, node: &VyperAST, _rand: &mut Pcg64) -> bool {
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
             if ast_type == "BinOp" || ast_type == "BoolOp" || ast_type == "Compare" {
@@ -1256,7 +1256,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
             }
 
             let comment_text = format!(
-                "OperatorSwapArguments Mutator: Swapped '{}' for '{}'",
+                "SwapOperatorArguments Mutator: Swapped '{}' for '{}'",
                 left_node_s, right_node_s
             );
             if let Ok(comment_node) = new_comment_node(&comment_text) {
@@ -1271,7 +1271,7 @@ impl Mutator<VyperAST> for OperatorSwapArgumentsMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::OperatorSwapArguments)
+        MutationType::Generic(GenericMutation::SwapOperatorArguments)
     }
 
     fn get_comment_node(&self) -> Option<VyperAST> {
@@ -1519,8 +1519,8 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator::new())),
-                GenericMutation::OperatorSwapArguments => {
-                    Some(Box::new(OperatorSwapArgumentsMutator::new()))
+                GenericMutation::SwapOperatorArguments => {
+                    Some(Box::new(SwapOperatorArgumentsMutator::new()))
                 }
                 GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),

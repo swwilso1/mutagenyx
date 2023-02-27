@@ -157,7 +157,7 @@ pub enum GenericMutation {
     ///
     /// This algorithm will swap left and right expressions for binary expressions using operators
     /// from this list; (-, /, %, **, >, <, >=, <=, <<, >>)
-    OperatorSwapArguments,
+    SwapOperatorArguments,
 
     /// Randomly picks two statements in a block and swaps the two statements.
     ///
@@ -247,8 +247,8 @@ impl FromStr for MutationType {
             "FunctionSwapArguments" => Ok(MutationType::Generic(
                 GenericMutation::FunctionSwapArguments,
             )),
-            "OperatorSwapArguments" => Ok(MutationType::Generic(
-                GenericMutation::OperatorSwapArguments,
+            "SwapOperatorArguments" => Ok(MutationType::Generic(
+                GenericMutation::SwapOperatorArguments,
             )),
             "LinesSwap" => Ok(MutationType::Generic(GenericMutation::LinesSwap)),
             "UnaryOp" => Ok(MutationType::Generic(GenericMutation::UnaryOp)),
@@ -279,7 +279,7 @@ impl fmt::Display for MutationType {
                 GenericMutation::IfStatement => "IfStatement",
                 GenericMutation::Integer => "Integer",
                 GenericMutation::FunctionSwapArguments => "FunctionSwapArguments",
-                GenericMutation::OperatorSwapArguments => "OperatorSwapArguments",
+                GenericMutation::SwapOperatorArguments => "SwapOperatorArguments",
                 GenericMutation::LinesSwap => "LinesSwap",
                 GenericMutation::UnaryOp => "UnaryOp",
             },
@@ -467,7 +467,7 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
     );
 
     algorithm_map.insert(
-        MutationType::Generic(GenericMutation::OperatorSwapArguments),
+        MutationType::Generic(GenericMutation::SwapOperatorArguments),
         MutationAlgorithmDescription {
             summary: "Swap left and right hand sides of binary expressions with \
             non-commutative operators.",

@@ -1192,24 +1192,24 @@ impl Mutator<SolidityAST> for IntegerMutator {
 /// The algorithm swaps the left and right hand sides of the arguments
 /// to a BinaryOperation.  The operator of the BinaryOperation must
 /// be in the list of non-commutative operators: [-, /, %, **, >, <, <=, >=, <<, >>]
-struct OperatorSwapArgumentsMutator {
+struct SwapOperatorArgumentsMutator {
     valid_operators: Vec<&'static str>,
 
     /// Information about the mutation.
     comment_node: Option<SolidityAST>,
 }
 
-impl OperatorSwapArgumentsMutator {
+impl SwapOperatorArgumentsMutator {
     /// Create a new mutator.
-    fn new() -> OperatorSwapArgumentsMutator {
-        OperatorSwapArgumentsMutator {
+    fn new() -> SwapOperatorArgumentsMutator {
+        SwapOperatorArgumentsMutator {
             valid_operators: non_commutative_operators(),
             comment_node: None,
         }
     }
 }
 
-impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
+impl Mutator<SolidityAST> for SwapOperatorArgumentsMutator {
     fn is_mutable_node(&mut self, node: &SolidityAST, _rand: &mut Pcg64) -> bool {
         if let Some(node_type) = node.get_str_for_key("nodeType") {
             if node_type == "BinaryOperation" {
@@ -1236,7 +1236,7 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
                 node.set_node_for_key("rightExpression", left_expr);
 
                 let comment_text = format!(
-                    "OperatorSwapArguments Mutator: switched '{}' and '{}'",
+                    "SwapOperatorArguments Mutator: switched '{}' and '{}'",
                     left_expr_s, right_expr_s
                 );
                 if let Ok(comment_node) = new_comment_node(&comment_text) {
@@ -1252,7 +1252,7 @@ impl Mutator<SolidityAST> for OperatorSwapArgumentsMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::OperatorSwapArguments)
+        MutationType::Generic(GenericMutation::SwapOperatorArguments)
     }
 
     fn get_comment_node(&self) -> Option<SolidityAST> {
@@ -1764,8 +1764,8 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),
                 GenericMutation::Integer => Some(Box::new(IntegerMutator::new())),
-                GenericMutation::OperatorSwapArguments => {
-                    Some(Box::new(OperatorSwapArgumentsMutator::new()))
+                GenericMutation::SwapOperatorArguments => {
+                    Some(Box::new(SwapOperatorArgumentsMutator::new()))
                 }
                 GenericMutation::LinesSwap => Some(Box::new(LinesSwapMutator::new())),
                 GenericMutation::UnaryOp => Some(Box::new(UnaryOpMutator::new())),

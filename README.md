@@ -162,7 +162,7 @@ condition if(!(c)).
 * Integer - Randomly replace integer constants with random values.
 * LinesSwap - Randomly select two statements in a block and swap the two statements.
 * LogicalBinaryOp - Randomly replace the logical operator in a binary expression.
-* OperatorSwapArguments - Swap left and right hand sides of binary expressions with non-commutative operators.
+* SwapOperatorArguments - Swap left and right hand sides of binary expressions with non-commutative operators.
 * Require - Randomly select a use of the Solidity require() function and replace the argument with the logical negation
 of the argument expression.
 * UnaryOp - Random replace unary operators for both prefix and postfix expressions with operators from the unary
