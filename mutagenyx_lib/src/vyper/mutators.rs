@@ -971,7 +971,7 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::FunctionSwapArguments)
+        MutationType::Generic(GenericMutation::SwapFunctionArguments)
     }
 
     fn get_comment_node(&self) -> Option<VyperAST> {
@@ -1514,7 +1514,7 @@ impl MutatorFactory<VyperAST> for VyperMutatorFactory {
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator::new())),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
-                GenericMutation::FunctionSwapArguments => {
+                GenericMutation::SwapFunctionArguments => {
                     Some(Box::new(SwapFunctionArgumentsMutator::new()))
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),

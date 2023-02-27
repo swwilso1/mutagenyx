@@ -156,7 +156,7 @@ algorithms run: `mutagenyx algorithms -l`.  To get more detailed descriptions of
 * DeleteStatement - Randomly select a statement in a program block and delete the statement.
 * ElimDelegateCall - Replace delegatecall() functions with call() (only valid for Solidity programs).
 * FunctionCall - Replace function calls with one of the randomly selected arguments to the function call.
-* FunctionSwapArguments - Randomly swap two arguments in a function call.
+* SwapFunctionArguments - Randomly swap two arguments in a function call.
 * IfStatement - Replace the condition expression in an if(c) statement with true, false, or the logical negation of the
 condition if(!(c)).
 * Integer - Randomly replace integer constants with random values.

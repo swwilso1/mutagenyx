@@ -143,7 +143,7 @@ pub enum GenericMutation {
     /// `a = foo(bar, bat);` might become `a = foo(bat, bar);`
     ///
     /// `b = bip(boop, 10, bop);` might become `b = bip(bop, 10, boop);`
-    FunctionSwapArguments,
+    SwapFunctionArguments,
 
     /// Swaps left and right hand sides of expressions that contain non-commutative operators.
     ///
@@ -244,8 +244,8 @@ impl FromStr for MutationType {
             "FunctionCall" => Ok(MutationType::Generic(GenericMutation::FunctionCall)),
             "IfStatement" => Ok(MutationType::Generic(GenericMutation::IfStatement)),
             "Integer" => Ok(MutationType::Generic(GenericMutation::Integer)),
-            "FunctionSwapArguments" => Ok(MutationType::Generic(
-                GenericMutation::FunctionSwapArguments,
+            "SwapFunctionArguments" => Ok(MutationType::Generic(
+                GenericMutation::SwapFunctionArguments,
             )),
             "SwapOperatorArguments" => Ok(MutationType::Generic(
                 GenericMutation::SwapOperatorArguments,
@@ -278,7 +278,7 @@ impl fmt::Display for MutationType {
                 GenericMutation::FunctionCall => "FunctionCall",
                 GenericMutation::IfStatement => "IfStatement",
                 GenericMutation::Integer => "Integer",
-                GenericMutation::FunctionSwapArguments => "FunctionSwapArguments",
+                GenericMutation::SwapFunctionArguments => "SwapFunctionArguments",
                 GenericMutation::SwapOperatorArguments => "SwapOperatorArguments",
                 GenericMutation::LinesSwap => "LinesSwap",
                 GenericMutation::UnaryOp => "UnaryOp",
@@ -455,7 +455,7 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
     );
 
     algorithm_map.insert(
-        MutationType::Generic(GenericMutation::FunctionSwapArguments),
+        MutationType::Generic(GenericMutation::SwapFunctionArguments),
         MutationAlgorithmDescription {
             summary: "Randomly swap two arguments in a function call.",
             extra_details: "Find function calls in the program with two or more arguments, \

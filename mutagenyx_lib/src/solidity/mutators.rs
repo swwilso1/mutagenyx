@@ -945,7 +945,7 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
                 node.set_node_for_key("arguments", arguments_node);
 
                 let comment_text = format!(
-                    "FunctionSwapArguments Mutator: switched '{}' for '{}'",
+                    "SwapFunctionArguments Mutator: switched '{}' for '{}'",
                     in1_node_s, in2_node_s
                 );
                 if let Ok(comment_node) = new_comment_node(&comment_text) {
@@ -961,7 +961,7 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
     }
 
     fn implements(&self) -> MutationType {
-        MutationType::Generic(GenericMutation::FunctionSwapArguments)
+        MutationType::Generic(GenericMutation::SwapFunctionArguments)
     }
 
     fn get_comment_node(&self) -> Option<SolidityAST> {
@@ -1759,7 +1759,7 @@ impl MutatorFactory<SolidityAST> for SolidityMutatorFactory {
                 GenericMutation::Assignment => Some(Box::new(AssignmentMutator::new())),
                 GenericMutation::DeleteStatement => Some(Box::new(DeleteStatementMutator::new())),
                 GenericMutation::FunctionCall => Some(Box::new(FunctionCallMutator::new())),
-                GenericMutation::FunctionSwapArguments => {
+                GenericMutation::SwapFunctionArguments => {
                     Some(Box::new(SwapFunctionArgumentsMutator::new()))
                 }
                 GenericMutation::IfStatement => Some(Box::new(IfStatementMutator::new())),
