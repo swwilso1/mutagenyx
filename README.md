@@ -23,8 +23,7 @@ and the specific changes that the algorithm made.
 Mutagenyx is a Rust program. To build Mutagenyx, do the following:
 
 1. Download and install the latest Rust compiler tools from the Rust language [website](https://www.rust-lang.org/tools/install).
-2. Clone the Mutagenyx repository:
-   - `git clone git@github.com:Certora/mutagenyx.git`
+2. Clone the Mutagenyx repository: `git clone git@github.com:Certora/mutagenyx.git`
 3. Build Mutagenyx
     - In the `mutagenyx` directory run `cargo build -r` to build the release version of Mutagenyx.
     - If you would like to work with Mutagenyx outside the Mutagenyx source tree you can run
@@ -58,10 +57,17 @@ compiler in the `path` key of the compiler-details object:
 
 #### Solidity Compiler Command Line Flags
 
+##### Base Path
+
 The Solidity compiler supports the `--base-path` command line flag.  From the compiler documentation, this flag causes
 the compiler to "use the given path as the root of the source tree instead of the root of the filesystem." You can add
 the `"base-path"` key to the `"compiler-details"` object in the configuration file to provide a value for this compiler
 flag.
+
+Mutagenyx also supports setting the base path using the `--solidity-base-path` command-line flag when running the
+`mutate` sub-command.
+
+##### Include Path
 
 The Solidity compiler supports the `--include-path` command line flag.  From the compiler documentation, this flag
 causes the compiler to "make an additional source directory available to the default import callback. Use this option
@@ -81,6 +87,32 @@ key `"include-paths"`. Example:
 }
 ```
 
+Mutagenyx also supports setting the include-path using the `--solidity-include-path` command-line flag when running the
+`mutate` sub-command.
+
+##### Allow Path
+
+The Solidity compiler supports the `--allow-paths` command line flag.  From the compiler documentation, this flag
+causes the compiler to "Allow a given path for imports. A list of paths can be supplied by separating them with a
+comma."  You can add an array of allow-paths to the `"compiler-details"` object in the configuration file under
+the key `"allow-paths"`.  Example:
+
+```json
+{
+   "compiler-details": {
+       "allow-paths": [
+          "/path/to/first",
+          "/path/to/second"
+       ]
+   }
+}
+```
+
+Mutagenyx also supports setting the allow-paths using the `--solidity-allow-paths` command-line flag when running the
+`mutate` sub-command.
+
+##### Re-mapping
+
 The Solidity compiler supports the concept of re-mappings of imports.  From the Solidity compiler: "Imports are
 automatically read from the filesystem, but it is also possible to remap paths using the context:prefix=path syntax."
 You can provide re-mappings by adding these mappings to the `"compiler-details"` section of the configuration file. You
@@ -96,6 +128,9 @@ can add an array of re-mappings using the `remappings` key.  Example:
    }
 }
 ```
+
+Mutagenyx also supports setting remappings using the `--solidity-remapping` command-line flag when running the
+`mutate` sub-command.
 
 ### Vyper
 
@@ -128,6 +163,9 @@ causes the compiler to "set the root path for contract imports." You can add the
    }
 }
 ```
+
+Mutagenyx also supports setting the root-path using the `--vyper-root-path` command-line flag when running the
+`mutate` sub-command.
 
 ## Usage
 
@@ -210,10 +248,9 @@ Use the `--functions` command line flag to give Mutagenyx a list of function nam
 code in these named functions.  Without the `--functions` flag, Mutagenyx will generate mutations across the entire
 program.
 
-You can pass the paths to the Solidity and Vyper compilers using the `--solidity-compiler <PATH>` and
-`--vyper-compiler <PATH>` command line flags respectively.
-
 The `--print-original` flag instructs Mutagenyx to pretty-print the original source or AST file to the output directory.
+
+The `mutate` sub-command shares the subset of language specific compiler [flags](#language-compiler-flags).
 
 ### Pretty-printing
 
@@ -239,6 +276,16 @@ write the pretty-printed output to stdout.  `--stdout` takes precedence over `-o
 You can pass the paths to the Solidity and Vyper compilers using the `--solidity-compiler <PATH>` and
 `--vyper-compiler <PATH>` command line flags respectively.
 
+### Language Compiler Flags
+
+#### Solidity
+
+You can pass the path to the Solidity compiler using the `--solidity-compiler <PATH>` flag.
+
+You can set the Solidity base path location using the `--solidity-base-path <PATH>` flag.
+
+You can set Solidity include paths using the `--solidity-include-path <PATH>` flag.  The compiler will not accept an
+include-path flag unless you also use `--solidity-base-path`.
 
 ## Configuration Files
 

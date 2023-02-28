@@ -1,7 +1,7 @@
 //! The `mutation_generator` module provides the `generate_mutations` function that implements
 //! the mutation generation algorithm.
 
-use crate::compiler_paths::CompilerPaths;
+use crate::compiler_settings::*;
 use crate::generator_parameters::GeneratorParameters;
 use crate::pretty_printing::{pretty_print_ast, pretty_print_ast_to_stream};
 use crate::MutateCLArgs;
@@ -87,10 +87,23 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         get_mutation_types_from_strings(&args.mutations)
     };
 
+    let solidity_compiler_settings = SolidityCompilerSettings {
+        solidity_compiler: args.solidity_compiler,
+        solidity_base_path: args.solidity_base_path,
+        solidity_include_path: args.solidity_include_path,
+        solidity_allow_paths: args.solidity_allow_paths,
+        solidity_remappings: args.solidity_remappings,
+    };
+
+    let vyper_compiler_settings = VyperCompilerSettings {
+        vyper_compiler: args.vyper_compiler,
+        vyper_root_path: args.vyper_root_path,
+    };
+
     // We allow the user to pass in compilers for each supported language on the command line.
-    let compiler_paths = CompilerPaths {
-        solidity: &args.solidity_compiler,
-        vyper: &args.vyper_compiler,
+    let compiler_paths = CompilerSettings {
+        solidity: solidity_compiler_settings,
+        vyper: vyper_compiler_settings,
     };
 
     let mut preferences = compiler_paths.to_preferences();

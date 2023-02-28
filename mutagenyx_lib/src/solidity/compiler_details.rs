@@ -3,4 +3,5 @@
 
 pub static BASE_PATH_KEY: &str = "base-path";
 pub static INCLUDE_PATHS_KEY: &str = "include-paths";
+pub static ALLOW_PATHS_KEY: &str = "allow-paths";
 pub static REMAPPINGS_KEY: &str = "remappings";

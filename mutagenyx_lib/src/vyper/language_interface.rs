@@ -36,11 +36,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use versions::{Mess, Versioning};
 
-/// Return the object conforming to [`JSONLanguageDelegate`]
-pub fn get_vyper_delegate() -> Box<dyn JSONLanguageDelegate> {
-    Box::new(VyperLanguageDelegate::new())
-}
-
 /// The type that implements [`JSONLanguageDelegate`]
 pub struct VyperLanguageDelegate {
     node_printer_factory: Box<dyn NodePrinterFactory<VyperAST>>,
@@ -48,7 +43,7 @@ pub struct VyperLanguageDelegate {
 
 impl VyperLanguageDelegate {
     /// Create a new Vyper language delegate
-    fn new() -> VyperLanguageDelegate {
+    pub fn new() -> VyperLanguageDelegate {
         VyperLanguageDelegate {
             node_printer_factory: Box::new(VyperNodePrinterFactory::default()),
         }

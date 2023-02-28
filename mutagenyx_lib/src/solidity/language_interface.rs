@@ -21,7 +21,9 @@ use crate::pretty_print_visitor::PrettyPrintVisitor;
 use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::ast::SolidityAST;
 use crate::solidity::commenter::SolidityCommenterFactory;
-use crate::solidity::compiler_details::{BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY};
+use crate::solidity::compiler_details::{
+    ALLOW_PATHS_KEY, BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY,
+};
 use crate::solidity::mutators::SolidityMutatorFactory;
 use crate::solidity::node_finder::SolidityNodeFinderFactory;
 use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
@@ -35,11 +37,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-/// Return the object that conforms to [`JSONLanguageDelegate`].
-pub fn get_solidity_delegate() -> Box<dyn JSONLanguageDelegate> {
-    Box::new(SolidityLanguageSubDelegate::new())
-}
-
 /// The type that implements [`JSONLanguageDelegate`].
 pub struct SolidityLanguageSubDelegate {
     node_printer_factory: Box<dyn NodePrinterFactory<SolidityAST>>,
@@ -47,7 +44,7 @@ pub struct SolidityLanguageSubDelegate {
 
 impl SolidityLanguageSubDelegate {
     // Create a new Solidity language delegate.
-    fn new() -> SolidityLanguageSubDelegate {
+    pub fn new() -> SolidityLanguageSubDelegate {
         SolidityLanguageSubDelegate {
             node_printer_factory: Box::new(SolidityNodePrinterFactory::default()),
         }
@@ -185,6 +182,23 @@ fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<Stri
                     if let PreferenceValue::String(s) = path {
                         args.push(String::from("--include-path"));
                         args.push(s.clone());
+                    }
+                }
+            }
+            if let Some(allow_paths_array) = compiler_prefs.get_array_for_key(ALLOW_PATHS_KEY) {
+                if allow_paths_array.len() > 0 {
+                    args.push(String::from("--allow-paths"));
+                    let mut i: usize = 0;
+                    while i < allow_paths_array.len() {
+                        let value = &allow_paths_array[i];
+                        if let PreferenceValue::String(s) = value {
+                            let mut path_value = s.clone();
+                            if i < (allow_paths_array.len() - 1) {
+                                path_value = path_value + ",";
+                            }
+                            args.push(path_value);
+                        }
+                        i += 1;
                     }
                 }
             }

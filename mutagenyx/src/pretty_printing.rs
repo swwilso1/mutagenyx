@@ -2,7 +2,7 @@
 //! using the tool's pretty-printing format.  Use these services to change the input file into a form
 //! that you can easily compare with the generated mutants using a diff tool.
 
-use crate::compiler_paths::CompilerPaths;
+use crate::compiler_settings::*;
 use crate::PrettyPrintCLArgs;
 use mutagenyx_lib::error::MutagenyxError;
 use mutagenyx_lib::language_interface::*;
@@ -21,9 +21,21 @@ use std::str::FromStr;
 ///
 /// * `args` - The [`PrettyPrintCLArgs`] object.
 pub fn pretty_print_files(args: PrettyPrintCLArgs) {
-    let compiler_paths = CompilerPaths {
-        solidity: &args.solidity_compiler,
-        vyper: &args.vyper_compiler,
+    let solidity_compiler_settings = SolidityCompilerSettings {
+        solidity_compiler: args.solidity_compiler,
+        solidity_base_path: args.solidity_base_path,
+        solidity_include_path: args.solidity_include_path,
+        solidity_allow_paths: args.solidity_allow_paths,
+        solidity_remappings: args.solidity_remappings,
+    };
+
+    let vyper_compiler_settings = VyperCompilerSettings {
+        vyper_compiler: args.vyper_compiler,
+        vyper_root_path: args.vyper_root_path,
+    };
+    let compiler_paths = CompilerSettings {
+        solidity: solidity_compiler_settings,
+        vyper: vyper_compiler_settings,
     };
 
     let mut preferences = compiler_paths.to_preferences();
