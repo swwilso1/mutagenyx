@@ -374,8 +374,14 @@ impl NodePrinter<VyperAST> for IndexPrinter {
         factory: &dyn NodePrinterFactory<VyperAST>,
         node: &VyperAST,
     ) {
+        let mut printer_settings = factory.get_settings().clone();
+        printer_settings.set_value_for_key(
+            TUPLES_SHOULD_USE_PARENTHESES,
+            PreferenceValue::Boolean(false),
+        );
+        let sub_factory = VyperNodePrinterFactory::new(printer_settings);
         write_token(printer, stream, "[");
-        write_simple_value(printer, stream, factory, node);
+        write_simple_value(printer, stream, &sub_factory, node);
         write_token(printer, stream, "]");
     }
 }
