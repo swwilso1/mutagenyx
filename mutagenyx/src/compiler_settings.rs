@@ -91,7 +91,7 @@ pub struct CompilerSettings {
     pub vyper: VyperCompilerSettings,
 }
 
-impl<'a> CompilerSettings {
+impl CompilerSettings {
     /// Generate a basic language Preferences layout starting from compiler paths.
     ///
     /// The Preferences object is not JSON, but in JSON, the returned Preferences has the following

@@ -186,7 +186,7 @@ fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<Stri
                 }
             }
             if let Some(allow_paths_array) = compiler_prefs.get_array_for_key(ALLOW_PATHS_KEY) {
-                if allow_paths_array.len() > 0 {
+                if ! allow_paths_array.is_empty() {
                     args.push(String::from("--allow-paths"));
                     let mut i: usize = 0;
                     while i < allow_paths_array.len() {
@@ -194,7 +194,7 @@ fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<Stri
                         if let PreferenceValue::String(s) = value {
                             let mut path_value = s.clone();
                             if i < (allow_paths_array.len() - 1) {
-                                path_value = path_value + ",";
+                                path_value += ",";
                             }
                             args.push(path_value);
                         }
