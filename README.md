@@ -37,15 +37,17 @@ listed below.
 
 ### Solidity
 
-To mutate Solidity programs, you will need to download and install compilers for Solidity programs from the
-[solc-bin](https://github.com/etherium/solc-bin) repository. Select the appropriate compiler for the version of
-Solidity that you need and the platform tha you are using and install the compiler in an easy-to-find directory.
-Mutagenyx by default will try to use a Solidity compiler called `solc`.  If you choose not to specifically tell
-Mutagenyx where to find the Solidity compiler, you will need to at least have a compiler named `solc` available
-in a directory listed in your PATH environment variable.  Mutagenyx allows you to specify a specific Solidity compiler
-by giving the path to the compiler using the command line argument `--solidity-compiler <path>`.  Mutagenyx will also
-use a custom compiler specification in a `.mgnx` [configuration file](#configuration-files).  Set the path to the
-compiler in the `path` key of the compiler-details object:
+To mutate Solidity programs, you will need to download and install compilers for Solidity programs by following the
+directions from the Solidity [installation instructions](https://docs.soliditylang.org/en/v0.8.19/installing-solidity.html),
+or by downloading static binaries from the compiler [repository](https://github.com/ethereum/solc-bin/).
+Select the appropriate compiler for the version of Solidity that you need and the platform tha you are using and install
+the compiler in an easy-to-find directory. Mutagenyx by default will try to use a Solidity compiler called `solc`.  If
+you choose not to specifically tell Mutagenyx where to find the Solidity compiler, you will need to at least have a
+compiler named `solc` available in a directory listed in your PATH environment variable.  Mutagenyx allows you to
+specify a specific Solidity compiler by giving the path to the compiler using the command line argument
+`--solidity-compiler <path>`.  Mutagenyx will also use a custom compiler specification in a `.mgnx`
+[configuration file](#configuration-files).  Set the path to the compiler in the `path` key of the compiler-details
+object:
 
 ```json
 {
