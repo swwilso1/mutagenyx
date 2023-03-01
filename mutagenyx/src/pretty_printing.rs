@@ -26,7 +26,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
         solidity_base_path: args.solidity_base_path,
         solidity_include_path: args.solidity_include_path,
         solidity_allow_paths: args.solidity_allow_paths,
-        solidity_remappings: args.solidity_remappings,
+        solidity_remappings: args.solidity_remapping,
     };
 
     let vyper_compiler_settings = VyperCompilerSettings {
@@ -40,7 +40,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
 
     let mut preferences = compiler_paths.to_preferences();
 
-    for file_name in args.file_names {
+    for file_name in args.file {
         if args.stdout {
             let mut stdout = std::io::stdout();
             match pretty_print_file_to_stream(&file_name, &mut stdout, &mut preferences) {

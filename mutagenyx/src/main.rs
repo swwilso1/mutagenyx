@@ -57,7 +57,7 @@ pub struct MutateCLArgs {
 
     /// Input file(s) to mutate
     #[arg(short, long, required = true)]
-    pub file_names: Vec<String>,
+    pub file: Vec<String>,
 
     /// Random number generator seed.
     #[arg(long, default_value_t = -1)]
@@ -69,7 +69,7 @@ pub struct MutateCLArgs {
 
     /// Mutation algorithms to enable
     #[arg(long)]
-    pub mutations: Vec<String>,
+    pub mutation: Vec<String>,
 
     /// Enable all mutation algorithms, takes precedence over --mutations
     #[arg(short, long)]
@@ -90,7 +90,7 @@ pub struct MutateCLArgs {
 
     /// Only generate mutations in the listed functions.
     #[arg(long)]
-    pub functions: Vec<String>,
+    pub function: Vec<String>,
 
     /// Check each mutant for correctness. (Currently attempts to compile each mutant)
     #[arg(long)]
@@ -114,7 +114,7 @@ pub struct MutateCLArgs {
 
     /// Solidity re-mapping (context:prefix=path)
     #[arg(long)]
-    pub solidity_remappings: Vec<String>,
+    pub solidity_remapping: Vec<String>,
 
     /// Vyper compiler
     #[arg(long, default_value = "vyper")]
@@ -134,7 +134,7 @@ pub struct PrettyPrintCLArgs {
 
     /// Input file(s) to pretty-print
     #[arg(short, long, required = true)]
-    pub file_names: Vec<String>,
+    pub file: Vec<String>,
 
     /// Write output to stdout instead of the directory given in `output_directory`.
     #[arg(long)]
@@ -158,7 +158,7 @@ pub struct PrettyPrintCLArgs {
 
     /// Solidity re-mapping (context:prefix=path)
     #[arg(long)]
-    pub solidity_remappings: Vec<String>,
+    pub solidity_remapping: Vec<String>,
 
     /// Vyper compiler
     #[arg(long, default_value = "vyper")]

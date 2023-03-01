@@ -84,7 +84,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         get_all_mutation_algorithms()
     } else {
         // Change the algorithm strings from the command line into actual MutationType values.
-        get_mutation_types_from_strings(&args.mutations)
+        get_mutation_types_from_strings(&args.mutation)
     };
 
     let solidity_compiler_settings = SolidityCompilerSettings {
@@ -92,7 +92,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         solidity_base_path: args.solidity_base_path,
         solidity_include_path: args.solidity_include_path,
         solidity_allow_paths: args.solidity_allow_paths,
-        solidity_remappings: args.solidity_remappings,
+        solidity_remappings: args.solidity_remapping,
     };
 
     let vyper_compiler_settings = VyperCompilerSettings {
@@ -126,11 +126,11 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
 
     let pcg = Pcg64::seed_from_u64(seed);
 
-    for file_name in args.file_names {
+    for file_name in args.file {
         let mut actual_preferences = preferences.clone();
         let actual_file_name = file_name.clone();
         let mut actual_mutations = mutations.clone();
-        let mut actual_functions = args.functions.clone();
+        let mut actual_functions = args.function.clone();
         let mut actual_number_of_mutants = args.num_mutants;
         let mut actual_verify = args.validate_mutants;
 
