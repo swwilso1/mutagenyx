@@ -220,11 +220,11 @@ To get a full listing of all options available for the `mutate` sub-command, run
 Two command line options control the selection of mutation algorithms:
 
 * `-a` - Selects all available mutation algorithms
-* `--mutations <Algorithms>` - Allows the user to elucidate specific algorithms.
+* `--mutation <Algorithm>` - Allows the user to elucidate specific algorithms.
 
-The `-a` argument takes precedence over `--mutations`.
+The `-a` argument takes precedence over `--mutation`.
 
-Mutagenyx can restrict mutations to individual functions using the `--functions` argument.
+Mutagenyx can restrict mutations to individual functions using the `--function` argument.
 
 The `--num-mutants <NUMBER>` flag controls the number of mutants that Mutagenyx will generate.  Note that Mutagenyx
 treats this number as an upper bound on the number of mutants that it generates.  Depending on the AST and the selected
@@ -246,9 +246,9 @@ render the mutated program unusable.
 Mutagenyx can write generated mutant programs to a directory specified with the `-o/--output-directory` command line flag,
 or, it can write the programs to stdout when using the `--stdout` flag.
 
-Use the `--functions` command line flag to give Mutagenyx a list of function names.  Mutagenyx will only mutate source
-code in these named functions.  Without the `--functions` flag, Mutagenyx will generate mutations across the entire
-program.
+Use the `--function` command line flag to give Mutagenyx a function name to which the tool will restrict mutations.
+The tool accepts more than one instance of this flag and Mutagenyx will only mutate source code in these named functions.
+Without the `--function` flag, Mutagenyx will generate mutations across the entire program.
 
 The `--print-original` flag instructs Mutagenyx to pretty-print the original source or AST file to the output directory.
 
@@ -287,7 +287,11 @@ You can pass the path to the Solidity compiler using the `--solidity-compiler <P
 You can set the Solidity base path location using the `--solidity-base-path <PATH>` flag.
 
 You can set Solidity include paths using the `--solidity-include-path <PATH>` flag.  The compiler will not accept an
-include-path flag unless you also use `--solidity-base-path`.
+include-path flag unless you also use `--solidity-base-path`.  You can use `--solidity-include-path` to add multiple
+paths, one for each `--solidity-include-path` on the command line.
+
+You can set Solidity allow paths using the `--solidity-allow-path <PATH>` flag.  You can use `--solidity-allow-path` to
+add multiple paths, one for each `--solidity-allow-path` on the command line.
 
 ## Configuration Files
 
@@ -308,6 +312,8 @@ of the directory where the user invokes Mutagenyx. See [here](#solidity-compiler
 `compiler-details` object.
 * `filenames` - A JSON array of paths to input files.  You may only list source files or compiler AST files in this list
 of filenames.  Mutagenyx does not support configuration files (`.mgnx`) files in this array of input files.
+* `functions` - A JSON array of strings, each containing the name of a function in the program source code. When present,
+the tool will only perform mutations in the named functions.
 * `language` - A string with the name of the programming language used to generate ASTs from input source files. Currently,
 Mutagenyx does not allow mixing different language files in the same configuration file.  This restriction means you
 cannot list (for example) Vyper sources and Solidity sources in the same configuration file.
