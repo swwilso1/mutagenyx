@@ -775,6 +775,22 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
                 if let Some(arguments_node) = node.get("arguments") {
                     if let Some(arguments_array) = arguments_node.as_array() {
                         if !arguments_array.is_empty() {
+                            let mut has_literal = false;
+                            for value in arguments_array {
+                                if let Some(value_node_type) = value.get_str_for_key("nodeType") {
+                                    if value_node_type == "Literal" {
+                                        has_literal = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if has_literal && arguments_array.len() > 1 {
+                                return true;
+                            } else if has_literal {
+                                return false;
+                            }
+
                             return true;
                         }
                     }
