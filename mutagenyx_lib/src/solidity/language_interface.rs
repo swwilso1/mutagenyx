@@ -245,7 +245,8 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
     let file_path = PathBuf::from_str(file_name).unwrap();
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
-    let out_path = String::from(tmp_dir.to_str().unwrap()) + base_name + "_json.ast";
+    let separator = String::from(std::path::MAIN_SEPARATOR);
+    let out_path = String::from(tmp_dir.to_str().unwrap()) + separator.as_str() + base_name + "_json.ast";
     let args = vec![
         "--ast-compact-json",
         "--overwrite",
