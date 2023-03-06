@@ -279,7 +279,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
         } else {
             let original_file = PathBuf::from_str(&params.file_name).unwrap();
             pretty_print_ast(&ast, &params.file_name, &params.output_directory)?;
-            log::info!(
+            println!(
                 "Pretty-printing original file {:?} to {}",
                 original_file.file_name().unwrap(),
                 &params.output_directory.to_str().unwrap()
@@ -337,7 +337,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             let mut stdout = std::io::stdout();
             details.write_to_stream_as_json(&mut stdout)?;
         } else {
-            log::info!(
+            println!(
                 "Writing configuration file {}",
                 out_file_path.to_str().unwrap()
             );
@@ -355,7 +355,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
     // Sort the list so we get more deterministic behavior when selecting mutation algorithms.
     mutation_type_list.sort();
 
-    log::info!(
+    println!(
         "Of the requested mutation algorithms, the AST contains nodes for {:?}",
         get_mutation_strings_from_types(&mutation_type_list)
     );
@@ -395,7 +395,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
         available_mutations += data_tuple.1;
     }
 
-    log::info!(
+    println!(
         "AST supports at most {} different mutations using the requested mutation algorithms",
         available_mutations
     );
@@ -418,7 +418,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             viable_mutations_selected += 1;
         } else {
             if viable_mutations_selected >= available_mutations {
-                log::info!("Reached the limit of mutable nodes in the AST, lowering requested mutants by {} to {}", requested_mutants_remaining, mutation_kinds_todo.len());
+                println!("Reached the limit of mutable nodes in the AST, lowering requested mutants by {} to {}", requested_mutants_remaining, mutation_kinds_todo.len());
                 break;
             }
 
@@ -492,7 +492,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
                 let final_file =
                     pretty_print_ast(&mutated_ast, &outfile, &params.output_directory)?;
 
-                log::info!(
+                println!(
                     "{} used to create mutant written to {}",
                     mutation_type,
                     final_file.to_str().unwrap()
