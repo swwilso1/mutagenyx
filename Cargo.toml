@@ -5,3 +5,6 @@ members = [
      "mutagenyx_lib",
 ]
 
+[profile.release]
+debug = true
+
