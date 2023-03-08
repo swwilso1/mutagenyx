@@ -43,6 +43,7 @@ pub mod language_interface;
 pub mod mutation;
 mod mutation_visitor;
 mod mutator;
+pub mod mutator_result;
 mod namer;
 mod node_finder;
 mod node_printer;

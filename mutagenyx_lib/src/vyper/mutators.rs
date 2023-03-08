@@ -5,6 +5,7 @@ use crate::error::MutagenyxError;
 use crate::json::*;
 use crate::mutation::*;
 use crate::mutator::*;
+use crate::mutator_result::MutatorResult;
 use crate::node_printer_helpers::traverse_sub_node_and_print;
 use crate::operators::*;
 use crate::pretty_printer::PrettyPrinter;
@@ -12,6 +13,7 @@ use crate::vyper::ast::VyperAST;
 use crate::vyper::operators::get_python_operator_map;
 use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use num::{Float, Integer};
+use openssl::hash::{Hasher, MessageDigest};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::RngCore;
@@ -318,12 +320,27 @@ impl Mutator<VyperAST> for BinaryOpMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Do not hang on to any old comment node.
         self.comment_node = None;
 
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
+
         // Make a copy of the original node in case we need to pretty-print the original.
         let original_node = node.clone();
+
+        let ast_type = if let Some(n) = node.get_str_for_key("ast_type") {
+            String::from(n)
+        } else {
+            String::from("BinOp")
+        };
 
         if let Some(mut op) = node.take_value_for_key("op") {
             if let Some(op_type_str) = op.get_str_for_key("ast_type") {
@@ -338,16 +355,26 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 // Choose a new operator.
                 let mut chosen_operator = match self.operators.choose(rand) {
                     Some(o) => o,
-                    None => return None,
+                    None => {
+                        return Err(MutagenyxError::RandomOperationFailure(
+                            "failed to choose operator",
+                        ))
+                    }
                 };
 
                 // If we chose the original operator, keep choosing until we get a different operator.
                 while original_operator == chosen_operator {
                     chosen_operator = match self.operators.choose(rand) {
                         Some(o) => o,
-                        None => return None,
+                        None => {
+                            return Err(MutagenyxError::RandomOperationFailure(
+                                "failed to choose operator",
+                            ))
+                        }
                     };
                 }
+
+                hasher.update(chosen_operator.as_bytes())?;
 
                 // Now recover the Vyper operator name from the operator string form.
                 let vyper_chosen_operator = self.reverse_operator_map.get(chosen_operator).unwrap();
@@ -370,11 +397,16 @@ impl Mutator<VyperAST> for BinaryOpMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("node_id") {
-                    return Some(id as u64);
+                    mutator_result.mutated_node_id = Some(id as u64);
                 }
+
+                let byte_array = hasher.finish()?;
+                mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutator_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(ast_type, String::from("op")))
     }
 
     fn implements(&self) -> MutationType {
@@ -414,15 +446,27 @@ impl Mutator<VyperAST> for AssignmentMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Get rid of any previous comment node.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let value_node: VyperAST = if let Some(vnode) = node.get("value") {
             vnode.clone()
         } else {
             log::debug!("AssignmentMutator failed to find existing `value` node.");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("Assign"),
+                String::from("value"),
+            ));
         };
 
         // Pretty-print the original value node so that we can later create a comment node.
@@ -441,6 +485,8 @@ impl Mutator<VyperAST> for AssignmentMutator {
             0 => {
                 // Generate an integer
 
+                hasher.update(&[0])?;
+
                 // -(2**127)
                 let lower_bound = -170141183460469231731687303715884105728_i128;
 
@@ -449,49 +495,66 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
+                hasher.update(&replacement_value.to_ne_bytes())?;
+
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("integer constant")),
                 };
 
                 node.set_node_for_key("value", new_node);
             }
             1 => {
                 // Generate and unsigned integer
+
+                hasher.update(&[1])?;
+
                 let lower_bound = 0_u128;
                 let upper_bound = 340282366920938463463374607431768211455u128;
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
+                hasher.update(&replacement_value.to_ne_bytes())?;
+
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("integer constant")),
                 };
 
                 node.set_node_for_key("value", new_node);
             }
             2 => {
                 // Generate a boolean
+
+                hasher.update(&[2])?;
+
                 let random_boolean = rand.next_u64() % 2_u64;
                 let actual_boolean = matches!(random_boolean, 1);
 
+                hasher.update(&random_boolean.to_ne_bytes())?;
+
                 let new_node = match new_boolean_constant_node(actual_boolean) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("boolean constant")),
                 };
 
                 node.set_node_for_key("value", new_node);
             }
             3 => {
                 // Generate a float
+
+                hasher.update(&[3])?;
+
                 // Vyper floating point numbers support values in the range:
                 // [-2^167 / 10^10, (2^167 - 1) / 10^10]
                 let lower_bound = -18707220957835557353007165858768422651595.9365500928;
                 let upper_bound = 18707220957835557353007165858768422651595.9365500927;
-                let random_float = rand.gen_range(lower_bound, upper_bound);
+                let random_float: f64 = rand.gen_range(lower_bound, upper_bound);
+
+                hasher.update(&random_float.to_ne_bytes())?;
 
                 let new_node = match new_float_constant_node(random_float) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("float constant")),
                 };
 
                 node.set_node_for_key("value", new_node);
@@ -511,7 +574,10 @@ impl Mutator<VyperAST> for AssignmentMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("node_id").map(|id| id as u64)
+        let byte_array = hasher.finish()?;
+        mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+        mutator_result.mutated_node_id = node.get_int_for_key("node_id").map(|id| id as u64);
+        Ok(mutator_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -613,9 +679,25 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previous comment.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
+
+        let node_ast_type = if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            String::from(ast_type)
+        } else {
+            // Just guess here.
+            String::from("FunctionDef")
+        };
 
         // We have a node with a 'body' member.  We want to randomly delete a node in the body
         // array (assuming a body array is present).
@@ -625,11 +707,13 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                 let index = (rand.next_u64() % body_array.len() as u64) as usize;
                 let value = body_array.remove(index);
 
+                hasher.update(&index.to_ne_bytes())?;
+
                 let value_id = value.get_int_for_key("node_id").map(|id| id as u64);
 
                 let new_node = match new_comment_node_from_node(value) {
                     Ok(node) => node,
-                    Err(_e) => return None,
+                    Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("comment node")),
                 };
 
                 body_array.insert(index, new_node);
@@ -647,15 +731,29 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             let random_boolean = rand.next_u64() % 2_u64;
                                             let actual_boolean = matches!(random_boolean, 1);
 
+                                            hasher.update(&random_boolean.to_ne_bytes())?;
+
                                             let new_node =
                                                 match new_boolean_constant_node(actual_boolean) {
                                                     Ok(n) => n,
-                                                    _ => return None,
+                                                    _ => {
+                                                        return Err(
+                                                            MutagenyxError::UnableToGenerateNode(
+                                                                "boolean constant",
+                                                            ),
+                                                        )
+                                                    }
                                                 };
 
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "return",
+                                                        ),
+                                                    )
+                                                }
                                             };
 
                                             body_array.push(return_node);
@@ -664,13 +762,28 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             // We could figure out the numeric range, but instead
                                             // we just return a random value between 0-10.
                                             let number = rand.next_u64() % 10_u64;
+
+                                            hasher.update(&number.to_ne_bytes())?;
+
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "integer constant",
+                                                        ),
+                                                    )
+                                                }
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "return",
+                                                        ),
+                                                    )
+                                                }
                                             };
 
                                             body_array.push(return_node);
@@ -679,34 +792,67 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             // We just pick a number between -10 and 10.  Nothing
                                             // complicated.
                                             let mut number = (rand.next_u64() & 20_u64) as i64;
+
+                                            hasher.update(&number.to_ne_bytes())?;
+
                                             number -= 10;
                                             let new_node = match new_integer_constant_node(number) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "integer constant",
+                                                        ),
+                                                    )
+                                                }
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "random",
+                                                        ),
+                                                    )
+                                                }
                                             };
 
                                             body_array.push(return_node);
                                         }
                                         "str" => {
                                             // Use our friend lorem ipsum.
-                                            let new_node = match new_string_node(
-                                                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-                                            ) {
+                                            let text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+
+                                            hasher.update(text.as_bytes())?;
+
+                                            let new_node = match new_string_node(text) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "string node",
+                                                        ),
+                                                    )
+                                                }
                                             };
                                             let return_node = match new_return_node(new_node) {
                                                 Ok(node) => node,
-                                                Err(_e) => return None,
+                                                Err(_e) => {
+                                                    return Err(
+                                                        MutagenyxError::UnableToGenerateNode(
+                                                            "return",
+                                                        ),
+                                                    )
+                                                }
                                             };
 
                                             body_array.push(return_node);
                                         }
-                                        _ => return None,
+                                        unrecognized_type => {
+                                            return Err(MutagenyxError::UnrecognizedLanguageType(
+                                                String::from(unrecognized_type),
+                                            ))
+                                        }
                                     }
                                 }
                             } else if ast_type_str == "Pass" {
@@ -717,7 +863,13 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                         let node_type = match ast_type_str {
                                             "Tuple" => ListLikeThing::Tuple,
                                             "List" => ListLikeThing::List,
-                                            _ => return None,
+                                            unrecognized_type => {
+                                                return Err(
+                                                    MutagenyxError::UnrecognizedLanguageType(
+                                                        String::from(unrecognized_type),
+                                                    ),
+                                                )
+                                            }
                                         };
 
                                         let list_like_node = match new_list_like_thing_node(
@@ -725,12 +877,20 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                                             node_type,
                                         ) {
                                             Ok(node) => node,
-                                            Err(_e) => return None,
+                                            Err(_e) => {
+                                                return Err(MutagenyxError::UnableToGenerateNode(
+                                                    "list",
+                                                ))
+                                            }
                                         };
 
                                         let return_node = match new_return_node(list_like_node) {
                                             Ok(node) => node,
-                                            Err(_e) => return None,
+                                            Err(_e) => {
+                                                return Err(MutagenyxError::UnableToGenerateNode(
+                                                    "return",
+                                                ))
+                                            }
                                         };
                                         body_array.push(return_node);
                                     }
@@ -739,14 +899,16 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
                         } else {
                             let new_node = match new_pass_node() {
                                 Ok(node) => node,
-                                Err(_e) => return None,
+                                Err(_e) => {
+                                    return Err(MutagenyxError::UnableToGenerateNode("pass"))
+                                }
                             };
                             body_array.push(new_node);
                         }
                     } else {
                         let new_node = match new_pass_node() {
                             Ok(node) => node,
-                            Err(_e) => return None,
+                            Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("pass")),
                         };
                         body_array.push(new_node);
                     }
@@ -761,10 +923,18 @@ impl Mutator<VyperAST> for DeleteStatementMutator {
 
                 node.set_node_for_key("body", body_node);
 
-                return value_id;
+                mutator_result.mutated_node_id = value_id;
+
+                let byte_array = hasher.finish()?;
+                mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutator_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            node_ast_type,
+            String::from("body"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -806,21 +976,33 @@ impl Mutator<VyperAST> for FunctionCallMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Get rid of any previous comment.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(args_node) = node.get("args") {
             if let Some(args_array) = args_node.as_array() {
                 loop {
                     // Randomly pick an array member, but avoid Int/Str nodes.
                     let index = (rand.next_u64() % args_array.len() as u64) as usize;
+
                     let value = &args_array[index];
                     if let Some(node_type) = value.get_str_for_key("nodeType") {
                         if node_type == "Int" || node_type == "Str" {
                             continue;
                         }
                     }
+
+                    hasher.update(&index.to_ne_bytes())?;
 
                     // Create a comment node.
                     let original_node_s = pretty_print_node(node);
@@ -839,12 +1021,20 @@ impl Mutator<VyperAST> for FunctionCallMutator {
 
                 if node.is_object() {
                     if let Some(id) = node.get_int_for_key("node_id") {
-                        return Some(id as u64);
+                        mutator_result.mutated_node_id = Some(id as u64);
                     }
                 }
+
+                let byte_array = hasher.finish()?;
+                mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutator_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("Call"),
+            String::from("args"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -896,15 +1086,26 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove an previously existing comment.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(mut args) = node.take_value_for_key("args") {
             if let Some(args_array) = args.as_array_mut() {
                 let bound: usize = 2;
                 match args_array.len().cmp(&bound) {
                     Ordering::Equal => {
+                        hasher.update(&[2])?;
+
                         // Just swap the two arguments
                         let arg1 = args_array[0].clone();
                         let arg2 = args_array[1].clone();
@@ -933,10 +1134,14 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
                         let mut random_index2 =
                             (rand.next_u64() % args_array.len() as u64) as usize;
 
+                        hasher.update(&random_index1.to_ne_bytes())?;
+
                         // The indexes may be the same, so just iterate until we get a different index.
                         while random_index1 == random_index2 {
                             random_index2 = (rand.next_u64() % args_array.len() as u64) as usize;
                         }
+
+                        hasher.update(&random_index2.to_ne_bytes())?;
 
                         let arg1 = args_array[random_index1].clone();
                         let arg2 = args_array[random_index2].clone();
@@ -963,11 +1168,19 @@ impl Mutator<VyperAST> for SwapFunctionArgumentsMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("node_id") {
-                    return Some(id as u64);
+                    mutator_result.mutated_node_id = Some(id as u64);
                 }
+
+                let byte_array = hasher.finish()?;
+                mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutator_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("Call"),
+            String::from("args"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1009,15 +1222,27 @@ impl Mutator<VyperAST> for IfStatementMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previous comment.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let original_test_s = if let Some(test_node) = node.get("test") {
             pretty_print_node(test_node)
         } else {
             log::info!("Could not find a test node to mutate in IfStatementMutator");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("If"),
+                String::from("test"),
+            ));
         };
 
         // Randomly choose between three possible mutations:
@@ -1026,10 +1251,14 @@ impl Mutator<VyperAST> for IfStatementMutator {
         // * Replace condition (called c) with !(c) (ie the negation).
         match rand.next_u64() % 3_u64 {
             0 => {
+                hasher.update(&0_u64.to_ne_bytes())?;
+
                 // Replace the condition with 'True'
                 let new_node = match new_boolean_constant_node(true) {
                     Ok(n) => n,
-                    Err(_e) => return None,
+                    Err(_e) => {
+                        return Err(MutagenyxError::UnableToGenerateNode("boolean constant"))
+                    }
                 };
 
                 let new_node_str = pretty_print_node(&new_node);
@@ -1044,10 +1273,14 @@ impl Mutator<VyperAST> for IfStatementMutator {
                 node.set_node_for_key("test", new_node);
             }
             1 => {
+                hasher.update(&1_u64.to_ne_bytes())?;
+
                 // Replace the condition with `False`.
                 let new_node = match new_boolean_constant_node(false) {
                     Ok(n) => n,
-                    Err(_e) => return None,
+                    Err(_e) => {
+                        return Err(MutagenyxError::UnableToGenerateNode("boolean constant"))
+                    }
                 };
 
                 let new_node_str = pretty_print_node(&new_node);
@@ -1062,11 +1295,13 @@ impl Mutator<VyperAST> for IfStatementMutator {
                 node.set_node_for_key("test", new_node);
             }
             2 => {
+                hasher.update(&2_u64.to_ne_bytes())?;
+
                 // Replace the condition (called c) with !(c).
                 if let Some(test_node) = node.take_value_for_key("test") {
                     let new_node = match new_unary_op_node("Not", test_node) {
                         Ok(n) => n,
-                        Err(_e) => return None,
+                        Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("unary not")),
                     };
 
                     let new_node_str = pretty_print_node(&new_node);
@@ -1083,7 +1318,12 @@ impl Mutator<VyperAST> for IfStatementMutator {
             }
             _ => (),
         }
-        node.get_int_for_key("node_id").map(|id| id as u64)
+        mutator_result.mutated_node_id = node.get_int_for_key("node_id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutator_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -1123,14 +1363,25 @@ impl Mutator<VyperAST> for IntegerMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previous comments
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let original_value_s = pretty_print_node(node);
 
         match rand.next_u64() % 3_u64 {
             0 => {
+                hasher.update(&0_u64.to_ne_bytes())?;
+
                 // Add one to the integer constant.
                 if let Some(value_node) = node.get("value") {
                     if let Some(mut value) = value_node.as_i64() {
@@ -1141,6 +1392,8 @@ impl Mutator<VyperAST> for IntegerMutator {
                 }
             }
             1 => {
+                hasher.update(&1_u64.to_ne_bytes())?;
+
                 // Subtract one from the integer constant.
                 if let Some(value_node) = node.get("value") {
                     if let Some(mut value) = value_node.as_i64() {
@@ -1151,6 +1404,8 @@ impl Mutator<VyperAST> for IntegerMutator {
                 }
             }
             2 => {
+                hasher.update(&2_u64.to_ne_bytes())?;
+
                 // Generate a random number.
                 let value = rand.next_u64();
                 let json_value = json![value as i64];
@@ -1169,7 +1424,12 @@ impl Mutator<VyperAST> for IntegerMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("node_id").map(|id| id as u64)
+        mutator_result.mutated_node_id = node.get_int_for_key("node_id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutator_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -1220,14 +1480,24 @@ impl Mutator<VyperAST> for SwapOperatorArgumentsMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, _rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        _rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previous comment
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let mut left_node_s = String::new();
         let mut right_node_s = String::new();
 
         if let Some(ast_type) = node.get_str_for_key("ast_type") {
+            hasher.update(ast_type.as_bytes())?;
             if ast_type == "BinOp" || ast_type == "Compare" {
                 if let Some(left_node) = node.take_value_for_key("left") {
                     if let Some(right_node) = node.take_value_for_key("right") {
@@ -1264,10 +1534,18 @@ impl Mutator<VyperAST> for SwapOperatorArgumentsMutator {
             }
 
             if let Some(id) = node.get_int_for_key("node_id") {
-                return Some(id as u64);
+                mutator_result.mutated_node_id = Some(id as u64);
             }
+
+            let byte_array = hasher.finish()?;
+            mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+            return Ok(mutator_result);
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("Unknown"),
+            String::from("ast_type"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1337,9 +1615,24 @@ impl Mutator<VyperAST> for SwapLinesMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Do not hang on to any old comment node.
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
+
+        let ast_type = if let Some(a_type) = node.get_str_for_key("ast_type") {
+            String::from(a_type)
+        } else {
+            String::from("FunctionDef")
+        };
 
         if let Some(mut body_node) = node.take_value_for_key(&self.key) {
             if let Some(body_array) = body_node.as_array_mut() {
@@ -1355,6 +1648,8 @@ impl Mutator<VyperAST> for SwapLinesMutator {
                     break;
                 }
 
+                hasher.update(&first_index.to_ne_bytes())?;
+
                 // Try to randomly pick a second node.
                 let mut second_index: usize;
                 loop {
@@ -1369,6 +1664,8 @@ impl Mutator<VyperAST> for SwapLinesMutator {
                     }
                     break;
                 }
+
+                hasher.update(&second_index.to_ne_bytes())?;
 
                 let larger_index = if first_index >= second_index {
                     first_index
@@ -1402,11 +1699,19 @@ impl Mutator<VyperAST> for SwapLinesMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("node_id") {
-                    return Some(id as u64);
+                    mutator_result.mutated_node_id = Some(id as u64);
                 }
+
+                let byte_array = hasher.finish()?;
+                mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutator_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            ast_type,
+            String::from(self.key.as_str()),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1449,9 +1754,18 @@ impl Mutator<VyperAST> for UnaryOpMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut VyperAST, _rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut VyperAST,
+        _rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previously existing comment
         self.comment_node = None;
+
+        let mut mutator_result = MutatorResult::new();
+        mutator_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let original_node_s = pretty_print_node(node);
 
@@ -1459,6 +1773,10 @@ impl Mutator<VyperAST> for UnaryOpMutator {
             *node = operand_node;
 
             let new_node_s = pretty_print_node(node);
+
+            // Here we hash the new_node_s just to have something to hash.
+            hasher.update(new_node_s.as_bytes())?;
+
             let comment_text = format!(
                 "UnaryOp Mutator: Replaced '{}' with '{}",
                 original_node_s, new_node_s
@@ -1468,10 +1786,18 @@ impl Mutator<VyperAST> for UnaryOpMutator {
             }
 
             if let Some(id) = node.get_int_for_key("node_id") {
-                return Some(id as u64);
+                mutator_result.mutated_node_id = Some(id as u64);
             }
+
+            let byte_array = hasher.finish()?;
+            mutator_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+            return Ok(mutator_result);
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("UnaryOp"),
+            String::from("operand"),
+        ))
     }
 
     fn implements(&self) -> MutationType {

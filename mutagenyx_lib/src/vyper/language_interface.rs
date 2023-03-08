@@ -362,7 +362,8 @@ fn file_is_source_file_with_docker(
 
     let separator = String::from(std::path::MAIN_SEPARATOR);
 
-    let out_path = String::from(tmp_dir.to_str().unwrap()) + separator.as_str() + base_name + ".json";
+    let out_path =
+        String::from(tmp_dir.to_str().unwrap()) + separator.as_str() + base_name + ".json";
 
     let mut directory_name = full_file_path.clone();
 

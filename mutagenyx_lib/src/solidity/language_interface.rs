@@ -186,7 +186,7 @@ fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<Stri
                 }
             }
             if let Some(allow_paths_array) = compiler_prefs.get_array_for_key(ALLOW_PATHS_KEY) {
-                if ! allow_paths_array.is_empty() {
+                if !allow_paths_array.is_empty() {
                     args.push(String::from("--allow-paths"));
                     let mut i: usize = 0;
                     while i < allow_paths_array.len() {
@@ -246,7 +246,8 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
     let base_name = file_path.file_name().unwrap().to_str().unwrap();
     let tmp_dir = env::temp_dir();
     let separator = String::from(std::path::MAIN_SEPARATOR);
-    let out_path = String::from(tmp_dir.to_str().unwrap()) + separator.as_str() + base_name + "_json.ast";
+    let out_path =
+        String::from(tmp_dir.to_str().unwrap()) + separator.as_str() + base_name + "_json.ast";
     let args = vec![
         "--ast-compact-json",
         "--overwrite",

@@ -7,6 +7,7 @@ use crate::json_ast_language_interface::JSONLanguageInterface;
 use crate::language::Language;
 use crate::mutation::MutationType;
 use crate::mutation_visitor::NodePathMap;
+use crate::mutator_result::MutatorResult;
 use crate::permissions::Permissions;
 use crate::preferences::Preferences;
 use crate::pretty_printer::PrettyPrinter;
@@ -17,6 +18,31 @@ use crate::vyper::delegate::get_vyper_delegate;
 use rand_pcg::*;
 use std::collections::HashMap;
 use std::io::Write;
+
+/// The type to use for the result of the mutation function.
+pub struct MutateASTResult {
+    /// Result from actual mutator.
+    pub mutator_result: MutatorResult,
+
+    /// If the mutation succeeded `ast` will contain the mutated AST.
+    pub ast: Option<SuperAST>,
+}
+
+impl MutateASTResult {
+    /// Create a new, unused MutateASTResult
+    pub fn new() -> MutateASTResult {
+        MutateASTResult {
+            mutator_result: MutatorResult::new(),
+            ast: None,
+        }
+    }
+}
+
+impl Default for MutateASTResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Trait that defines the interface to a programming language module.
 pub trait MutableLanguage {
@@ -74,7 +100,8 @@ pub trait MutableLanguage {
     ) -> Result<HashMap<MutationType, usize>, MutagenyxError>;
 
     /// Make a copy of `ast`, traverse the copy and mutate one node in the AST using the
-    /// `mutation_type` algorithm.  Return the mutated AST encapsulated in a [`SuperAST`] object.
+    /// `mutation_type` algorithm.  Return a [`MutateASTResult`] object that contains the mutator
+    /// results and the [`SuperAST`] result if present.
     ///
     /// # Arguments
     ///
@@ -96,7 +123,7 @@ pub trait MutableLanguage {
         rng: &mut Pcg64,
         permissions: &Permissions,
         path_map: &NodePathMap,
-    ) -> Result<SuperAST, MutagenyxError>;
+    ) -> Result<MutateASTResult, MutagenyxError>;
 
     /// Pretty-print the contents of `ast` to the file named in `file_name`.
     ///

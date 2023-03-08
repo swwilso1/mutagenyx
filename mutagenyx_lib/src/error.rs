@@ -1,6 +1,7 @@
 //! The `error` module contains `MutagenyxError`, the error enumeration used to communicate
 //! library errors.
 
+use openssl::error::ErrorStack;
 use std::convert::From;
 use std::time::SystemTimeError;
 use thiserror::Error;
@@ -15,6 +16,11 @@ pub enum MutagenyxError {
     #[error("JSON error occurred: {0}")]
     JSON(serde_json::Error),
 
+    /// An error indicating that the tool expected a JSON node of a particular type, but did
+    /// not find the correct type.
+    #[error("Expected JSON element for key {0} to contain {1}")]
+    IncorrectJSONNodeType(&'static str, &'static str),
+
     /// An error indicating the tool found an unrecognized JSON element.
     #[error("Unrecognized JSON element: {0}")]
     UnrecognizedJSON(String),
@@ -23,6 +29,16 @@ pub enum MutagenyxError {
     /// mutating the AST according to the specified mutation algorithms.
     #[error("AST does not contain any mutable node for requested mutations")]
     NoMutableNode,
+
+    /// An error indicating that the AST has a node that does not conform to
+    /// understood conventions for the node type.
+    #[error("AST node of type {0} does not contain or has an invalid element {1}")]
+    MalformedNode(String, String),
+
+    /// An error indicating that mutation that inserts a node could not correctly
+    /// generate the new node.
+    #[error("Unable to generate new {0} node")]
+    UnableToGenerateNode(&'static str),
 
     /// An error indicating that an API call attempted to load facilities for
     /// a language not supported by mutagenyx_lib.
@@ -73,6 +89,19 @@ pub enum MutagenyxError {
     /// An error indicating an attempt to work with system time failed.
     #[error("Request for or operation on system time failed")]
     SystemTime,
+
+    /// An error indicating an OpenSSL algorithm failed.
+    #[error("OpenSSL algorithm failed: {0:?}")]
+    OpenSSL(ErrorStack),
+
+    /// An error indicating that a random operation resulted in an un-tenable result.
+    #[error("Random operation failure: {0}")]
+    RandomOperationFailure(&'static str),
+
+    /// An error indicating that a mutation algorithm encountered an unrecognized type
+    /// in a language while mutating an AST.
+    #[error("Unrecognized type: {0}")]
+    UnrecognizedLanguageType(String),
 }
 
 impl From<std::io::Error> for MutagenyxError {
@@ -90,5 +119,11 @@ impl From<serde_json::Error> for MutagenyxError {
 impl From<SystemTimeError> for MutagenyxError {
     fn from(_: SystemTimeError) -> Self {
         MutagenyxError::SystemTime
+    }
+}
+
+impl From<ErrorStack> for MutagenyxError {
+    fn from(value: ErrorStack) -> Self {
+        MutagenyxError::OpenSSL(value)
     }
 }

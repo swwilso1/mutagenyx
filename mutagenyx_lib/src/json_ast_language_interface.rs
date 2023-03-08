@@ -8,7 +8,7 @@ use crate::error::MutagenyxError;
 use crate::json::*;
 use crate::json_language_delegate::JSONLanguageDelegate;
 use crate::language::Language;
-use crate::language_interface::MutableLanguage;
+use crate::language_interface::{MutableLanguage, MutateASTResult};
 use crate::mutation::MutationType;
 use crate::mutation_visitor::*;
 use crate::mutator::*;
@@ -136,7 +136,7 @@ impl MutableLanguage for JSONLanguageInterface {
         rng: &mut Pcg64,
         permissions: &Permissions,
         path_map: &NodePathMap,
-    ) -> Result<SuperAST, MutagenyxError> {
+    ) -> Result<MutateASTResult, MutagenyxError> {
         let permitter = self.delegate.get_node_permitter(permissions);
         let namer = self.delegate.get_namer();
         let id_maker = self.delegate.get_node_id_maker();
@@ -158,6 +158,10 @@ impl MutableLanguage for JSONLanguageInterface {
         // maker can mutate for `mutation_type`.
         ASTTraverser::traverse_mut(&mut mutated_ast, &mut mutation_maker);
 
+        if let Some(e) = mutation_maker.error {
+            return Err(e);
+        }
+
         // We now have the path map and the index of the node we mutated in mutation_maker.mutated_node_id.
         // We can now walk down the ast to insert a comment.
         if let Some(node) = mutation_maker.mutator_comment {
@@ -167,7 +171,14 @@ impl MutableLanguage for JSONLanguageInterface {
             }
         }
 
-        self.delegate.get_value_as_super_ast(mutated_ast)
+        let ast = self.delegate.get_value_as_super_ast(mutated_ast)?;
+
+        let mut mutate_ast_result = MutateASTResult::new();
+        mutate_ast_result.mutator_result = mutation_maker.mutation_results;
+        mutate_ast_result.ast = Some(ast);
+        mutate_ast_result.mutator_result.index = Some(index);
+
+        Ok(mutate_ast_result)
     }
 
     fn pretty_print_ast_to_file(

@@ -4,10 +4,12 @@
 use crate::id::Id;
 use crate::mutation::MutationType;
 use crate::mutator::*;
+use crate::mutator_result::MutatorResult;
 use crate::namer::Namer;
 use crate::permissions::*;
 use crate::permit::*;
 use crate::visitor::*;
+use crate::MutagenyxError;
 use rand_pcg::*;
 use std::collections::HashMap;
 
@@ -281,6 +283,12 @@ pub struct MutationMaker<'a, AST> {
 
     /// True if the visitor is mutating child nodes and can skip the node mutation permission check.
     skip_mutation_permission_check: bool,
+
+    /// The cached results from the mutation.
+    pub mutation_results: MutatorResult,
+
+    /// A cached error from the mutator.
+    pub error: Option<MutagenyxError>,
 }
 
 impl<'a, AST> MutationMaker<'a, AST> {
@@ -312,6 +320,8 @@ impl<'a, AST> MutationMaker<'a, AST> {
             mutator_comment: None,
             namer,
             skip_mutation_permission_check: false,
+            mutation_results: MutatorResult::new(),
+            error: None,
         }
     }
 }
@@ -329,10 +339,19 @@ impl<'a, AST> VisitorMut<AST> for MutationMaker<'a, AST> {
             && self.mutator.is_mutable_node(node, self.rng)
         {
             if self.current_index == self.index {
-                if let Some(id) = self.mutator.mutate(node, self.rng) {
-                    self.mutated_node_id = id;
-                } else if let Some(other_id) = self.id_maker.get_id(node) {
-                    self.mutated_node_id = other_id;
+                match self.mutator.mutate(node, self.rng) {
+                    Ok(result) => {
+                        self.mutation_results = result.clone();
+                        if let Some(node_id) = result.mutated_node_id {
+                            self.mutated_node_id = node_id;
+                        } else if let Some(other_id) = self.id_maker.get_id(node) {
+                            self.mutated_node_id = other_id;
+                        }
+                    }
+                    Err(e) => {
+                        self.error = Some(e);
+                        return true;
+                    }
                 }
                 self.mutator_comment = self.mutator.get_comment_node();
                 return true;

@@ -1,6 +1,8 @@
 //! The `mutator` module provides traits for objects that perform mutation algorithms.
 
+use crate::error::MutagenyxError;
 use crate::mutation::MutationType;
+use crate::mutator_result::MutatorResult;
 use rand_pcg::*;
 
 /// Trait that describes the functionality that an object that implements a mutation algorithm
@@ -33,7 +35,7 @@ pub trait Mutator<N> {
     ///
     /// * `node` - The node to mutate
     /// * `rand` - The random number generator.
-    fn mutate(&mut self, node: &mut N, rand: &mut Pcg64) -> Option<u64>;
+    fn mutate(&mut self, node: &mut N, rand: &mut Pcg64) -> Result<MutatorResult, MutagenyxError>;
 
     /// Returns the enum value identifying the mutation algorithm implemented by the object that
     /// implements the [`Mutator<N>`] trait.

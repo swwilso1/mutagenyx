@@ -10,9 +10,9 @@ use mutagenyx_lib::config_file::*;
 use mutagenyx_lib::error::MutagenyxError;
 use mutagenyx_lib::language_interface::*;
 use mutagenyx_lib::mutation::{get_all_mutation_algorithms, MutationType};
+use mutagenyx_lib::mutator_result::MutatorResult;
 use mutagenyx_lib::permissions::*;
 use mutagenyx_lib::recognizer::{FileType, Recognizer};
-use mutagenyx_lib::super_ast::SuperAST;
 use rand::seq::SliceRandom;
 use rand::RngCore;
 use rand::SeedableRng;
@@ -435,7 +435,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
 
     let mut files_written: usize = 0;
     let mut attempts: usize = 0;
-    let mut observed_asts: Vec<SuperAST> = vec![];
+    let mut observed_mutator_results: Vec<MutatorResult> = Vec::new();
 
     'mutation_loops: while !mutation_kinds_todo.is_empty() {
         while attempts < ATTEMPTS_TO_GENERATE_A_MUTANT {
@@ -451,7 +451,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             };
 
             // Generate the mutated AST.
-            let mutated_ast = language_object.mutate_ast(
+            let mutate_ast_result = language_object.mutate_ast(
                 &ast,
                 mutation_type,
                 index,
@@ -460,12 +460,14 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
                 &node_path_map,
             )?;
 
-            // See if we have already generated this AST before.  We only want to output unique
-            // mutations.
-            if observed_asts.contains(&mutated_ast) {
+            // See if we have already seen this ast result before. This step prevents us from
+            // making non-unique mutations.
+            if observed_mutator_results.contains(&mutate_ast_result.mutator_result) {
                 attempts += 1;
                 continue;
             }
+
+            let mutated_ast = mutate_ast_result.ast.unwrap();
 
             if params.verify_mutant_viability
                 && !language_object.mutant_compiles(&mutated_ast, &params.preferences)
@@ -502,8 +504,8 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             // Remove the item from the top of the VecDeque.
             mutation_kinds_todo.remove(0);
 
-            // Add the AST to the list of ASTs that we have observed.
-            observed_asts.push(mutated_ast);
+            // Add the mutator result to the list of results that we have observed.
+            observed_mutator_results.push(mutate_ast_result.mutator_result);
 
             files_written += 1;
 

@@ -5,12 +5,15 @@ use crate::error::MutagenyxError;
 use crate::json::{new_json_node, JSONMutate};
 use crate::mutation::{GenericMutation, MutationType, SolidityMutation};
 use crate::mutator::{Mutator, MutatorFactory};
+use crate::mutator_result::MutatorResult;
 use crate::node_printer_helpers::traverse_sub_node_and_print;
 use crate::operators::*;
 use crate::solidity::ast::{SolidityAST, SolidityASTApi};
 use crate::solidity::pretty_printer::SolidityNodePrinterFactory;
 use crate::PrettyPrinter;
+use hex;
 use num::Integer;
+use openssl::hash::{Hasher, MessageDigest};
 use rand::seq::SliceRandom;
 use rand::{Rng, RngCore};
 use rand_pcg::*;
@@ -279,9 +282,18 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove any previous comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(original_operator) = node.get_str_for_key("operator") {
             // Get the original operator so that we can use it to compare for the
@@ -289,7 +301,11 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
             // with itself, just by randomly selecting the same operator from the operator list.
             let mut chosen_operator = match self.operators.choose(rand) {
                 Some(o) => o,
-                None => return None,
+                None => {
+                    return Err(MutagenyxError::RandomOperationFailure(
+                        "invalid operator choice",
+                    ))
+                }
             };
 
             let original_operator_s = String::from(original_operator);
@@ -298,9 +314,17 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
             while original_operator == *chosen_operator {
                 chosen_operator = match self.operators.choose(rand) {
                     Some(o) => o,
-                    None => return None,
+                    None => {
+                        return Err(MutagenyxError::RandomOperationFailure(
+                            "invalid operator choice",
+                        ))
+                    }
                 };
             }
+
+            hasher.update(chosen_operator.as_bytes())?;
+            let byte_array = hasher.finish()?;
+            mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
 
             // Insert the new operator into the node.
             node.set_str_for_key("operator", chosen_operator);
@@ -314,10 +338,10 @@ impl Mutator<SolidityAST> for BinaryOpMutator {
             }
 
             if let Some(id) = node.get_int_for_key("id") {
-                return Some(id as u64);
+                mutation_result.mutated_node_id = Some(id as u64);
             }
         }
-        None
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -386,17 +410,28 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previously existing comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         // Determine if the node is a prefix/postfix operation and then use the prefix or
         // postfix operator list.
         let operator_list = match node.get_bool_for_key("prefix") {
             Some(p) => {
                 if p {
+                    hasher.update(&[0])?;
                     &self.prefix_operators
                 } else {
+                    hasher.update(&[1])?;
                     &self.postfix_operators
                 }
             }
@@ -405,7 +440,10 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
                     "Mutate found a UnaryOperator node with no prefix information: {:?}",
                     node
                 );
-                return None;
+                return Err(MutagenyxError::MalformedNode(
+                    String::from("UnaryOperator"),
+                    String::from("prefix"),
+                ));
             }
         };
 
@@ -417,19 +455,27 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
         // Make copy of the operator for use with comments later.
         let original_operator_s = String::from(original_operator);
 
+        let bad_choice_err = Err(MutagenyxError::RandomOperationFailure(
+            "Did not select a good replacement operator",
+        ));
+
         // Choose a new operator.
         let mut chosen_operator = match operator_list.choose(rand) {
             Some(o) => o,
-            None => return None,
+            None => return bad_choice_err,
         };
 
         // If the operators match, choose another operator until they no longer match.
         while original_operator == *chosen_operator {
             chosen_operator = match operator_list.choose(rand) {
                 Some(o) => o,
-                None => return None,
+                None => return bad_choice_err,
             };
         }
+
+        hasher.update(chosen_operator.as_bytes())?;
+        let byte_array = hasher.finish()?;
+        mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
 
         node.set_str_for_key("operator", chosen_operator);
 
@@ -441,7 +487,8 @@ impl Mutator<SolidityAST> for UnaryOpMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -507,16 +554,28 @@ impl Mutator<SolidityAST> for AssignmentMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previously existing comment
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         // Recover the type descriptions for the node.
         let type_description_node = match node.get("typeDescriptions") {
             Some(n) => n,
             _ => {
                 log::info!("Assignment node has no type description object");
-                return None;
+                return Err(MutagenyxError::MalformedNode(
+                    String::from("Assignment"),
+                    String::from("typeDescriptions"),
+                ));
             }
         };
 
@@ -524,7 +583,10 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             Some(s) => s,
             _ => {
                 log::info!("Assignment node's type description has no type string");
-                return None;
+                return Err(MutagenyxError::MalformedNode(
+                    String::from("Assignment"),
+                    String::from("typeString"),
+                ));
             }
         };
 
@@ -532,13 +594,18 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             pretty_print_node(rhs_node)
         } else {
             log::info!("Did not find right hand side in Assignment mutator");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("Assignment"),
+                String::from("rightHandSide"),
+            ));
         };
 
         let first_three_chars = &type_string[..3];
 
         match first_three_chars {
             "int" => {
+                hasher.update("int".as_bytes())?;
+
                 let type_size_str = &type_string[3..];
                 let mut type_size = type_size_str.parse::<u32>().unwrap();
 
@@ -550,14 +617,18 @@ impl Mutator<SolidityAST> for AssignmentMutator {
                 let upper_bound = 2_i128.pow(type_size - 1);
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
+                hasher.update(&replacement_value.to_ne_bytes())?;
+
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("integer constant")),
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
             }
             "uin" => {
+                hasher.update("uin".as_bytes())?;
+
                 let type_size_str = &type_string[4..];
                 let mut type_size = type_size_str.parse::<u32>().unwrap();
 
@@ -575,21 +646,27 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let replacement_value = rand.gen_range(lower_bound, upper_bound);
 
+                hasher.update(&replacement_value.to_ne_bytes())?;
+
                 let new_node = match new_integer_constant_node(replacement_value) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("integer constant")),
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
             }
             "boo" => {
+                hasher.update("boo".as_bytes())?;
+
                 assert_eq!(type_string, "bool");
-                let replacement_value = rand.gen_range(0, 1);
+                let replacement_value: i8 = rand.gen_range(0, 1);
                 let bool_literal: bool = replacement_value != 0;
+
+                hasher.update(&replacement_value.to_ne_bytes())?;
 
                 let new_node = match new_boolean_literal_node(bool_literal) {
                     Ok(n) => n,
-                    _ => return None,
+                    _ => return Err(MutagenyxError::UnableToGenerateNode("boolean literal")),
                 };
 
                 node.set_node_for_key("rightHandSide", new_node);
@@ -601,7 +678,10 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             pretty_print_node(rhs_node)
         } else {
             log::info!("Could not get right hand side after Assignment mutation");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("Assignment"),
+                String::from("rightHandSize"),
+            ));
         };
 
         let comment_text = format!(
@@ -612,7 +692,12 @@ impl Mutator<SolidityAST> for AssignmentMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -665,9 +750,18 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previously existing comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         // We have a Block node that has a statements array with at least one
         // ExpressionStatement. Go through the statements and pick one randomly in order
@@ -689,15 +783,18 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
                 // Now pick a random index.
                 let vector_index =
                     (rand.next_u64() % expression_statement_indexes.len() as u64) as usize;
+
+                hasher.update(&vector_index.to_ne_bytes())?;
+
                 let value = statements_array.remove(expression_statement_indexes[vector_index]);
 
                 let value_s = pretty_print_node(&value);
 
-                let value_id = value.get_int_for_key("id").map(|id| id as u64);
+                mutation_result.mutated_node_id = value.get_int_for_key("id").map(|id| id as u64);
 
                 let new_node = match new_comment_node_from_node(value) {
                     Ok(node) => node,
-                    Err(_e) => return None,
+                    Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("comment node")),
                 };
 
                 statements_array.insert(expression_statement_indexes[vector_index], new_node);
@@ -710,10 +807,17 @@ impl Mutator<SolidityAST> for DeleteStatementMutator {
                     self.comment_node = Some(comment_node);
                 }
 
-                return value_id;
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutation_result);
             }
         }
-        None
+
+        Err(MutagenyxError::MalformedNode(
+            String::from("Block"),
+            String::from("statements"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -800,9 +904,18 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previously existing comment
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(arguments_node) = node.get("arguments") {
             if let Some(arguments_array) = arguments_node.as_array() {
@@ -816,6 +929,8 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
                             continue;
                         }
                     }
+
+                    hasher.update(&index.to_ne_bytes())?;
 
                     *node = value.clone();
                     break;
@@ -831,16 +946,22 @@ impl Mutator<SolidityAST> for FunctionCallMutator {
 
                 // We may not get a good id out of the new node.  The FunctionCall mutation replaces
                 // a function call with an argument to the function.
-                let value_id = if node.is_object() {
+                mutation_result.mutated_node_id = if node.is_object() {
                     node.get_int_for_key("id").map(|id| id as u64)
                 } else {
                     None
                 };
 
-                return value_id;
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutation_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("FunctionCall"),
+            String::from("arguments"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -907,9 +1028,18 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Replace previously existing comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         // We have the FunctionCall node with arguments of the same type. Iterate and find
         // nodes of the same type so that we can swap them.
@@ -949,6 +1079,8 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
                 let in1 = &node_list[0];
                 let in2 = &node_list[1];
 
+                hasher.update(&list_index.to_ne_bytes())?;
+
                 // pretty print the node contents first before swapping. We need these strings
                 // for the comment node.
                 let in1_node_s = pretty_print_node(&in1.node);
@@ -969,11 +1101,19 @@ impl Mutator<SolidityAST> for SwapFunctionArgumentsMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("id") {
-                    return Some(id as u64);
+                    mutation_result.mutated_node_id = Some(id as u64);
                 }
+
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutation_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("FunctionCall"),
+            String::from("arguments"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1017,15 +1157,27 @@ impl Mutator<SolidityAST> for IfStatementMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previously existing comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let original_condition_node_s = if let Some(condition_node) = node.get("condition") {
             pretty_print_node(condition_node)
         } else {
             log::info!("IfStatement mutator could not find condition node.");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("IfStatement"),
+                String::from("condition"),
+            ));
         };
 
         // Randomly choose between three possible mutations:
@@ -1034,22 +1186,25 @@ impl Mutator<SolidityAST> for IfStatementMutator {
         // * Replace condition (called c) with !(c) (ie the negation).
         match rand.next_u64() % 3_u64 {
             0 => {
+                hasher.update(&[0])?;
                 // Replace the condition with `true`.
                 let bool_node = match new_boolean_literal_node(true) {
                     Ok(n) => n,
-                    Err(_e) => return None,
+                    Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("boolean literal")),
                 };
                 node.set_node_for_key("condition", bool_node);
             }
             1 => {
+                hasher.update(&[1])?;
                 // Replace the condition with `false`.
                 let bool_node = match new_boolean_literal_node(false) {
                     Ok(n) => n,
-                    Err(_e) => return None,
+                    Err(_e) => return Err(MutagenyxError::UnableToGenerateNode("boolean literal")),
                 };
                 node.set_node_for_key("condition", bool_node);
             }
             2 => {
+                hasher.update(&[2])?;
                 // Replace the condition (called c) with !(c).
                 if let Some(condition_node) = node.take_value_for_key("condition") {
                     // Put the existing condition into an array.
@@ -1058,13 +1213,17 @@ impl Mutator<SolidityAST> for IfStatementMutator {
                     // Put the array into a TupleExpression node.
                     let tuple_node = match new_tuple_expression_node(components_array) {
                         Ok(n) => n,
-                        Err(_e) => return None,
+                        Err(_e) => {
+                            return Err(MutagenyxError::UnableToGenerateNode("tuple expression"))
+                        }
                     };
 
                     // Wrap the TupleExpression node in a UnaryOp (! TupleExpression).
                     let not_node = match new_unary_op_node("!", true, tuple_node) {
                         Ok(n) => n,
-                        Err(_e) => return None,
+                        Err(_e) => {
+                            return Err(MutagenyxError::UnableToGenerateNode("unary operator"))
+                        }
                     };
 
                     node.set_node_for_key("condition", not_node);
@@ -1077,7 +1236,10 @@ impl Mutator<SolidityAST> for IfStatementMutator {
             pretty_print_node(condition_node)
         } else {
             log::info!("IfStatement mutator can not find condition node after mutation.");
-            return None;
+            return Err(MutagenyxError::MalformedNode(
+                String::from("IfStatement"),
+                String::from("condition"),
+            ));
         };
 
         let comment_text = format!(
@@ -1088,7 +1250,12 @@ impl Mutator<SolidityAST> for IfStatementMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -1140,15 +1307,25 @@ impl Mutator<SolidityAST> for IntegerMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previous comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         let mut original_value_s = String::new();
         let mut new_value_s = String::new();
 
         match rand.next_u64() % 3_u64 {
             0 => {
+                hasher.update(&[0])?;
                 // Add one to the integer constant.
                 if let Some(value) = node.get_str_for_key("value") {
                     let value_string = value.to_string();
@@ -1160,6 +1337,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
                 }
             }
             1 => {
+                hasher.update(&[1])?;
                 // Subtract one from the integer constant.
                 if let Some(value) = node.get_str_for_key("value") {
                     let value_string = value.to_string();
@@ -1171,6 +1349,7 @@ impl Mutator<SolidityAST> for IntegerMutator {
                 }
             }
             2 => {
+                hasher.update(&[2])?;
                 if let Some(value) = node.get_str_for_key("value") {
                     original_value_s = String::from(value);
                 }
@@ -1191,7 +1370,12 @@ impl Mutator<SolidityAST> for IntegerMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -1239,14 +1423,26 @@ impl Mutator<SolidityAST> for SwapOperatorArgumentsMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, _rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        _rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previous comment.
         self.comment_node = None;
 
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
+
         if let Some(left_expr) = node.take_value_for_key("leftExpression") {
-            if let Some(right_expr) = node.take_value_for_key("rightExpression") {
+            return if let Some(right_expr) = node.take_value_for_key("rightExpression") {
                 let left_expr_s = pretty_print_node(&left_expr);
                 let right_expr_s = pretty_print_node(&right_expr);
+
+                hasher.update(left_expr_s.as_bytes())?;
+                hasher.update(right_expr_s.as_bytes())?;
 
                 node.set_node_for_key("leftExpression", right_expr);
                 node.set_node_for_key("rightExpression", left_expr);
@@ -1260,11 +1456,24 @@ impl Mutator<SolidityAST> for SwapOperatorArgumentsMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("id") {
-                    return Some(id as u64);
+                    mutation_result.mutated_node_id = Some(id as u64);
                 }
-            }
+
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                Ok(mutation_result)
+            } else {
+                Err(MutagenyxError::MalformedNode(
+                    String::from("BinaryOperation"),
+                    String::from("rightExpression"),
+                ))
+            };
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("BinaryOperation"),
+            String::from("leftExpression"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1326,9 +1535,18 @@ impl Mutator<SolidityAST> for SwapLinesMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Replace previous comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(mut statements_node) = node.take_value_for_key("statements") {
             if let Some(statements_array) = statements_node.as_array_mut() {
@@ -1346,6 +1564,8 @@ impl Mutator<SolidityAST> for SwapLinesMutator {
                     break;
                 }
 
+                hasher.update(&first_index.to_ne_bytes())?;
+
                 // Try to randomly pick a second node.
                 let mut second_index: usize;
                 loop {
@@ -1362,6 +1582,8 @@ impl Mutator<SolidityAST> for SwapLinesMutator {
                     }
                     break;
                 }
+
+                hasher.update(&second_index.to_ne_bytes())?;
 
                 let larger_index = if first_index >= second_index {
                     first_index
@@ -1394,11 +1616,19 @@ impl Mutator<SolidityAST> for SwapLinesMutator {
                 }
 
                 if let Some(id) = node.get_int_for_key("id") {
-                    return Some(id as u64);
+                    mutation_result.mutated_node_id = Some(id as u64);
                 }
+
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutation_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("Block"),
+            String::from("statements"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1460,9 +1690,23 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
         );
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, _: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        _: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Remove previous comment
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
+
+        let malformed_args_err = Err(MutagenyxError::MalformedNode(
+            String::from("FunctionCall"),
+            String::from("arguments"),
+        ));
 
         let original_arguments_s = if let Some(arguments_node) = node.get("arguments") {
             if let Some(args_array) = arguments_node.as_array() {
@@ -1470,14 +1714,14 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
                     let arg = &args_array[0];
                     pretty_print_node(arg)
                 } else {
-                    return None;
+                    return malformed_args_err;
                 }
             } else {
-                return None;
+                return malformed_args_err;
             }
         } else {
             log::info!("SwapLines mutator unable to get arguments node.");
-            return None;
+            return malformed_args_err;
         };
 
         // First create a Unary ! operation node.
@@ -1497,7 +1741,7 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
         }";
         let mut new_node = match new_json_node(new_node_str) {
             Ok(v) => v,
-            Err(_) => return None,
+            Err(_) => return Err(MutagenyxError::UnableToGenerateNode("boolean literal")),
         };
 
         // Create a Tuple node to hold the function argument
@@ -1517,13 +1761,13 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
 
         let mut tuple_expression_node = match new_json_node(tuple_expression_str) {
             Ok(v) => v,
-            Err(_) => return None,
+            Err(_) => return Err(MutagenyxError::UnableToGenerateNode("tuple expression")),
         };
 
         let components_str = "[]";
         let mut components_node = match new_json_node(components_str) {
             Ok(v) => v,
-            Err(_) => return None,
+            Err(_) => return Err(MutagenyxError::UnableToGenerateNode("empty array")),
         };
 
         // Get the node from the arguments list.
@@ -1531,13 +1775,16 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
             Some(n) => n,
             _ => {
                 log::info!("Arguments list does not contain valid node");
-                return None;
+                return Err(MutagenyxError::MalformedNode(
+                    String::from("FunctionCall"),
+                    String::from("arguments"),
+                ));
             }
         };
 
         let components_array = match components_node.as_array_mut() {
             Some(v) => v,
-            _ => return None,
+            _ => return Err(MutagenyxError::IncorrectJSONNodeType("components", "array")),
         };
 
         components_array.push(arg);
@@ -1547,6 +1794,8 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
         new_node["subExpression"] = tuple_expression_node;
 
         let new_arguments_node_s = pretty_print_node(&new_node);
+
+        hasher.update(new_arguments_node_s.as_bytes())?;
 
         node.set_node_for_key_at_index("arguments", 0, new_node);
 
@@ -1558,7 +1807,12 @@ impl Mutator<SolidityAST> for SolidityRequireMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+
+        let byte_array = hasher.finish()?;
+        mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
@@ -1631,9 +1885,18 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Replace previous comment.
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
+        let mut hasher = Hasher::new(MessageDigest::sha256())?;
 
         if let Some(mut statements_node) = node.take_value_for_key("statements") {
             if let Some(statements_array) = statements_node.as_array_mut() {
@@ -1652,6 +1915,8 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
                     break;
                 }
 
+                hasher.update(&index.to_ne_bytes())?;
+
                 let node_to_wrap_id = node_to_wrap.get_int_for_key("id").unwrap_or(9999999);
 
                 let node_to_wrap_s = pretty_print_node(&node_to_wrap);
@@ -1660,7 +1925,9 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
                 let wrapped_node =
                     match new_unchecked_block_node(wrapped_array, node_to_wrap_id as u64) {
                         Ok(n) => n,
-                        Err(_e) => return None,
+                        Err(_e) => {
+                            return Err(MutagenyxError::UnableToGenerateNode("unchecked block"))
+                        }
                     };
 
                 let wrapped_node_s = pretty_print_node(&wrapped_node);
@@ -1676,10 +1943,18 @@ impl Mutator<SolidityAST> for SolidityUncheckedBlockMutator {
                     self.comment_node = Some(comment_node);
                 }
 
-                return Some(node_to_wrap_id as u64);
+                mutation_result.mutated_node_id = Some(node_to_wrap_id as u64);
+
+                let byte_array = hasher.finish()?;
+                mutation_result.random_behavior_hash = Some(hex::encode(byte_array));
+
+                return Ok(mutation_result);
             }
         }
-        None
+        Err(MutagenyxError::MalformedNode(
+            String::from("Block"),
+            String::from("statements"),
+        ))
     }
 
     fn implements(&self) -> MutationType {
@@ -1721,9 +1996,17 @@ impl Mutator<SolidityAST> for SolidityElimDelegateCallMutator {
         false
     }
 
-    fn mutate(&mut self, node: &mut SolidityAST, _rand: &mut Pcg64) -> Option<u64> {
+    fn mutate(
+        &mut self,
+        node: &mut SolidityAST,
+        _rand: &mut Pcg64,
+    ) -> Result<MutatorResult, MutagenyxError> {
         // Replace previous comment
         self.comment_node = None;
+
+        let mut mutation_result = MutatorResult::new();
+        mutation_result.mutation_type = Some(self.implements());
+
         node.set_str_for_key("memberName", "call");
 
         let comment_text =
@@ -1732,7 +2015,9 @@ impl Mutator<SolidityAST> for SolidityElimDelegateCallMutator {
             self.comment_node = Some(comment_node);
         }
 
-        node.get_int_for_key("id").map(|id| id as u64)
+        mutation_result.mutated_node_id = node.get_int_for_key("id").map(|id| id as u64);
+
+        Ok(mutation_result)
     }
 
     fn implements(&self) -> MutationType {
