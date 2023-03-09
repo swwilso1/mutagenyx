@@ -14,6 +14,7 @@ use chrono::Local;
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use env_logger::TimestampPrecision;
 use std::io::Write;
+use std::time::Instant;
 
 #[derive(Parser)]
 #[command(author, version, long_about = None)]
@@ -170,6 +171,7 @@ pub struct PrettyPrintCLArgs {
 }
 
 fn main() {
+    let beginning_of_run = Instant::now();
     let _ = env_logger::builder()
         .format(|buf, record| {
             writeln!(
@@ -197,4 +199,8 @@ fn main() {
             pretty_print_files(pretty_print_args.clone());
         }
     }
+    println!(
+        "Elapsed time: {}s",
+        beginning_of_run.elapsed().as_secs_f64()
+    );
 }
