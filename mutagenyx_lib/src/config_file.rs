@@ -41,6 +41,10 @@ pub static FUNCTIONS_KEY: &str = "functions";
 /// The key to indicate whether the tool should compile the mutants.
 pub static VALIDATE_MUTANTS_KEY: &str = "validate-mutants";
 
+/// The key for the string value containing the path to where the tool should place
+/// output.
+pub static OUTPUT_DIR: &str = "output-directory";
+
 /// Configuration details loaded from a .mgnx configuration file.
 pub struct ConfigurationFileDetails {
     /// Language specified in configuration file.
@@ -69,6 +73,9 @@ pub struct ConfigurationFileDetails {
 
     /// True if the tool should compile the mutants for viability.
     pub verify_mutants: bool,
+
+    /// The location where the tool should put generated output files.
+    pub output_directory: Option<PathBuf>,
 }
 
 impl ConfigurationFileDetails {
@@ -106,6 +113,7 @@ impl ConfigurationFileDetails {
             all_mutations: false,
             functions: Vec::new(),
             verify_mutants: false,
+            output_directory: None,
         };
 
         if let Ok(json_value) = load_json_from_file_with_name(config_file) {
@@ -188,6 +196,10 @@ impl ConfigurationFileDetails {
             if let Some(check) = json_value.get_bool_for_key(VALIDATE_MUTANTS_KEY) {
                 details.verify_mutants = check;
             }
+
+            if let Some(output_directory) = json_value.get_str_for_key(OUTPUT_DIR) {
+                details.output_directory = Some(PathBuf::from(output_directory));
+            }
         } else {
             return Err(MutagenyxError::ConfigFileNotSupported(String::from(
                 config_file,
@@ -244,6 +256,10 @@ impl ConfigurationFileDetails {
         }
 
         json_value.set_node_for_key(VALIDATE_MUTANTS_KEY, json![self.verify_mutants]);
+
+        if let Some(output_directory) = &self.output_directory {
+            json_value.set_node_for_key(OUTPUT_DIR, json![output_directory.to_str()]);
+        }
 
         Ok(json_value)
     }

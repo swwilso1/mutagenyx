@@ -133,6 +133,8 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         let mut actual_functions = args.function.clone();
         let mut actual_number_of_mutants = args.num_mutants;
         let mut actual_verify = args.validate_mutants;
+        let mut actual_output_directory = PathBuf::from_str(&args.output_directory).unwrap();
+        let mut actual_use_stdout = args.stdout;
 
         // Try to recognize the language of the source file.  The file might be a source code file,
         // an AST file, or a configuration file.
@@ -176,6 +178,14 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
 
             actual_verify = configuration_details.verify_mutants;
 
+            if let Some(output_directory) = configuration_details.output_directory {
+                if output_directory.to_str() == Some("stdout") {
+                    actual_use_stdout = true;
+                } else {
+                    actual_output_directory = output_directory.clone();
+                }
+            }
+
             // The configuration files can have multiple files to mutate using the same settings
             // for each file. Go through the filenames list and add a generator parameter object
             // for each file in the list.
@@ -187,8 +197,8 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
                     number_of_mutants: actual_number_of_mutants,
                     rng_seed: seed,
                     rng: Pcg64::seed_from_u64(seed),
-                    output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
-                    use_stdout: args.stdout,
+                    output_directory: actual_output_directory.clone(),
+                    use_stdout: actual_use_stdout,
                     mutations: actual_mutations.clone(),
                     verify_mutant_viability: actual_verify,
                     print_original: args.print_original,
@@ -205,8 +215,8 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
                 number_of_mutants: actual_number_of_mutants,
                 rng_seed: seed,
                 rng: pcg.clone(),
-                output_directory: PathBuf::from_str(&args.output_directory).unwrap(),
-                use_stdout: args.stdout,
+                output_directory: actual_output_directory,
+                use_stdout: actual_use_stdout,
                 mutations: actual_mutations,
                 verify_mutant_viability: actual_verify,
                 print_original: args.print_original,
@@ -318,6 +328,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             compiler_details,
             functions: params.functions.clone(),
             verify_mutants: params.verify_mutant_viability,
+            output_directory: Some(params.output_directory.clone()),
         };
 
         // Build the output file name.

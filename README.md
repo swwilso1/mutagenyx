@@ -580,6 +580,8 @@ cannot list (for example) Vyper sources and Solidity sources in the same configu
 * `mutations` - An array of mutation algorithm names (as strings).
 * `num-mutants` - The upper bound on the number of mutants that Mutagenyx will attempt to generate for each file in the
 `filenames` array.
+* `output-directory` - A string containing the path to the location in the file system that the tool should use for
+writing output.
 * `seed` - The seed value used for the random number generator in Mutagenyx.  Preserving the generator seed number in
 the configuration file allows tools to deterministically generate mutations.  If the configuration file does not have a
 value for the seed key, the tool will use the value from the command line argument `--rng-seed <SEED>` and if the user
