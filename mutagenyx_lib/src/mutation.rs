@@ -336,7 +336,7 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
             extra_details: "This algorithm will replace the operators in the operator list \
                 with another operator from the same list.",
             operators: arithmetic_operators(),
-            examples: "a + b might become a - b, a * by might become a / b",
+            examples: "a + b might become a - b, a * y might become a / b",
         },
     );
 
