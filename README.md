@@ -293,12 +293,272 @@ paths, one for each `--solidity-include-path` on the command line.
 You can set Solidity allow paths using the `--solidity-allow-path <PATH>` flag.  You can use `--solidity-allow-path` to
 add multiple paths, one for each `--solidity-allow-path` on the command line.
 
+#### Vyper
+
+You can pass the path to the Vyper compiler using the `--vyper-compiler <PATH>` flag.
+
+You can set the root folder path using the `--vyper-root-path <PATH>` flag.
+
+### Examples
+
+#### Getting help
+
+Using Cargo, you can use the following commands to get detailed help descriptions for the options supported by
+Mutagenyx:
+
+`cargo mutagenyx-help` - Prints the help information available for the basic sub commands available in Mutagenyx.  You
+can also run `mutagenyx -h` if you use the Mutagenyx binary directly.
+
+`cargo mutagenyx-algorithms-help` - Prints the help information available for the **algorithms** sub-command.  You can
+also run `mutagenyx algorithms -h` if you use the Mutagenyx binary directly.
+
+`cargo mutagenyx-mutate-help` - Prints the help information available for the **mutate** sub-command.  You can also
+use `mutagenyx mutate -h` if you use the Mutagenyx binary directly.
+
+`cargo mutagenyx-pretty-print-help` - Prints the help information available for the **pretty-print** sub-command.  You can
+also use `mutagenyx pretty-print -h` if you use the Mutagenyx binary directly.
+
+
+#### Querying Mutagenyx for mutation algorithms
+
+<ul>
+<li>
+To get a list of mutation algorithms available in Mutagenyx:
+
+```bash
+mutagenyx algorithm -l
+```
+
+Mutagenyx will return a list of algorithm names and a short description of the algorithm behavior:
+
+Example output:
+```
+ArithmeticBinaryOp    Randomly replace the arithmetic operator in a binary expression.
+
+Assignment            Replace right hand side of assignment expressions with type appropriate random alternative values.
+
+BitshiftBinaryOp      Randomly replaces a bitshift operator in a binary expression.
+
+BitwiseBinaryOp       Randomly replaces a bitwise operator in a binary expression.
+
+ComparisonBinaryOp    Randomly replace the comparison operator in a binary expression
+```
+
+If you choose to use Cargo, you can also use `cargo mutagenyx-algorithms-list` to generate this same information.</li>
+
+<li>To get a detailed description of the mutation algorithms in Mutagenyx (including examples that describe the algorithms'
+behaviors):
+
+```bash
+mutagenyx algorithms -d
+```
+
+Example output:
+```
+ArithmeticBinaryOp    Randomly replace the arithmetic operator in a binary expression.
+
+                      This algorithm will replace the operators in the operator list with another operator from the same list.
+
+                      Operators:
+                      ----------
+
+                      ["+", "-", "*", "/", "%", "**"]
+
+                      Examples:
+                      ---------
+
+                      a + b might become a - b, a * y might become a / b
+```
+
+If you choose to use Cargo, you can also use `cargo mutagenyx-algorithms-describe` to generate this same information.
+</li>
+</ul>
+
+#### Generating Mutations
+
+Most of the examples below use Solidity source files, but the commands apply equally to mutating Vyper programs.
+
+By default, Mutagenyx will look in the `PATH` environment variable to find a Solidity compiler named `solc` and a Vyper
+compiler named `vyper`.  In the following examples, assuming your Solidity or Vyper programs conform to the version
+of the language supported by these default compilers, you can do the following:
+
+<ul>
+<li>
+Using Cargo, you can generate a single mutation on a source file.  The tool will use all available mutation algorithms
+and generate one mutant, printing the mutant to <code>stdout</code>.
+
+```bash
+cargo mutagenyx /path/to/solidity/file.sol
+```
+
+Using the Mutagenyx binary, you can get the same behavior using:
+
+```bash
+mutagenyx mutate --stdout -a -f /path/to/solidity/file.sol
+```
+
+You can use the `-f/--file` command-line argument multiple times to have Mutagenyx generate mutations for more than
+source file.
+</li>
+
+<li>
+If you need to use another, more specific Solidity compiler version, you can pass the <code>--solidity-compiler</code> flag:
+
+```bash
+cargo mutagenix /path/to/solidity/file.sol --solidity-compiler /path/to/solidity/solc8.17
+```
+
+or:
+
+```bash
+mutagenyx mutate --stdout -a -f /path/to/solidity/file.sol --solidity-compiler /path/to/solidity/solc8.17
+```
+</li>
+
+<li>
+Without the <code>--stdout</code> flag, Mutagenyx will place the tool output into a directory.  If you do not specify a directory
+using the command-line argument <code>-o/--output-directory</code>, then Mutagenyx will create a directory in the current working
+directory named <code>out</code> and will place all its output in that location.
+
+```bash
+mutagenyx mutate -a -f /path/to/solidity/file.sol -o /path/to/output/directory
+```
+</li>
+
+<li>
+In order to generate mutations, you must use either the <code>-a/--all-mutations</code> flag or the
+<code>--mutation &lt;ALGORITHM&gt;</code> flag to tell Mutagenyx which mutation algorithms to use when generating mutations.
+The tool will accept multiple instances of the <code>--mutation</code> flag if you want to pass multiple algorithms.  Eg:
+
+```bash
+mutagenyx mutate -f /path/to/solidity/file.sol --stdout --mutation ArithmeticBinaryOp --mutation SwapFunctionArguments
+```
+</li>
+
+<li>
+By default, Mutagenyx will generate one mutant.  Use the <code>--num-mutants &lt;NUMBER&gt;</code> flag to specify more
+mutants.  Mutagenyx will calculate the number of possible mutations available for a file based on the source code in the
+file and the algorithms requested using either <code>--all-mutations</code> or <code>--mutation &lt;ALGORITHM&gt;</code>
+and will bound the number of mutations that it generates based on the
+<code>min(requested mutations, available mutations)</code>.
+
+In the following example, the tool attempts to generate 300 mutants, but the tool can only find 185 mutable nodes:
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol --solidity-compiler solc8.11 -a --num-mutants 300 -o /tmp/out
+```
+
+Output:
+
+```
+Of the requested mutation algorithms, the AST contains nodes for ["ArithmeticBinaryOp", ..., "UncheckedBlock"]
+AST supports at most 185 different mutations using the requested mutation algorithms
+Reached the limit of mutable nodes in the AST, lowering requested mutants by 115 to 185
+...
+```
+</li>
+
+<li>
+Mutagenyx uses pseudo random numbers to generate mutations.  You can repeat a mutation sequence if you have the need
+for repeatable mutations by setting the pseudo-random number generator seed using the <code>--rng-seed &lt;SEED&gt;</code>
+flag.
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol ... --rng-seed 425
+```
+</li>
+
+<li>
+To compare the original source program with the generated mutations, you will most likely make use of a tool such as
+<code>diff</code> to highlight the changes in the mutated code.  Using a diff tool to compare the original source file
+and the mutated source file will produce lots of spurious noise in the diff output.  Mutagenyx cannot completely
+reproduce the whitespace usage in the original source code.  To compensate, you can ask Mutagenyx to pretty-print the
+original source code in the output directory using the <code>--print-original</code> flag.  Mutagenyx will write the
+pretty-printed original code to a file in the output directory that you can then use to compare against the generated
+mutations.  Mutagenyx does not alter the original program in any way, it only formats the code.
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol -a -o /output/directory --print-original
+```
+</li>
+
+<li>
+Mutagenyx can capture the command-line arguments used to produce a set of mutations in a Mutagenyx
+<a href="#configuration-files">configuration file</a> (<code>.mgnx</code>).  The tool will generate one configuration
+file for every input file.  Use the <code>--save-config-files</code> flag to generate configuration files in the output
+directory.
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol -a -o /output/directory --save-config-files
+```
+</li>
+
+<li>
+Mutagenyx can confine the mutations that it generates to selective functions.  If you need to narrow the mutation focus
+use the <code>--function &lt;FUNCTION&gt;</code> command line flag to specify a function name.  You can use
+<code>--function</code> multiple times to mutate multiple functions.  Mutagenyx will only permit mutations in those
+listed functions.
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol -a --function read_balance --function send_cash -o /output/directory
+```
+</li>
+
+<li>
+Mutagenyx can attempt to verify the soundness of the generated mutants.  If you pass the <code>--validate-mutants</code>
+compiler flag, Mutagenyx will invoke the Solidity or Vyper compiler on each mutant to verify that the mutant compiles. In
+this mode, Mutagenyx will keep generating mutations until it can successfully generate the requested mutations.
+
+```bash
+mutagenyx mutate --file /path/to/solidity/file.sol -a --num-mutants 300 -o /output/directory --validate-mutants
+```
+</li>
+
+<li>
+For help with language-specific flags, see the <a href="#language-compiler-flags">Language Compiler Flags</a> section.
+</li>
+
+</ul>
+
+#### Pretty-Printing
+
+Mutagenyx will only pretty-print source or AST input files.  It will not pretty-print files listed in Mutagenyx
+configuration files.
+
+<ul>
+<li>
+You can use the <code>--file &lt;FILE&gt;</code> flag to specify an input file for Mutagenyx to pretty-print.  Mutagenyx
+will accept multiple <code>--file</code> flags if you need to pretty-print more than one file.
+
+The following command pretty-prints the input file to stdout.
+
+```bash
+mutagenyx pretty-print --file /path/to/input/file.sol --stdout
+```
+</li>
+
+<li>
+By default Mutagenyx will pretty-print the input files to a directory.  If the user does not supply an output directory
+location using the <code>--output-directory &lt;OUTPUT_DIRECTORY&gt;</code> flag, Mutagenyx will create a directory called
+<code>out</code> in the current working directory.
+
+```bash
+mutagenyx --file /path/to/input/file.sol --output-directory /path/to/output/dir
+```
+</li>
+
+<li>
+For help with language-specific flags, see the <a href="#language-compiler-flags">Language Compiler Flags</a> section.
+</li>
+
+</ul>
+
 ## Configuration Files
 
 In addition to source files and AST files generated by compilers, Mutagenyx supports passing input to the tool using
 configuration files.  Mutagenyx configuration files have the file extension `.mgnx`.  Mutagenyx configuration files
-use JSON formatting.  <mark>Important</mark>: Mutagenyx will reject any configuration file that does not have the `.mgnx` extension.
-Mutagenyx configuration file settings will override parameters provided on the command line.
+use JSON formatting.  <mark>Important</mark>: Mutagenyx will reject any configuration file that does not have the `.mgnx`
+extension. Mutagenyx configuration file settings will override parameters provided on the command line.
 
 ### Configuration file details
 
