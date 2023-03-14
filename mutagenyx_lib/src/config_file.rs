@@ -43,7 +43,11 @@ pub static VALIDATE_MUTANTS_KEY: &str = "validate-mutants";
 
 /// The key for the string value containing the path to where the tool should place
 /// output.
-pub static OUTPUT_DIR: &str = "output-directory";
+pub static OUTPUT_DIR_KEY: &str = "output-directory";
+
+/// The key for the boolean value indicating whether tool should pretty-print the input
+/// source or AST file.
+pub static PRINT_ORIGINAL_KEY: &str = "print-original";
 
 /// Configuration details loaded from a .mgnx configuration file.
 pub struct ConfigurationFileDetails {
@@ -76,6 +80,9 @@ pub struct ConfigurationFileDetails {
 
     /// The location where the tool should put generated output files.
     pub output_directory: Option<PathBuf>,
+
+    /// True if the tool should pretty-print the original source or AST file.
+    pub print_original: bool,
 }
 
 impl ConfigurationFileDetails {
@@ -114,6 +121,7 @@ impl ConfigurationFileDetails {
             functions: Vec::new(),
             verify_mutants: false,
             output_directory: None,
+            print_original: false,
         };
 
         if let Ok(json_value) = load_json_from_file_with_name(config_file) {
@@ -197,8 +205,12 @@ impl ConfigurationFileDetails {
                 details.verify_mutants = check;
             }
 
-            if let Some(output_directory) = json_value.get_str_for_key(OUTPUT_DIR) {
+            if let Some(output_directory) = json_value.get_str_for_key(OUTPUT_DIR_KEY) {
                 details.output_directory = Some(PathBuf::from(output_directory));
+            }
+
+            if let Some(print_original) = json_value.get_bool_for_key(PRINT_ORIGINAL_KEY) {
+                details.print_original = print_original;
             }
         } else {
             return Err(MutagenyxError::ConfigFileNotSupported(String::from(
@@ -258,8 +270,10 @@ impl ConfigurationFileDetails {
         json_value.set_node_for_key(VALIDATE_MUTANTS_KEY, json![self.verify_mutants]);
 
         if let Some(output_directory) = &self.output_directory {
-            json_value.set_node_for_key(OUTPUT_DIR, json![output_directory.to_str()]);
+            json_value.set_node_for_key(OUTPUT_DIR_KEY, json![output_directory.to_str()]);
         }
+
+        json_value.set_node_for_key(PRINT_ORIGINAL_KEY, json![self.print_original]);
 
         Ok(json_value)
     }

@@ -135,6 +135,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         let mut actual_verify = args.validate_mutants;
         let mut actual_output_directory = PathBuf::from_str(&args.output_directory).unwrap();
         let mut actual_use_stdout = args.stdout;
+        let mut actual_print_original = args.print_original;
 
         // Try to recognize the language of the source file.  The file might be a source code file,
         // an AST file, or a configuration file.
@@ -186,6 +187,8 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
                 }
             }
 
+            actual_print_original = configuration_details.print_original;
+
             // The configuration files can have multiple files to mutate using the same settings
             // for each file. Go through the filenames list and add a generator parameter object
             // for each file in the list.
@@ -201,7 +204,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
                     use_stdout: actual_use_stdout,
                     mutations: actual_mutations.clone(),
                     verify_mutant_viability: actual_verify,
-                    print_original: args.print_original,
+                    print_original: actual_print_original,
                     save_configuration_file: args.save_config_files,
                     preferences: actual_preferences.clone(),
                     functions: actual_functions.clone(),
@@ -219,7 +222,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
                 use_stdout: actual_use_stdout,
                 mutations: actual_mutations,
                 verify_mutant_viability: actual_verify,
-                print_original: args.print_original,
+                print_original: actual_print_original,
                 save_configuration_file: args.save_config_files,
                 preferences: actual_preferences,
                 functions: actual_functions,
@@ -329,6 +332,7 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             functions: params.functions.clone(),
             verify_mutants: params.verify_mutant_viability,
             output_directory: Some(params.output_directory.clone()),
+            print_original: params.print_original,
         };
 
         // Build the output file name.
