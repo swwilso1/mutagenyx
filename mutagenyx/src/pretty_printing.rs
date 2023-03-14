@@ -86,7 +86,6 @@ pub fn pretty_print_file(
     let mut language_object =
         LanguageInterface::get_language_object_for_language(&recognize_result.language)?;
 
-    // TODO: We need to have the module that loads either source or AST.
     // Load the ast.
     let ast =
         language_object.load_ast_from_file(file_name, &recognize_result.file_type, preferences)?;
