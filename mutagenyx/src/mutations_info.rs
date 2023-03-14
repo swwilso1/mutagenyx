@@ -14,18 +14,12 @@ use std::io::{stdout, Write};
 struct ColumnSizes {
     /// Length of the longest algorithm name.
     alg_name_width: usize,
-
-    /// Length of the longest category name.
-    category_width: usize,
 }
 
 impl ColumnSizes {
     /// Create a new column sizes object.
     fn new() -> ColumnSizes {
-        ColumnSizes {
-            alg_name_width: 0,
-            category_width: 0,
-        }
+        ColumnSizes { alg_name_width: 0 }
     }
 }
 
@@ -44,6 +38,9 @@ pub fn display_mutations_info(params: AlgorithmsCLArgs) {
     }
 }
 
+/// Wrapper function around termsize::get() that can provide sane default terminal size values
+/// in the event that someone runs Mutagenyx in a non-terminal context.  Returns the size of the
+/// running terminal (in rows and columns).
 fn get_terminal_size() -> termsize::Size {
     // Get the console dimensions.
     if let Some(size) = termsize::get() {
@@ -146,7 +143,6 @@ fn display_algorithm_descriptions() {
     let examples_text = "Examples:";
 
     let mut column_sizes = ColumnSizes::new();
-    column_sizes.category_width = operators_text.len();
 
     // Get the sorted keys for the map.  We want them sorted so we can write out the algorithms
     // in alphabetical order(for now).
