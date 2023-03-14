@@ -171,6 +171,7 @@ pub struct PrettyPrintCLArgs {
 }
 
 fn main() {
+    let mut disable_timing = false;
     let beginning_of_run = Instant::now();
     let _ = env_logger::builder()
         .format(|buf, record| {
@@ -188,6 +189,7 @@ fn main() {
     let mutagenyx_command = MutagenyxCommand::parse();
     match &mutagenyx_command.command {
         Commands::Algorithms(alg_args) => {
+            disable_timing = true;
             display_mutations_info(alg_args.clone());
         }
         Commands::Mutate(mutate_args) => {
@@ -199,8 +201,10 @@ fn main() {
             pretty_print_files(pretty_print_args.clone());
         }
     }
-    println!(
-        "Elapsed time: {}s",
-        beginning_of_run.elapsed().as_secs_f64()
-    );
+    if !disable_timing {
+        println!(
+            "Elapsed time: {}s",
+            beginning_of_run.elapsed().as_secs_f64()
+        );
+    }
 }
