@@ -336,17 +336,21 @@ impl NodePrinter<SolidityAST> for PragmaDirectivePrinter {
                 write_token(printer, stream, "pragma");
                 write_space(printer, stream);
 
-                for val in v {
+                let mut i: usize = 0;
+                while i < v.len() {
+                    let val = &v[i];
                     if let Some(s) = val.as_str() {
                         write_token(printer, stream, s);
-                        if s == "solidity" {
-                            write_space(printer, stream);
-                        }
                     }
+                    if i < (v.len() - 1) {
+                        write_space(printer, stream);
+                    }
+                    i += 1;
                 }
+
+                write_token(printer, stream, ";");
             }
         }
-        write_token(printer, stream, ";");
     }
 }
 
@@ -547,6 +551,8 @@ impl NodePrinter<SolidityAST> for UserDefinedTypeNamePrinter {
     ) {
         if let Some(path_node) = node.get("pathNode") {
             print_name_helper(printer, stream, path_node);
+        } else {
+            print_name_helper(printer, stream, node);
         }
     }
 }
@@ -686,10 +692,12 @@ impl NodePrinter<SolidityAST> for FunctionDefinitionPrinter {
         }
 
         if let Some(visibility) = node.get_str_for_key("visibility") {
-            if visibility != "internal" {
-                write_space(printer, stream);
-                write_token(printer, stream, visibility);
-            }
+            write_space(printer, stream);
+            write_token(printer, stream, visibility);
+            // if visibility != "internal" {
+            //     write_space(printer, stream);
+            //     write_token(printer, stream, visibility);
+            // }
         }
 
         if let Some(virtual_bool) = node.get_bool_for_key("virtual") {
@@ -2603,17 +2611,17 @@ impl NodePrinterFactory<SolidityAST> for SolidityNodePrinterFactory {
                 "TryCatchClause" => Box::new(TryCatchClausePrinter {}),
                 "TryStatement" => Box::new(TryStatementPrinter {}),
                 "TupleExpression" => Box::new(TupleExpressionPrinter {}),
-                "UserDefinedTypeName" => Box::new(UserDefinedTypeNamePrinter {}),
-                "VariableDeclaration" => Box::new(VariableDeclarationPrinter {}),
-                "VariableDeclarationStatement" => Box::new(VariableDeclarationStatementPrinter {}),
                 "UnaryOperation" => Box::new(UnaryOperationPrinter {}),
                 "UncheckedBlock" => Box::new(BlockPrinter::new(
                     <SolidityNodePrinterFactory as NodePrinterFactory<Value>>::get_preference_value_for_key(self, SINGLE_BLOCK_STATEMENTS_ON_SAME_LINE),
                 )),
+                "UserDefinedTypeName" => Box::new(UserDefinedTypeNamePrinter {}),
                 "UserDefinedValueTypeDefinition" => {
                     Box::new(UserDefinedValueTypeDefinitionPrinter {})
                 }
                 "UsingForDirective" => Box::new(UsingForDirectivePrinter {}),
+                "VariableDeclaration" => Box::new(VariableDeclarationPrinter {}),
+                "VariableDeclarationStatement" => Box::new(VariableDeclarationStatementPrinter {}),
                 "WhileStatement" => Box::new(WhileStatementPrinter {}),
                 "YulAssignment" => Box::new(YulAssignmentPrinter {}),
                 "YulBlock" => Box::new(BlockPrinter::new(

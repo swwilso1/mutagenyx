@@ -117,6 +117,10 @@ pub struct MutateCLArgs {
     #[arg(long)]
     pub solidity_remapping: Vec<String>,
 
+    /// Solidity '--stop-after MODULE' compiler flag
+    #[arg(long)]
+    pub solidity_stop_after: Option<String>,
+
     /// Vyper compiler
     #[arg(long, default_value = "vyper")]
     pub vyper_compiler: String,
@@ -160,6 +164,10 @@ pub struct PrettyPrintCLArgs {
     /// Solidity re-mapping (context:prefix=path)
     #[arg(long)]
     pub solidity_remapping: Vec<String>,
+
+    /// Solidity '--stop-after MODULE' compiler flag
+    #[arg(long)]
+    pub solidity_stop_after: Option<String>,
 
     /// Vyper compiler
     #[arg(long, default_value = "vyper")]

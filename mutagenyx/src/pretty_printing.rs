@@ -27,6 +27,7 @@ pub fn pretty_print_files(args: PrettyPrintCLArgs) {
         solidity_include_path: args.solidity_include_path,
         solidity_allow_paths: args.solidity_allow_paths,
         solidity_remappings: args.solidity_remapping,
+        solidity_stop_after: args.solidity_stop_after,
     };
 
     let vyper_compiler_settings = VyperCompilerSettings {

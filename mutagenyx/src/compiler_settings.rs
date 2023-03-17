@@ -22,6 +22,9 @@ pub struct SolidityCompilerSettings {
 
     /// Solidity re-mapping (context:prefix=path)
     pub solidity_remappings: Vec<String>,
+
+    /// Solidity '--stop-after MODULE' flag.
+    pub solidity_stop_after: Option<String>,
 }
 
 impl SolidityCompilerSettings {
@@ -55,6 +58,10 @@ impl SolidityCompilerSettings {
                 remappings_array.push(PreferenceValue::String(remapping.clone()));
             }
             preferences.set_array_for_key(REMAPPINGS_KEY, remappings_array);
+        }
+
+        if let Some(module) = &self.solidity_stop_after {
+            preferences.set_string_for_key(STOP_AFTER_KEY, module.as_str());
         }
 
         preferences

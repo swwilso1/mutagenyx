@@ -1,5 +1,4 @@
 //! The `mutator_result` module contains the code for [`MutatorResult`].
-//!
 
 use crate::mutation::MutationType;
 

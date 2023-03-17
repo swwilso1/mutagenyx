@@ -12,9 +12,9 @@
 ///
 /// `action.scope.name`
 ///
-/// * Verb represents the operation the caller wants to perform on the node.
+/// * Action represents the operation the caller wants to perform on the node.
 /// * Scope represents the kind of node to which the operation will apply.
-/// * Name represents the id value of the node to which the Verb/Scope should apply.
+/// * Name represents the id value of the node to which the Action/Scope should apply.
 ///
 /// We explicitly do not use strings to represent permission queries.  Programmers can
 /// easily make mistakes trying to do string manipulation to get the query syntax correct

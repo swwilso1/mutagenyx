@@ -22,7 +22,7 @@ use crate::pretty_printer::PrettyPrinter;
 use crate::solidity::ast::SolidityAST;
 use crate::solidity::commenter::SolidityCommenterFactory;
 use crate::solidity::compiler_details::{
-    ALLOW_PATHS_KEY, BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY,
+    ALLOW_PATHS_KEY, BASE_PATH_KEY, INCLUDE_PATHS_KEY, REMAPPINGS_KEY, STOP_AFTER_KEY,
 };
 use crate::solidity::mutators::SolidityMutatorFactory;
 use crate::solidity::node_finder::SolidityNodeFinderFactory;
@@ -209,6 +209,10 @@ fn get_solidity_compiler_flags_from_preferences(prefs: &Preferences) -> Vec<Stri
                     }
                 }
             }
+            if let Some(stage) = compiler_prefs.get_string_for_key(STOP_AFTER_KEY) {
+                args.push(String::from("--stop-after"));
+                args.push(stage);
+            }
         }
     }
 
@@ -274,6 +278,13 @@ fn file_is_source_file(file_name: &str, prefs: &Preferences) -> Result<String, M
             if output.status.success() {
                 Ok(out_path)
             } else {
+                let stdout_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();
+                let stderr_contents = core::str::from_utf8(output.stderr.as_slice()).unwrap();
+                log::debug!(
+                    "Compilation failed:\n\tstdout: {}\n\tstderr: {}",
+                    stdout_contents,
+                    stderr_contents
+                );
                 Err(MutagenyxError::SourceDoesNotCompile(String::from(
                     file_name,
                 )))
@@ -302,14 +313,36 @@ fn file_compiles(file_name: &str, prefs: &Preferences) -> bool {
         full_compiler_args.push(String::from(*arg));
     }
 
+    if invoke_compiler(file_name, &solidity_compiler, &full_compiler_args) {
+        return true;
+    }
+
+    // Compilation failed, try one more time, this time we inject '--stop-after parsing' into the command
+    // line for the compiler.
+    full_compiler_args.push(String::from("--stop-after"));
+    full_compiler_args.push(String::from("parsing"));
+
+    invoke_compiler(file_name, &solidity_compiler, &full_compiler_args)
+}
+
+/// Helper function for simple compiler invocations.  Returns true if the compilation succeeded.
+///
+/// # Arguments
+///
+/// * - `file_name` the name of the file to compile, used in the log message.
+/// * - `compiler` the path to the compiler.
+/// * - `args` array of compiler command-line flags as strings.
+fn invoke_compiler(file_name: &str, compiler: &str, args: &Vec<String>) -> bool {
     log::debug!(
         "Attempting to compile {} with Solidity compiler '{}' and args: {:?}",
         file_name,
-        solidity_compiler,
-        full_compiler_args
+        compiler,
+        args
     );
 
-    match shell_execute(&solidity_compiler, full_compiler_args) {
+    let compiler_args = args.clone();
+
+    match shell_execute(compiler, compiler_args) {
         Ok(output) => {
             if !output.status.success() {
                 let stdout_contents = core::str::from_utf8(output.stdout.as_slice()).unwrap();

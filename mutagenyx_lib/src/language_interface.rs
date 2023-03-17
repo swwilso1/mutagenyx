@@ -196,7 +196,12 @@ pub trait MutableLanguage {
     ///
     /// * `file_name` - The string slice referencing the text containing the file name.
     /// * `prefs` - The preferences object that contains compiler settings.
-    fn mutant_compiles(&mut self, ast: &SuperAST, prefs: &Preferences) -> bool;
+    fn mutant_compiles(
+        &mut self,
+        original_file_name: &str,
+        ast: &SuperAST,
+        prefs: &Preferences,
+    ) -> bool;
 
     /// Calculate all the paths to all the nodes in `ast`.
     ///

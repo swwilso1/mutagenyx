@@ -93,6 +93,7 @@ pub fn generate_mutants(args: MutateCLArgs) -> Result<(), MutagenyxError> {
         solidity_include_path: args.solidity_include_path,
         solidity_allow_paths: args.solidity_allow_paths,
         solidity_remappings: args.solidity_remapping,
+        solidity_stop_after: args.solidity_stop_after,
     };
 
     let vyper_compiler_settings = VyperCompilerSettings {
@@ -485,7 +486,11 @@ fn generate_mutations(params: &mut GeneratorParameters) -> Result<(), MutagenyxE
             let mutated_ast = mutate_ast_result.ast.unwrap();
 
             if params.verify_mutant_viability
-                && !language_object.mutant_compiles(&mutated_ast, &params.preferences)
+                && !language_object.mutant_compiles(
+                    &params.file_name,
+                    &mutated_ast,
+                    &params.preferences,
+                )
             {
                 attempts += 1;
                 continue;

@@ -22,6 +22,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::io::Write;
+use std::path::PathBuf;
 
 /// The interface object for the programming languages with JSON encoded ASTs.
 pub struct JSONLanguageInterface {
@@ -245,11 +246,18 @@ impl MutableLanguage for JSONLanguageInterface {
         self.delegate.default_compiler_settings()
     }
 
-    fn mutant_compiles(&mut self, ast: &SuperAST, prefs: &Preferences) -> bool {
+    fn mutant_compiles(
+        &mut self,
+        original_file_name: &str,
+        ast: &SuperAST,
+        prefs: &Preferences,
+    ) -> bool {
         // We will pretty print the AST to a file in the temp directory.
         let mut source_file = env::temp_dir();
-        let file_name = String::from("mutant") + "." + self.get_extension_for_output_file();
-        source_file.push(file_name);
+
+        let original_file = PathBuf::from(original_file_name);
+        let base_file_name = original_file.file_name().unwrap();
+        source_file.push(String::from(base_file_name.to_str().unwrap()));
 
         let mut pretty_printer = PrettyPrinter::new(4, 150);
 
