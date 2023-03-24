@@ -253,6 +253,23 @@ fn unencode_string(s: &str) -> String {
     unencoded_s
 }
 
+/// Return true if the string only contains ASCII digits and/or the '.' character.
+///
+/// # Arguments
+///
+/// * `s` - The input string slice.
+fn contains_digits_and_or_dots(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    for c in s.chars() {
+        if !c.is_ascii_digit() && c != '.' {
+            return false;
+        }
+    }
+    true
+}
+
 /// Default node printer for unsupported nodes.
 struct DummyNodePrinter {}
 
@@ -333,17 +350,31 @@ impl NodePrinter<SolidityAST> for PragmaDirectivePrinter {
     ) {
         if let Some(l) = node.get("literals") {
             if let Some(v) = l.as_array() {
-                write_token(printer, stream, "pragma");
-                write_space(printer, stream);
+                let operators = vec!["<", "<=", ">=", ">", "^"];
 
+                write_token(printer, stream, "pragma");
+
+                let mut previous_token = "pragma";
                 let mut i: usize = 0;
                 while i < v.len() {
                     let val = &v[i];
+                    let mut needs_space: bool = true;
+
                     if let Some(s) = val.as_str() {
+                        if operators.contains(&previous_token) {
+                            needs_space = false;
+                        } else if contains_digits_and_or_dots(previous_token)
+                            && contains_digits_and_or_dots(s)
+                        {
+                            needs_space = false;
+                        }
+
+                        if i < (v.len() - 1) && needs_space {
+                            write_space(printer, stream);
+                        }
                         write_token(printer, stream, s);
-                    }
-                    if i < (v.len() - 1) {
-                        write_space(printer, stream);
+
+                        previous_token = s;
                     }
                     i += 1;
                 }
@@ -2649,5 +2680,18 @@ impl NodePrinterFactory<SolidityAST> for SolidityNodePrinterFactory {
 
     fn get_settings(&self) -> &Preferences {
         &self.settings
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_contains_digits_and_or_dots() {
+        let s1 = "0.2.345";
+        assert_eq!(contains_digits_and_or_dots(s1), true);
+        assert_eq!(contains_digits_and_or_dots("23.f.234"), false);
+        assert_eq!(contains_digits_and_or_dots(""), false);
     }
 }
