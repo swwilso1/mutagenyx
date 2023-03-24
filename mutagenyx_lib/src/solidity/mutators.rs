@@ -17,7 +17,6 @@ use openssl::hash::{Hasher, MessageDigest};
 use rand::seq::SliceRandom;
 use rand::{Rng, RngCore};
 use rand_pcg::*;
-use rustc_serialize::hex::ToHex;
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt;
@@ -30,7 +29,7 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(
     value: I,
 ) -> Result<SolidityAST, MutagenyxError> {
     let value_str = value.to_string();
-    let hex_value_str = value_str.as_bytes().to_hex();
+    let hex_value_str = hex::encode(value_str.as_bytes());
     let node_string = format!(
         "{{
         \"hexValue\": \"{hex_value_str}\",
@@ -59,7 +58,7 @@ fn new_integer_constant_node<I: Integer + fmt::Display>(
 /// * `value` - The boolean value to store in the node.
 fn new_boolean_literal_node(value: bool) -> Result<SolidityAST, MutagenyxError> {
     let value_str = value.to_string();
-    let hex_value_str = value_str.as_bytes().to_hex();
+    let hex_value_str = hex::encode(value_str.as_bytes());
     let node_string = format!(
         "{{\
         \"hexValue\": \"{hex_value_str}\",
