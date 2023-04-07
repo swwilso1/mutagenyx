@@ -1418,7 +1418,36 @@ impl NodePrinter<SolidityAST> for UsingForDirectivePrinter {
                 if !function_list_array.is_empty() {
                     write_space(printer, stream);
                     write_token(printer, stream, "{");
-                    print_array_helper(printer, stream, factory, function_list_array);
+                    printer.increase_indent();
+                    write_newline(printer, stream);
+                    write_indent(printer, stream);
+                    print_array_helper_with_node_handler_and_space_formatter(
+                        printer,
+                        stream,
+                        factory,
+                        function_list_array,
+                        |p, s, _f, n| {
+                            if let Some(definition) = n.get("definition") {
+                                if let Some(name) = definition.get_str_for_key("name") {
+                                    write_token(p, s, name);
+                                }
+                            }
+                            if let Some(operator) = n.get_str_for_key("operator") {
+                                write_space(p, s);
+                                write_token(p, s, "as");
+                                write_space(p, s);
+                                write_token(p, s, operator);
+                            }
+                        },
+                        |p, s, _f| {
+                            write_token(p, s, ",");
+                            write_newline(p, s);
+                            write_indent(p, s);
+                        },
+                    );
+                    write_newline(printer, stream);
+                    printer.decrease_indent();
+                    write_indent(printer, stream);
                     write_token(printer, stream, "}");
                 }
             }
