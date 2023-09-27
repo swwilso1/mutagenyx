@@ -70,8 +70,12 @@ impl ASTTraverser {
                     // Traverse each child of the node.
                     let should_stop = ASTTraverser::traverse(child, visitor);
                     if should_stop {
+                        // Inform the visitor that we will leave the children of the node.
+                        visitor.on_end_visit_children(node);
+
                         // Inform the visitor that we will leave this node.
                         visitor.on_exit(node);
+
                         return true;
                     }
                 }
