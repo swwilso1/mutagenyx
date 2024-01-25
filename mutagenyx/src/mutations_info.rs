@@ -63,8 +63,8 @@ fn display_simple_algorithm_list() {
 
     // Use a pretty printer for formatting the output.  The pretty printer gives us one advantage
     // over just writing basic formatted strings to the console.  The pretty printer can flow text
-    // around an indentation length.  This feature allows us to not have to worry about whether or
-    // not the formatting specifications will correctly handle long text descriptions in the
+    // around an indentation length.  This feature allows us to not have to worry about whether
+    // the formatting specifications will correctly handle long text descriptions in the
     // MutationAlgorithmDefinition structures.
     let mut printer = PrettyPrinter::new(1, terminal_size.cols as usize);
 
@@ -132,8 +132,8 @@ fn display_algorithm_descriptions() {
 
     // Use a pretty printer for formatting the output.  The pretty printer gives us one advantage
     // over just writing basic formatted strings to the console.  The pretty printer can flow text
-    // around an indentation length.  This feature allows us to not have to worry about whether or
-    // not the formatting specifications will correctly handle long text descriptions in the
+    // around an indentation length.  This feature allows us to not have to worry about whether
+    // the formatting specifications will correctly handle long text descriptions in the
     // MutationAlgorithmDefinition structures.
     let mut printer = PrettyPrinter::new(1, terminal_size.cols as usize);
 
