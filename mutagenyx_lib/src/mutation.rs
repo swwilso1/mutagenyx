@@ -199,7 +199,7 @@ pub enum SolidityMutation {
     ///
     /// # Examples
     ///
-    /// `require(b > 10);` would become `require(! (b > 0);`
+    /// `require(b > 10);` would become `require(! (b > 0));`
     Require,
 
     /// Picks and expression statement node and decorates the statement with the `unchecked{ }`
@@ -510,7 +510,7 @@ pub fn all_algorithm_descriptions() -> HashMap<MutationType, MutationAlgorithmDe
             replace the argument with the logical negation of the argument expression.",
             extra_details: "This mutation algorithm only works for Solidity programs.",
             operators: vec![],
-            examples: "require(b > 10); would become require(!(b > 0);",
+            examples: "require(b > 10); would become require(!(b > 0));",
         },
     );
 
