@@ -8,10 +8,10 @@ use std::io::Write;
 /// Trait that provides the functionality needed by objects that will print different nodes in an
 /// AST.
 ///
-/// The semantics of this trait shadow the [`crate::visitor::Visitor`] trait where the node traversal algorithm
-/// will call `on_entry` to indicate the object can start emitting the output for the first part
-/// of the node, next `print_node` to write out the majority of the node, and finally `on_exit`
-/// when the finishing the node.
+/// The semantics of this trait shadow the [`crate::visitor::Visitor`] trait, where the node traversal
+/// algorithm will call `on_entry` to indicate the object can start emitting the output for the first
+/// part of the node, next `print_node` to write out the majority of the node, and finally `on_exit`
+/// when finishing the node.
 pub trait NodePrinter<AST> {
     /// Called when the node traversal first encounters the node in the AST.
     ///
@@ -23,7 +23,7 @@ pub trait NodePrinter<AST> {
     /// printers for the nodes of the AST.
     /// * `_node` - The AST node.
     ///
-    /// The default version of this function do not use any of the arguments.
+    /// The default version of this function does not use any of the arguments.
     fn on_entry(
         &mut self,
         _printer: &mut PrettyPrinter,
@@ -43,7 +43,7 @@ pub trait NodePrinter<AST> {
     /// printers for the nodes of the AST.
     /// * `_node` - The AST node.
     ///
-    /// The default version of this function do not use any of the arguments.
+    /// The default version of this function does not use any of the arguments.
     fn print_node(
         &mut self,
         _printer: &mut PrettyPrinter,

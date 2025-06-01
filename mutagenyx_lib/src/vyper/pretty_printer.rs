@@ -170,13 +170,13 @@ fn write_indented_body_array(
     }
 }
 
-/// Write the contents of the `array` argument as indented text followed by a newline except for
+/// Write the contents of the `array` argument as indented text, followed by a newline, except for
 /// no newline after the last element of the array.
 ///
 /// # Arguments
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the output.
-/// * `stream` - The [`Write`] object that will receive the formatted text.
+/// * `stream` - The [`Write`] object receiving the formatted text.
 /// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `array` - The array of [`VyperAST`] nodes.
@@ -204,7 +204,7 @@ fn write_indented_array(
 /// # Arguments
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the text.
-/// * `stream` - The [`Write`] object that will receive the formatted text.
+/// * `stream` - The [`Write`] object receiving the formatted text.
 /// * `factory` - The [`NodePrinterFactory<AST>`] object that generates node printers for AST
 /// nodes.
 /// * `node` - The Vyper AST node.
@@ -233,7 +233,7 @@ fn write_node_with_parens_maybe(
 /// # Arguments
 ///
 /// * `printer` - The [`PrettyPrinter`] object that will format the text.
-/// * `stream` - The [`Write`] object that will receive the formatted text.
+/// * `stream` - The [`Write`] object receiving the formatted text.
 /// * `node` - The Vyper AST node.
 fn write_value_string_as_token(
     printer: &mut PrettyPrinter,
@@ -540,7 +540,7 @@ impl NodePrinter<VyperAST> for ArgumentsPrinter {
         // represents default argument values.  The default values live in the node's 'defaults'
         // key.  This key contains an array of default values. Since Vyper function defs can
         // only have default values for the last arguments to the function, the array of defaults
-        // array of say length N apply only to the last N arguments of the function.
+        // of say length N apply only to the last N arguments of the function.
         if let Some(defaults_node) = node.get("defaults") {
             if let Some(defaults_array) = defaults_node.as_array() {
                 if defaults_array.is_empty() {

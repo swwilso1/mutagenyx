@@ -1,5 +1,5 @@
 //! The `pretty_print_visitor` module provides a common pretty-print [`Visitor`] object that can
-//! traverse an AST. In order to provide language specific behavior, the user must supply an object
+//! traverse an AST. In order to provide language-specific behavior, the user must supply an object
 //! that can conform to [`NodePrinterFactory<AST>`] and that will produce [`NodePrinter<AST>`]
 //! trait objects that can handle instances of AST nodes.
 

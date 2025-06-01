@@ -236,7 +236,7 @@ impl PrettyPrinter {
     }
 
     /// Write a string value to the stream.  The function will emit the string surrounded by the
-    /// \" delimiters.
+    /// " delimiters.
     ///
     /// # Arguments
     ///
@@ -258,7 +258,7 @@ impl PrettyPrinter {
     }
 
     /// Write a string value to the stream.  The function will emit the string surrounded by three
-    /// \" delimiters.
+    /// " delimiters.
     ///
     /// # Arguments
     ///
