@@ -14,9 +14,9 @@ use crate::vyper::operators::get_python_operator_map;
 use crate::vyper::pretty_printer::VyperNodePrinterFactory;
 use num::{Float, Integer};
 use openssl::hash::{Hasher, MessageDigest};
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
+use rand::RngExt;
 use rand::Rng;
-use rand::RngCore;
 use rand_pcg::*;
 use serde_json::json;
 use std::cmp::Ordering;
@@ -493,7 +493,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
                 // 2_i128.pow(127) - 1
                 let upper_bound = 170141183460469231731687303715884105727_i128;
 
-                let replacement_value = rand.gen_range(lower_bound, upper_bound);
+                let replacement_value = rand.random_range(lower_bound..upper_bound);
 
                 hasher.update(&replacement_value.to_ne_bytes())?;
 
@@ -511,7 +511,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
 
                 let lower_bound = 0_u128;
                 let upper_bound = 340282366920938463463374607431768211455u128;
-                let replacement_value = rand.gen_range(lower_bound, upper_bound);
+                let replacement_value = rand.random_range(lower_bound..upper_bound);
 
                 hasher.update(&replacement_value.to_ne_bytes())?;
 
@@ -548,7 +548,7 @@ impl Mutator<VyperAST> for AssignmentMutator {
                 // [-2^167 / 10^10, (2^167 - 1) / 10^10]
                 let lower_bound = -18707220957835557353007165858768422651595.9365500928;
                 let upper_bound = 18707220957835557353007165858768422651595.9365500927;
-                let random_float: f64 = rand.gen_range(lower_bound, upper_bound);
+                let random_float: f64 = rand.random_range(lower_bound..upper_bound);
 
                 hasher.update(&random_float.to_ne_bytes())?;
 

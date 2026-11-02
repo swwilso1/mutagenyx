@@ -14,8 +14,8 @@ use crate::PrettyPrinter;
 use hex;
 use num::Integer;
 use openssl::hash::{Hasher, MessageDigest};
-use rand::seq::SliceRandom;
-use rand::{Rng, RngCore};
+use rand::seq::IndexedRandom;
+use rand::{Rng, RngExt};
 use rand_pcg::*;
 use serde_json::json;
 use std::collections::HashMap;
@@ -614,7 +614,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
 
                 let lower_bound = -(2_i128.pow(type_size - 1));
                 let upper_bound = 2_i128.pow(type_size - 1);
-                let replacement_value = rand.gen_range(lower_bound, upper_bound);
+                let replacement_value = rand.random_range(lower_bound..upper_bound);
 
                 hasher.update(&replacement_value.to_ne_bytes())?;
 
@@ -643,7 +643,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
                     340282366920938463463374607431768211455u128
                 };
 
-                let replacement_value = rand.gen_range(lower_bound, upper_bound);
+                let replacement_value = rand.random_range(lower_bound..upper_bound);
 
                 hasher.update(&replacement_value.to_ne_bytes())?;
 
@@ -658,7 +658,7 @@ impl Mutator<SolidityAST> for AssignmentMutator {
                 hasher.update("boo".as_bytes())?;
 
                 assert_eq!(type_string, "bool");
-                let replacement_value: i8 = rand.gen_range(0, 1);
+                let replacement_value: i8 = rand.random_range(0..2);
                 let bool_literal: bool = replacement_value != 0;
 
                 hasher.update(&replacement_value.to_ne_bytes())?;
